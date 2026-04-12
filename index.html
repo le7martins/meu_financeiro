@@ -11,6 +11,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html, body { height: 100%; background: #080c12; }
+    .light-mode ~ body, body:has(.light-mode) { background: #f0f4f8; }
     #root { min-height: 100%; }
     body { overscroll-behavior-y: contain; }
   </style>
@@ -1662,6 +1663,34 @@ const CSS=`
   @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
   -webkit-tap-highlight-color: transparent;
+
+  /* ── CSS Variables: dark (default) ── */
+  :root {
+    --bg:#080c12; --card-bg:#0d1118; --card-bg2:#111820;
+    --border:#111820; --border2:#0d1520; --border3:#0f1825;
+    --text1:#dde; --text2:#ccd; --text3:#445; --text4:#334;
+    --inp-bg:#080c12; --nav-bg:#080c12;
+  }
+
+  /* ── Light mode overrides ── */
+  .light-mode { --bg:#f0f4f8; --card-bg:#ffffff; --card-bg2:#e8edf3;
+    --border:#d0d8e4; --border2:#c8d2e0; --border3:#dde4ee;
+    --text1:#1a2332; --text2:#2a3444; --text3:#667788; --text4:#889aaa;
+    --inp-bg:#f8fafc; --nav-bg:#ffffff; }
+
+  .light-mode { background: var(--bg); color: var(--text1); }
+  .light-mode input, .light-mode select, .light-mode textarea {
+    background: var(--inp-bg) !important; color: var(--text1) !important; border-color: var(--border) !important; }
+  .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
+  .light-mode .eCard { background: var(--card-bg) !important; border-color: var(--border) !important; }
+  .light-mode .eCard:hover { border-color: #aabbcc !important; }
+  .light-mode .fTab { border-color: var(--border) !important; color: var(--text2) !important; }
+  .light-mode .fTab:hover { border-color: #aabbcc !important; color: var(--text1) !important; }
+  .light-mode .fTabActive, .light-mode .fTab[style*="background:#0d1a2e"] { background: #e8f0fe !important; border-color: #6699cc !important; color: #1a3a6e !important; }
+  .light-mode nav { background: var(--nav-bg) !important; border-top-color: var(--border) !important; box-shadow: 0 -2px 12px rgba(0,0,0,.08) !important; }
+  .light-mode .hscroll { background: transparent; }
+  .light-mode .modal-in { background: var(--card-bg) !important; }
+  select option { background: var(--card-bg); }
 `;
 
 // ─── Recent Activity Component ────────────────────────────────
@@ -1671,20 +1700,20 @@ function RecentActivity({ entries, catColor, catName, selMonth }) {
     .slice(0,5);
   if (!recent.length) return null;
   return(
-    React.createElement('div', { style: {padding:"0 14px 8px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1648}}
-      , React.createElement('div', { style: {fontSize:9,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1649}}, "Últimas movimentações" )
-      , React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:5}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1650}}
+    React.createElement('div', { style: {padding:"0 14px 8px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1676}}
+      , React.createElement('div', { style: {fontSize:9,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1677}}, "Últimas movimentações" )
+      , React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:5}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1678}}
         , recent.map((e,i)=>(
-          React.createElement('div', { key: i, style: {display:"flex",alignItems:"center",gap:10,background:"#0d1118",borderRadius:10,padding:"8px 12px",border:"1px solid #111820"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1652}}
-            , React.createElement('div', { style: {width:6,height:6,borderRadius:"50%",background:catColor(e.category),flexShrink:0}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1653}})
-            , React.createElement('div', { style: {flex:1,minWidth:0}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1654}}
-              , React.createElement('div', { style: {fontSize:12,fontWeight:600,color:"#dde",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1655}}, e.description)
-              , React.createElement('div', { style: {fontSize:9,color:"#445",marginTop:1}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1656}}, catName(e.category), " · "  , e.date.split("-").reverse().join("/"))
+          React.createElement('div', { key: i, style: {display:"flex",alignItems:"center",gap:10,background:"#0d1118",borderRadius:10,padding:"8px 12px",border:"1px solid #111820"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1680}}
+            , React.createElement('div', { style: {width:6,height:6,borderRadius:"50%",background:catColor(e.category),flexShrink:0}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1681}})
+            , React.createElement('div', { style: {flex:1,minWidth:0}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1682}}
+              , React.createElement('div', { style: {fontSize:12,fontWeight:600,color:"#dde",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1683}}, e.description)
+              , React.createElement('div', { style: {fontSize:9,color:"#445",marginTop:1}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1684}}, catName(e.category), " · "  , e.date.split("-").reverse().join("/"))
             )
-            , React.createElement('div', { style: {fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":e.isDivida?"#f87171":"#dde",flexShrink:0}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1658}}
+            , React.createElement('div', { style: {fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":e.isDivida?"#f87171":"#dde",flexShrink:0}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1686}}
               , e.type==="receita"?"+":"-", fmt(eVal(e))
             )
-            , React.createElement('div', { style: {fontSize:9,padding:"2px 6px",borderRadius:4,background:e.statusForMonth==="pago"?"rgba(74,222,128,.12)":"rgba(251,146,60,.12)",color:e.statusForMonth==="pago"?"#4ade80":"#fb923c",fontWeight:700}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1661}}
+            , React.createElement('div', { style: {fontSize:9,padding:"2px 6px",borderRadius:4,background:e.statusForMonth==="pago"?"rgba(74,222,128,.12)":"rgba(251,146,60,.12)",color:e.statusForMonth==="pago"?"#4ade80":"#fb923c",fontWeight:700}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1689}}
               , e.statusForMonth==="pago"?"✓":"⏳"
             )
           )
@@ -1700,38 +1729,38 @@ function PartialFatModal({ fat, card, onClose, onPay }) {
   const val = parseFloat(amount)||0;
   const remaining = parseFloat((fat.total - val).toFixed(2));
   return(
-    React.createElement('div', { style: S.overlay, onClick: e=>e.target===e.currentTarget&&onClose(), __self: this, __source: {fileName: _jsxFileName, lineNumber: 1677}}
-      , React.createElement('div', { style: {...S.modal,maxHeight:"auto"}, className: "modal-in", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1678}}
-        , React.createElement('div', { style: S.mHeader, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1679}}
-          , React.createElement('div', {__self: this, __source: {fileName: _jsxFileName, lineNumber: 1680}}, React.createElement('div', { style: S.mTitle, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1680}}, "Pagar Fatura" )
-            , React.createElement('div', { style: {fontSize:11,color:card.color,marginTop:2,fontWeight:600}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1681}}, "💳 " , card.name)
+    React.createElement('div', { style: S.overlay, onClick: e=>e.target===e.currentTarget&&onClose(), __self: this, __source: {fileName: _jsxFileName, lineNumber: 1705}}
+      , React.createElement('div', { style: {...S.modal,maxHeight:"auto"}, className: "modal-in", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1706}}
+        , React.createElement('div', { style: S.mHeader, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1707}}
+          , React.createElement('div', {__self: this, __source: {fileName: _jsxFileName, lineNumber: 1708}}, React.createElement('div', { style: S.mTitle, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1708}}, "Pagar Fatura" )
+            , React.createElement('div', { style: {fontSize:11,color:card.color,marginTop:2,fontWeight:600}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1709}}, "💳 " , card.name)
           )
-          , React.createElement('button', { style: S.xBtn, onClick: onClose, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1683}}, "✕")
+          , React.createElement('button', { style: S.xBtn, onClick: onClose, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1711}}, "✕")
         )
-        , React.createElement('div', { style: {background:"#080c12",border:`1px solid ${card.color}22`,borderRadius:12,padding:"12px 14px",marginBottom:14}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1685}}
-          , React.createElement('div', { style: {fontSize:11,color:"#445",marginBottom:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1686}}, "Total da fatura"  )
-          , React.createElement('div', { style: {fontSize:22,fontWeight:800,color:card.color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1687}}, fmt(fat.total))
+        , React.createElement('div', { style: {background:"#080c12",border:`1px solid ${card.color}22`,borderRadius:12,padding:"12px 14px",marginBottom:14}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1713}}
+          , React.createElement('div', { style: {fontSize:11,color:"#445",marginBottom:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1714}}, "Total da fatura"  )
+          , React.createElement('div', { style: {fontSize:22,fontWeight:800,color:card.color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1715}}, fmt(fat.total))
         )
-        , React.createElement(Field, { label: "Valor que será pago (R$)"    , __self: this, __source: {fileName: _jsxFileName, lineNumber: 1689}}
+        , React.createElement(Field, { label: "Valor que será pago (R$)"    , __self: this, __source: {fileName: _jsxFileName, lineNumber: 1717}}
           , React.createElement('input', { style: S.inp, type: "number", min: "0", step: "0.01", max: fat.total,
-            value: amount, onChange: e=>setAmount(e.target.value), __self: this, __source: {fileName: _jsxFileName, lineNumber: 1690}})
+            value: amount, onChange: e=>setAmount(e.target.value), __self: this, __source: {fileName: _jsxFileName, lineNumber: 1718}})
         )
         , val>0&&val<fat.total&&(
-          React.createElement('div', { style: {marginBottom:14,background:"rgba(250,204,21,.08)",border:"1px solid #facc1533",borderRadius:10,padding:"10px 14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1694}}
-            , React.createElement('div', { style: {fontSize:11,color:"#facc15",fontWeight:600,marginBottom:3}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1695}}, "⚠️ Pagamento parcial"  )
-            , React.createElement('div', { style: {fontSize:12,color:"#ccd"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1696}}, "Restante " , React.createElement('strong', { style: {color:"#f87171"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1696}}, fmt(remaining)), " ficará como pendente"   )
+          React.createElement('div', { style: {marginBottom:14,background:"rgba(250,204,21,.08)",border:"1px solid #facc1533",borderRadius:10,padding:"10px 14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1722}}
+            , React.createElement('div', { style: {fontSize:11,color:"#facc15",fontWeight:600,marginBottom:3}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1723}}, "⚠️ Pagamento parcial"  )
+            , React.createElement('div', { style: {fontSize:12,color:"#ccd"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1724}}, "Restante " , React.createElement('strong', { style: {color:"#f87171"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1724}}, fmt(remaining)), " ficará como pendente"   )
           )
         )
         , val>=fat.total&&(
-          React.createElement('div', { style: {marginBottom:14,background:"rgba(74,222,128,.08)",border:"1px solid #4ade8033",borderRadius:10,padding:"10px 14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1700}}
-            , React.createElement('div', { style: {fontSize:12,color:"#4ade80",fontWeight:600}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1701}}, "✓ Pagamento integral"  )
+          React.createElement('div', { style: {marginBottom:14,background:"rgba(74,222,128,.08)",border:"1px solid #4ade8033",borderRadius:10,padding:"10px 14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1728}}
+            , React.createElement('div', { style: {fontSize:12,color:"#4ade80",fontWeight:600}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1729}}, "✓ Pagamento integral"  )
           )
         )
-        , React.createElement('div', { style: {display:"flex",gap:8}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1704}}
-          , React.createElement('button', { onClick: onClose, style: {flex:1,padding:"11px",background:"#111820",border:"1px solid #1a2840",borderRadius:10,color:"#556",fontSize:13,fontWeight:600,cursor:"pointer"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1705}}, "Cancelar")
+        , React.createElement('div', { style: {display:"flex",gap:8}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1732}}
+          , React.createElement('button', { onClick: onClose, style: {flex:1,padding:"11px",background:"#111820",border:"1px solid #1a2840",borderRadius:10,color:"#556",fontSize:13,fontWeight:600,cursor:"pointer"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1733}}, "Cancelar")
           , React.createElement('button', { onClick: ()=>val>0&&onPay(fat,val),
             disabled: !val||val<=0,
-            style: {flex:2,padding:"11px",background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,border:`1px solid ${card.color}44`,borderRadius:10,color:card.color,fontSize:13,fontWeight:700,cursor:"pointer",opacity:(!val||val<=0)?0.4:1}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1706}}, "Confirmar Pagamento"
+            style: {flex:2,padding:"11px",background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,border:`1px solid ${card.color}44`,borderRadius:10,color:card.color,fontSize:13,fontWeight:700,cursor:"pointer",opacity:(!val||val<=0)?0.4:1}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1734}}, "Confirmar Pagamento"
 
           )
         )
@@ -1791,50 +1820,50 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
   const pct = (v,max) => max>0?Math.min(100,(v/max)*100):0;
 
   return(
-    React.createElement('div', { style: {paddingBottom:90,paddingTop:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1768}}
-      , React.createElement('div', { style: {padding:"14px 14px 10px",borderBottom:"1px solid #0d1520"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1769}}
-        , React.createElement('div', { style: {fontSize:14,fontWeight:700,color:"#dde"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1770}}, "Saúde Financeira" )
-        , React.createElement('div', { style: {fontSize:10,color:"#445",marginTop:1}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1771}}, mLabel(nowMonth))
+    React.createElement('div', { style: {paddingBottom:90,paddingTop:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1796}}
+      , React.createElement('div', { style: {padding:"14px 14px 10px",borderBottom:"1px solid #0d1520"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1797}}
+        , React.createElement('div', { style: {fontSize:14,fontWeight:700,color:"#dde"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1798}}, "Saúde Financeira" )
+        , React.createElement('div', { style: {fontSize:10,color:"#445",marginTop:1}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1799}}, mLabel(nowMonth))
       )
 
-      , React.createElement('div', { style: {padding:"14px 14px 0",display:"flex",flexDirection:"column",gap:12}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1774}}
+      , React.createElement('div', { style: {padding:"14px 14px 0",display:"flex",flexDirection:"column",gap:12}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1802}}
 
         /* Score */
-        , React.createElement('div', { style: {background:"linear-gradient(135deg,#0d1118,#111820)",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px",textAlign:"center"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1777}}
-          , React.createElement('div', { style: {fontSize:11,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1778}}, "Score do mês"  )
-          , React.createElement('div', { style: {position:"relative",width:110,height:110,margin:"0 auto 12px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1779}}
-            , React.createElement('svg', { viewBox: "0 0 110 110"   , style: {width:"100%",height:"100%"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1780}}
-              , React.createElement('circle', { cx: "55", cy: "55", r: "46", fill: "none", stroke: "#111820", strokeWidth: "10", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1781}})
+        , React.createElement('div', { style: {background:"linear-gradient(135deg,#0d1118,#111820)",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px",textAlign:"center"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1805}}
+          , React.createElement('div', { style: {fontSize:11,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1806}}, "Score do mês"  )
+          , React.createElement('div', { style: {position:"relative",width:110,height:110,margin:"0 auto 12px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1807}}
+            , React.createElement('svg', { viewBox: "0 0 110 110"   , style: {width:"100%",height:"100%"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1808}}
+              , React.createElement('circle', { cx: "55", cy: "55", r: "46", fill: "none", stroke: "#111820", strokeWidth: "10", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1809}})
               , React.createElement('circle', { cx: "55", cy: "55", r: "46", fill: "none", stroke: scoreColor, strokeWidth: "10",
                 strokeDasharray: `${(score/100)*289} 289`,
                 strokeLinecap: "round",
                 transform: "rotate(-90 55 55)"  ,
-                style: {transition:"stroke-dasharray .8s ease"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1782}})
-              , React.createElement('text', { x: "55", y: "52", textAnchor: "middle", fill: scoreColor, fontSize: "26", fontWeight: "800", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1787}}, score)
-              , React.createElement('text', { x: "55", y: "68", textAnchor: "middle", fill: "#445", fontSize: "10", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1788}}, "pontos")
+                style: {transition:"stroke-dasharray .8s ease"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1810}})
+              , React.createElement('text', { x: "55", y: "52", textAnchor: "middle", fill: scoreColor, fontSize: "26", fontWeight: "800", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1815}}, score)
+              , React.createElement('text', { x: "55", y: "68", textAnchor: "middle", fill: "#445", fontSize: "10", __self: this, __source: {fileName: _jsxFileName, lineNumber: 1816}}, "pontos")
             )
           )
-          , React.createElement('div', { style: {fontSize:16,fontWeight:700,color:scoreColor}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1791}}, scoreLabel)
+          , React.createElement('div', { style: {fontSize:16,fontWeight:700,color:scoreColor}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1819}}, scoreLabel)
         )
 
         /* Indicators */
-        , React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:8}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1795}}
-          , React.createElement(HealthBar, { label: "Gastos fixos / Renda"   , value: fixosPct, max: 100, color: fixosPct>70?"#f87171":fixosPct>50?"#facc15":"#4ade80", suffix: "%", detail: `${fmt(fixos)} de ${fmt(rec)}`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1796}})
-          , React.createElement(HealthBar, { label: "Economia do mês"  , value: economiaPct, max: 100, color: economiaPct>=20?"#4ade80":economiaPct>=10?"#facc15":"#f87171", suffix: "%", detail: `${fmt(economizado)} poupado`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1797}})
-          , metaRenda>0&&React.createElement(HealthBar, { label: "Meta de renda"  , value: pct(rec,metaRenda), max: 100, color: "#8ab4f8", suffix: "%", detail: `${fmt(rec)} de ${fmt(metaRenda)}`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1798}})
-          , metaEcon>0&&React.createElement(HealthBar, { label: "Meta de economia"  , value: pct(economizado,metaEcon), max: 100, color: "#a78bfa", suffix: "%", detail: `${fmt(economizado)} de ${fmt(metaEcon)}`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1799}})
+        , React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:8}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1823}}
+          , React.createElement(HealthBar, { label: "Gastos fixos / Renda"   , value: fixosPct, max: 100, color: fixosPct>70?"#f87171":fixosPct>50?"#facc15":"#4ade80", suffix: "%", detail: `${fmt(fixos)} de ${fmt(rec)}`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1824}})
+          , React.createElement(HealthBar, { label: "Economia do mês"  , value: economiaPct, max: 100, color: economiaPct>=20?"#4ade80":economiaPct>=10?"#facc15":"#f87171", suffix: "%", detail: `${fmt(economizado)} poupado`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1825}})
+          , metaRenda>0&&React.createElement(HealthBar, { label: "Meta de renda"  , value: pct(rec,metaRenda), max: 100, color: "#8ab4f8", suffix: "%", detail: `${fmt(rec)} de ${fmt(metaRenda)}`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1826}})
+          , metaEcon>0&&React.createElement(HealthBar, { label: "Meta de economia"  , value: pct(economizado,metaEcon), max: 100, color: "#a78bfa", suffix: "%", detail: `${fmt(economizado)} de ${fmt(metaEcon)}`, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1827}})
         )
 
         /* Trend */
-        , React.createElement('div', { style: {background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:"14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1803}}
-          , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1804}}, "Tendência — 3 meses"   )
-          , React.createElement('div', { style: {display:"flex",gap:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1805}}
+        , React.createElement('div', { style: {background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:"14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1831}}
+          , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1832}}, "Tendência — 3 meses"   )
+          , React.createElement('div', { style: {display:"flex",gap:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1833}}
             , trend.map((t,i)=>(
-              React.createElement('div', { key: i, style: {flex:1,textAlign:"center"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1807}}
-                , React.createElement('div', { style: {fontSize:10,color:"#445",marginBottom:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1808}}, t.month)
-                , React.createElement('div', { style: {fontSize:11,color:"#4ade80"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1809}}, "↑ " , fmtShort(t.rec))
-                , React.createElement('div', { style: {fontSize:11,color:"#fb923c"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1810}}, "↓ " , fmtShort(t.dep))
-                , React.createElement('div', { style: {fontSize:12,fontWeight:700,color:t.saldo>=0?"#4ade80":"#f87171",marginTop:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1811}}, fmtShort(t.saldo))
+              React.createElement('div', { key: i, style: {flex:1,textAlign:"center"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1835}}
+                , React.createElement('div', { style: {fontSize:10,color:"#445",marginBottom:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1836}}, t.month)
+                , React.createElement('div', { style: {fontSize:11,color:"#4ade80"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1837}}, "↑ " , fmtShort(t.rec))
+                , React.createElement('div', { style: {fontSize:11,color:"#fb923c"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1838}}, "↓ " , fmtShort(t.dep))
+                , React.createElement('div', { style: {fontSize:12,fontWeight:700,color:t.saldo>=0?"#4ade80":"#f87171",marginTop:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1839}}, fmtShort(t.saldo))
               )
             ))
           )
@@ -1842,23 +1871,23 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
 
         /* Top categorias */
         , catRank.length>0&&(
-          React.createElement('div', { style: {background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:"14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1819}}
-            , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1820}}, "Top Gastos por Categoria"   )
-            , React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:8}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1821}}
+          React.createElement('div', { style: {background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:"14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1847}}
+            , React.createElement('div', { style: {fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1848}}, "Top Gastos por Categoria"   )
+            , React.createElement('div', { style: {display:"flex",flexDirection:"column",gap:8}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1849}}
               , catRank.map((c,i)=>(
-                React.createElement('div', { key: i, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1823}}
-                  , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",marginBottom:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1824}}
-                    , React.createElement('div', { style: {display:"flex",alignItems:"center",gap:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1825}}
-                      , React.createElement('div', { style: {width:7,height:7,borderRadius:"50%",background:c.color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1826}})
-                      , React.createElement('span', { style: {fontSize:12,color:"#ccd"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1827}}, c.name)
+                React.createElement('div', { key: i, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1851}}
+                  , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",marginBottom:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1852}}
+                    , React.createElement('div', { style: {display:"flex",alignItems:"center",gap:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1853}}
+                      , React.createElement('div', { style: {width:7,height:7,borderRadius:"50%",background:c.color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1854}})
+                      , React.createElement('span', { style: {fontSize:12,color:"#ccd"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1855}}, c.name)
                     )
-                    , React.createElement('div', { style: {display:"flex",gap:8,alignItems:"center"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1829}}
-                      , React.createElement('span', { style: {fontSize:10,color:"#445"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1830}}, dep>0?((c.value/dep)*100).toFixed(0):0, "%")
-                      , React.createElement('span', { style: {fontSize:12,fontWeight:700,color:c.color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1831}}, fmt(c.value))
+                    , React.createElement('div', { style: {display:"flex",gap:8,alignItems:"center"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1857}}
+                      , React.createElement('span', { style: {fontSize:10,color:"#445"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1858}}, dep>0?((c.value/dep)*100).toFixed(0):0, "%")
+                      , React.createElement('span', { style: {fontSize:12,fontWeight:700,color:c.color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1859}}, fmt(c.value))
                     )
                   )
-                  , React.createElement('div', { style: {height:4,background:"#080c12",borderRadius:2,overflow:"hidden"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1834}}
-                    , React.createElement('div', { style: {height:"100%",width:`${dep>0?(c.value/dep)*100:0}%`,background:c.color,borderRadius:2,transition:"width .5s"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1835}})
+                  , React.createElement('div', { style: {height:4,background:"#080c12",borderRadius:2,overflow:"hidden"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1862}}
+                    , React.createElement('div', { style: {height:"100%",width:`${dep>0?(c.value/dep)*100:0}%`,background:c.color,borderRadius:2,transition:"width .5s"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1863}})
                   )
                 )
               ))
@@ -1867,17 +1896,17 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
         )
 
         /* Goals CTA */
-        , React.createElement('div', { style: {background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1844}}
-          , React.createElement('div', { style: {fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1845}}, "🎯 Definir metas"  )
-          , React.createElement('div', { style: {fontSize:11,color:"#445",marginBottom:10}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1846}}, "Configure suas metas na aba Perfil para um score mais personalizado."          )
-          , React.createElement('div', { style: {display:"flex",gap:8,fontSize:11}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1847}}
-            , React.createElement('div', { style: {flex:1,background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1848}}
-              , React.createElement('div', { style: {color:"#445",marginBottom:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1849}}, "Meta renda" )
-              , React.createElement('div', { style: {color:metaRenda>0?"#8ab4f8":"#334",fontWeight:700}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1850}}, metaRenda>0?fmt(metaRenda):"Não definida")
+        , React.createElement('div', { style: {background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1872}}
+          , React.createElement('div', { style: {fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1873}}, "🎯 Definir metas"  )
+          , React.createElement('div', { style: {fontSize:11,color:"#445",marginBottom:10}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1874}}, "Configure suas metas na aba Perfil para um score mais personalizado."          )
+          , React.createElement('div', { style: {display:"flex",gap:8,fontSize:11}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1875}}
+            , React.createElement('div', { style: {flex:1,background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1876}}
+              , React.createElement('div', { style: {color:"#445",marginBottom:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1877}}, "Meta renda" )
+              , React.createElement('div', { style: {color:metaRenda>0?"#8ab4f8":"#334",fontWeight:700}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1878}}, metaRenda>0?fmt(metaRenda):"Não definida")
             )
-            , React.createElement('div', { style: {flex:1,background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1852}}
-              , React.createElement('div', { style: {color:"#445",marginBottom:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1853}}, "Meta economia" )
-              , React.createElement('div', { style: {color:goals.savingsPct>0?"#8ab4f8":"#334",fontWeight:700}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1854}}, goals.savingsPct>0?`${goals.savingsPct}% da renda`:"Não definida")
+            , React.createElement('div', { style: {flex:1,background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1880}}
+              , React.createElement('div', { style: {color:"#445",marginBottom:2}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1881}}, "Meta economia" )
+              , React.createElement('div', { style: {color:goals.savingsPct>0?"#8ab4f8":"#334",fontWeight:700}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1882}}, goals.savingsPct>0?`${goals.savingsPct}% da renda`:"Não definida")
             )
           )
         )
@@ -1889,15 +1918,15 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
 function HealthBar({ label, value, max, color, suffix, detail }) {
   const pct = Math.min(100, max>0?(value/max)*100:0);
   return(
-    React.createElement('div', { style: {background:"#0d1118",border:"1px solid #111820",borderRadius:11,padding:"11px 13px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1866}}
-      , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1867}}
-        , React.createElement('span', { style: {fontSize:12,color:"#ccd",fontWeight:500}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1868}}, label)
-        , React.createElement('span', { style: {fontSize:13,fontWeight:800,color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1869}}, value.toFixed(1), suffix)
+    React.createElement('div', { style: {background:"#0d1118",border:"1px solid #111820",borderRadius:11,padding:"11px 13px"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1894}}
+      , React.createElement('div', { style: {display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1895}}
+        , React.createElement('span', { style: {fontSize:12,color:"#ccd",fontWeight:500}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1896}}, label)
+        , React.createElement('span', { style: {fontSize:13,fontWeight:800,color}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1897}}, value.toFixed(1), suffix)
       )
-      , React.createElement('div', { style: {height:5,background:"#080c12",borderRadius:3,overflow:"hidden",marginBottom:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1871}}
-        , React.createElement('div', { style: {height:"100%",width:`${pct}%`,background:color,borderRadius:3,transition:"width .6s ease"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1872}})
+      , React.createElement('div', { style: {height:5,background:"#080c12",borderRadius:3,overflow:"hidden",marginBottom:4}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1899}}
+        , React.createElement('div', { style: {height:"100%",width:`${pct}%`,background:color,borderRadius:3,transition:"width .6s ease"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1900}})
       )
-      , detail&&React.createElement('div', { style: {fontSize:10,color:"#445"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1874}}, detail)
+      , detail&&React.createElement('div', { style: {fontSize:10,color:"#445"}, __self: this, __source: {fileName: _jsxFileName, lineNumber: 1902}}, detail)
     )
   );
 }

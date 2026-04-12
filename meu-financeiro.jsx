@@ -1636,6 +1636,34 @@ const CSS=`
   @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
   -webkit-tap-highlight-color: transparent;
+
+  /* ── CSS Variables: dark (default) ── */
+  :root {
+    --bg:#080c12; --card-bg:#0d1118; --card-bg2:#111820;
+    --border:#111820; --border2:#0d1520; --border3:#0f1825;
+    --text1:#dde; --text2:#ccd; --text3:#445; --text4:#334;
+    --inp-bg:#080c12; --nav-bg:#080c12;
+  }
+
+  /* ── Light mode overrides ── */
+  .light-mode { --bg:#f0f4f8; --card-bg:#ffffff; --card-bg2:#e8edf3;
+    --border:#d0d8e4; --border2:#c8d2e0; --border3:#dde4ee;
+    --text1:#1a2332; --text2:#2a3444; --text3:#667788; --text4:#889aaa;
+    --inp-bg:#f8fafc; --nav-bg:#ffffff; }
+
+  .light-mode { background: var(--bg); color: var(--text1); }
+  .light-mode input, .light-mode select, .light-mode textarea {
+    background: var(--inp-bg) !important; color: var(--text1) !important; border-color: var(--border) !important; }
+  .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
+  .light-mode .eCard { background: var(--card-bg) !important; border-color: var(--border) !important; }
+  .light-mode .eCard:hover { border-color: #aabbcc !important; }
+  .light-mode .fTab { border-color: var(--border) !important; color: var(--text2) !important; }
+  .light-mode .fTab:hover { border-color: #aabbcc !important; color: var(--text1) !important; }
+  .light-mode .fTabActive, .light-mode .fTab[style*="background:#0d1a2e"] { background: #e8f0fe !important; border-color: #6699cc !important; color: #1a3a6e !important; }
+  .light-mode nav { background: var(--nav-bg) !important; border-top-color: var(--border) !important; box-shadow: 0 -2px 12px rgba(0,0,0,.08) !important; }
+  .light-mode .hscroll { background: transparent; }
+  .light-mode .modal-in { background: var(--card-bg) !important; }
+  select option { background: var(--card-bg); }
 `;
 
 // ─── Recent Activity Component ────────────────────────────────
