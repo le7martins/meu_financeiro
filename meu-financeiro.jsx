@@ -106,7 +106,8 @@ function buildFatura(card,purchases,cardFaturas,billingMonth) {
   const open=TODAY<=closeDate;
   const paid=payRecord?.paid||false;
   const paidAmount=payRecord?.paidAmount||0;
-  return {card,billingMonth,items,total:parseFloat(total.toFixed(2)),closeDate,dueDate,open,paid,paidAmount,key};
+  const partial=payRecord?.partial||false;
+  return {card,billingMonth,items,total:parseFloat(total.toFixed(2)),closeDate,dueDate,open,paid,paidAmount,partial,key};
 }
 function getCardBillingMonths(card,purchases) {
   const months=new Set();
@@ -126,7 +127,9 @@ function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,cardFatura
     const base=e.date.substring(0,7);
     let item=null;
     if(e.recurrence==="none"){ if(base===monthKey) item={...e,statusForMonth:e.status,isRecurring:false}; }
-    else if(e.recurrence==="fixed"){ if(base<=monthKey){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo 🔄"};} }
+    else if(e.recurrence==="fixed"){ if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo 🔄"};} }
+    else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Trimestral 📅"};} }
+    else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Anual 📅"};} }
     else if(e.recurrence==="installment"){
       const diff=mDiff(base,monthKey);
       if(diff>=0&&diff<e.installments){
@@ -186,7 +189,7 @@ const DEFAULT_CATS=[
   {id:"cartao",name:"Cartão",color:"#a78bfa",type:"despesa"},
   {id:"outro",name:"Outro",color:"#9E9E9E",type:"both"},
 ];
-const BLANK=(type="despesa")=>({description:"",amount:"",date:TODAY,type,status:"a_pagar",category:type==="receita"?"salario":"outro",recurrence:"none",installments:2,notes:""});
+const BLANK=(type="despesa")=>({description:"",amount:"",date:TODAY,type,status:"a_pagar",category:type==="receita"?"salario":"outro",recurrence:"none",installments:2,notes:"",endMonth:""});
 const PRESET_COLORS=["#6C8EEF","#EF8C6C","#6CEF9A","#EF6CA8","#C46CEF","#EFCE6C","#6CCEEF","#4ade80","#f87171","#facc15","#34d399","#a3e635"];
 const CARD_COLORS=["#a78bfa","#60a5fa","#34d399","#f472b6","#fb923c","#facc15","#f87171","#38bdf8"];
 
@@ -223,6 +226,10 @@ function App(){
   const [groupBy,      setGroupBy]      = useState(false);
   const [notifPerm,    setNotifPerm]    = useState(()=>"Notification" in window?Notification.permission:"unsupported");
   const [notifSettings,setNotifSettings]= useState(()=>loadLS(NOTIF_KEY,defaultNotifSettings));
+  const [theme,        setTheme]        = useState(()=>loadLS("mf2_theme","dark"));
+  const [goals,        setGoals]        = useState(()=>loadLS("mf2_goals",{monthly:0,savingsPct:20}));
+  const [budgets,      setBudgets]      = useState(()=>loadLS("mf2_budgets",{}));
+  const [filterCat,    setFilterCat]    = useState("all");
   const {toasts,toast} = useToast();
 
   const saveEntries   =(e)=>{setEntries(e);   saveLS("mf2_entries",e);};
@@ -232,6 +239,9 @@ function App(){
   const saveCardFaturas  =(f)=>{setCardFaturas(f); saveLS("mf2_cfaturas",f);};
   const saveCategories=(c)=>{setCategories(c);saveLS("mf2_cats",c);};
   const saveNotifSettings=(s)=>{setNotifSettings(s);saveLS(NOTIF_KEY,s);};
+  const saveTheme=(t)=>{setTheme(t);saveLS("mf2_theme",t);};
+  const saveGoals=(g)=>{setGoals(g);saveLS("mf2_goals",g);};
+  const saveBudgets=(b)=>{setBudgets(b);saveLS("mf2_budgets",b);};
 
   const NOW=getNow();
 
@@ -293,15 +303,31 @@ function App(){
     return {score,level,color,fixedPct,savingPct};
   },[entries,dividas,totRec,totDesp,totPend]);
 
+  const normStr=(s)=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const filtered=useMemo(()=>{
     let list=filter==="all"?monthEntries:filter==="despesa"?monthEntries.filter(e=>e.type==="despesa"):filter==="receita"?monthEntries.filter(e=>e.type==="receita"):filter==="a_pagar"?monthEntries.filter(e=>e.statusForMonth==="a_pagar"):monthEntries.filter(e=>e.statusForMonth==="pago");
-    if(search.trim()){const q=search.toLowerCase();list=list.filter(e=>e.description.toLowerCase().includes(q)||(e.notes||"").toLowerCase().includes(q));}
+    if(filterCat!=="all") list=list.filter(e=>e.category===filterCat);
+    if(search.trim()){const q=normStr(search);list=list.filter(e=>normStr(e.description).includes(q)||normStr(e.notes||"").includes(q));}
     if(sortBy==="amount") list=[...list].sort((a,b)=>eVal(b)-eVal(a));
     else if(sortBy==="name") list=[...list].sort((a,b)=>a.description.localeCompare(b.description));
     else if(sortBy==="status") list=[...list].sort((a,b)=>a.statusForMonth==="a_pagar"?-1:1);
     else list=[...list].sort((a,b)=>a.date.localeCompare(b.date));
     return list;
-  },[monthEntries,filter,search,sortBy]);
+  },[monthEntries,filter,filterCat,search,sortBy]);
+
+  const upcomingDue=useMemo(()=>{
+    const items=[];
+    for(let i=0;i<=2;i++){
+      const m=addM(NOW,i);
+      const me=getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
+      me.filter(e=>e.statusForMonth==="a_pagar").forEach(e=>{
+        const due=(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
+        const days=daysUntil(due);
+        if(days!==null&&days<=14) items.push({...e,_mk:m,_due:due,_days:days});
+      });
+    }
+    return items.sort((a,b)=>a._days-b._days).slice(0,10);
+  },[entries,dividas,cards,cardPurchases,cardFaturas,NOW]);
 
   const grouped=useMemo(()=>{
     if(!groupBy) return null;
@@ -343,7 +369,9 @@ function App(){
 
   const handleAdd=()=>{
     if(!form.description.trim()||!form.amount||!form.date) return;
-    const entry={id:Date.now().toString(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),statusByMonth:{},overrides:{}};
+    const dup=entries.find(e=>e.description.toLowerCase()===form.description.trim().toLowerCase()&&Math.abs(parseFloat(e.amount)-parseFloat(form.amount))<0.01&&e.date===form.date&&e.type===form.type);
+    if(dup&&!window.confirm(`Lançamento similar já existe:\n"${dup.description}" em ${fmtDate(dup.date)} (${fmt(parseFloat(dup.amount))})\nDeseja adicionar mesmo assim?`)) return;
+    const entry={id:Date.now().toString(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),...(form.endMonth?{endMonth:form.endMonth}:{}),statusByMonth:{},overrides:{}};
     saveEntries([entry,...entries]);setForm(BLANK());setShowForm(false);
     toast(`✓ ${form.type==="receita"?"Receita":"Despesa"} adicionada`);
   };
@@ -366,9 +394,14 @@ function App(){
 
   const handlePayFatura=(entry,amount,partial)=>{
     const cur=cardFaturas[entry.faturaKey]||{};
-    saveCardFaturas({...cardFaturas,[entry.faturaKey]:{...cur,paid:true,paidAmount:amount,paidDate:TODAY,partial}});
+    const isFullyPaid=!partial||amount>=entry.amount;
+    saveCardFaturas({...cardFaturas,[entry.faturaKey]:{...cur,paid:isFullyPaid,paidAmount:amount,paidDate:TODAY,partial:partial&&!isFullyPaid}});
     setFatPayTarget(null);
-    toast(partial?"Pagamento parcial registrado":"✓ Fatura paga");
+    toast(isFullyPaid?"✓ Fatura paga":"Pagamento parcial registrado");
+  };
+  const handleRevertFatura=(faturaKey)=>{
+    const nf={...cardFaturas};delete nf[faturaKey];
+    saveCardFaturas(nf);toast("↩ Pagamento estornado","info");
   };
 
   const handleBackup=()=>{
@@ -400,9 +433,28 @@ function App(){
   };
 
   const handleExportCSV=(mk)=>{
-    const list=mk?getMonthEntries(entries,dividas,mk,cards,cardPurchases,cardFaturas):entries;
     const hdr=["Descrição","Tipo","Valor","Vencimento","Status","Categoria","Recorrência","Notas"];
-    const rows=list.map(e=>[`"${e.description}"`,e.type,(eVal(e)).toFixed(2),fmtDate(e.date),e.statusForMonth||e.status,`"${catName(e.category)}"`,e.recurrence,`"${e.notes||""}"`]);
+    let rows=[];
+    if(mk){
+      const list=getMonthEntries(entries,dividas,mk,cards,cardPurchases,cardFaturas);
+      rows=list.map(e=>[`"${e.description}"`,e.type,(eVal(e)).toFixed(2),fmtDate(e.date),e.statusForMonth||e.status,`"${catName(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
+    } else {
+      // Entries
+      rows=entries.map(e=>[`"${e.description}"`,e.type,e.amount.toFixed(2),fmtDate(e.date),e.status,`"${catName(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
+      // Dívidas
+      dividas.forEach(d=>{
+        const instVal=parseFloat((d.totalAmount/d.installments).toFixed(2));
+        rows.push([`"${d.name} (dívida)"`,`"despesa"`,instVal.toFixed(2),`"${d.startMonth}"`,`"parcelado"`,`"${catName(d.category||"divida")}"`,`"${d.installments}x"`,`"${d.notes||""}"`]);
+      });
+      // Faturas
+      cards.forEach(card=>{
+        const bms=getCardBillingMonths(card,cardPurchases);
+        bms.forEach(bm=>{
+          const fat=buildFatura(card,cardPurchases,cardFaturas,bm);
+          if(fat.total>0) rows.push([`"Fatura ${card.name} ${mLabel(bm)}"`,`"despesa"`,fat.total.toFixed(2),fmtDate(fat.dueDate),fat.paid?"pago":"a_pagar",`"cartao"`,`"none"`,`""`]);
+        });
+      });
+    }
     const csv=[hdr.join(","),...rows.map(r=>r.join(","))].join("\n");
     const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
     Object.assign(document.createElement("a"),{href:url,download:`financeiro_${mk||"completo"}.csv`}).click();
@@ -589,6 +641,27 @@ function App(){
           </div>
         )}
 
+        {/* Próximos vencimentos */}
+        {upcomingDue.length>0&&(
+          <div style={{padding:"0 14px 10px"}}>
+            <div style={{fontSize:10,color:"#facc15",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7,fontWeight:700}}>⏰ Próximos Vencimentos</div>
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {upcomingDue.map((e,i)=>{
+                const dayColor=e._days<0?"#f87171":e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
+                const dayLabel=e._days<0?`${Math.abs(e._days)}d atraso`:e._days===0?"Hoje":`${e._days}d`;
+                return(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#0d1118",border:`1px solid ${dayColor}22`,borderRadius:9,padding:"7px 10px"}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:"#dde",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div><div style={{fontSize:9,color:"#445"}}>{fmtDate(e._due)}</div></div>
+                    <div style={{fontSize:11,fontWeight:700,color:e.type==="receita"?"#4ade80":"#fb923c"}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
+                    <div style={{fontSize:9,fontWeight:700,color:dayColor,background:dayColor+"18",border:`1px solid ${dayColor}33`,borderRadius:4,padding:"2px 6px",flexShrink:0}}>{dayLabel}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Search + controls — always visible */}
         <div style={{padding:"0 14px 8px",display:"flex",flexDirection:"column",gap:7}}>
           <div style={{position:"relative"}}>
@@ -610,6 +683,15 @@ function App(){
             </select>
             <button onClick={()=>setGroupBy(p=>!p)} className="fTab" style={{...S.fTab,...(groupBy?S.fTabActive:{}),padding:"5px 10px",fontSize:11,flexShrink:0}}>⊞</button>
           </div>
+          {/* Category filter chips */}
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            {[{id:"all",name:"Todas"},...categories.filter(c=>{const used=monthEntries.some(e=>e.category===c.id);return used;})].map(c=>(
+              <button key={c.id} onClick={()=>setFilterCat(c.id)}
+                style={{padding:"3px 9px",borderRadius:6,border:`1px solid ${filterCat===c.id?(c.color||"#8ab4f8"):"#111820"}`,background:filterCat===c.id?(c.color||"#8ab4f8")+"22":"transparent",color:filterCat===c.id?(c.color||"#8ab4f8"):"#445",fontSize:10,fontWeight:600,cursor:"pointer"}}>
+                {c.id!=="all"&&<span style={{width:5,height:5,borderRadius:"50%",background:c.color,display:"inline-block",marginRight:4,verticalAlign:"middle"}}/>}{c.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* List */}
@@ -617,36 +699,42 @@ function App(){
           {filtered.length===0&&(
             <div style={S.empty}>
               <div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💸</div>
-              <div style={{color:"#334",fontSize:14,fontWeight:600}}>{search?"Nenhum resultado":"Nenhum lançamento"}</div>
-              <div style={{color:"#223",fontSize:12,marginTop:3}}>{search?"Tente outro termo":"Use os cards + acima para adicionar"}</div>
+              <div style={{color:"#334",fontSize:14,fontWeight:600}}>{search?"Nenhum resultado":filterCat!=="all"?"Nenhum lançamento nesta categoria":"Nenhum lançamento"}</div>
+              <div style={{color:"#223",fontSize:12,marginTop:3}}>{search?"Tente outro termo":filterCat!=="all"?"Mude o filtro de categoria":"Use os cards + acima para adicionar"}</div>
             </div>
           )}
           {grouped
-            ?grouped.map(([catId,{items,total}])=>(
+            ?grouped.map(([catId,{items,total}])=>{
+              const budget=budgets[catId];
+              const budgetPct=budget>0?Math.min(100,(total/budget)*100):null;
+              return(
               <div key={catId} style={{marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0 5px",borderBottom:"1px solid #0f1825",marginBottom:6}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:catColor(catId)}}/>
                   <div style={{fontSize:11,fontWeight:700,color:catColor(catId),textTransform:"uppercase",letterSpacing:"0.06em",flex:1}}>{catName(catId)}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(total)}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(total)}{budget>0&&<span style={{fontSize:9,color:budgetPct>100?"#f87171":"#445",marginLeft:4}}>/ {fmt(budget)}</span>}</div>
                 </div>
+                {budget>0&&<div style={{height:3,background:"#080c12",borderRadius:2,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${budgetPct}%`,background:budgetPct>100?"#f87171":budgetPct>80?"#facc15":catColor(catId),borderRadius:2,transition:"width .5s"}}/></div>}
                 {items.map(renderCard)}
               </div>
-            ))
+            )})
             :filtered.map(renderCard)
           }
         </div>
       </>)}
 
       {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas}/>}
-      {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast}/>}
+      {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
       {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
-      {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore}/>}
+      {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
+      {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme}/>}
 
       <nav style={S.bottomNav}>
         {[
           ["lancamentos","Contas",<svg key="l" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
           ["graficos","Análise",<svg key="g" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
           ["cartoes","Cartões",<svg key="c" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
+          ["saude","Saúde",<svg key="s" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>],
           ["dividas","Dívidas",<svg key="d" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>],
           ["perfil","Perfil",<svg key="p" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
         ].map(([tab,label,icon])=>(
@@ -660,16 +748,33 @@ function App(){
       {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}}/>}
       {editTarget&&<EditModal entry={editTarget.entry} monthKey={editTarget.monthKey} categories={categories} entries={entries} onUpdateCats={saveCategories} onSave={handleSaveEdit} onClose={()=>setEditTarget(null)}/>}
       {delTarget&&<DeleteModal entry={delTarget} onDelete={handleDelete} onClose={()=>setDelTarget(null)}/>}
-      {fatPayTarget&&<FaturaPayModal entry={fatPayTarget} onPay={handlePayFatura} onClose={()=>setFatPayTarget(null)}/>}
+      {fatPayTarget&&<FaturaPayModal entry={fatPayTarget} onPay={handlePayFatura} onRevert={handleRevertFatura} onClose={()=>setFatPayTarget(null)}/>}
     </div>
   );
 }
 
 // ─── Fatura Pay Modal ─────────────────────────────────────────
-function FaturaPayModal({entry,onPay,onClose}){
+function FaturaPayModal({entry,onPay,onRevert,onClose}){
+  const alreadyPaid=entry.statusForMonth==="pago";
   const [payType,setPayType]=useState("total");
   const [partialAmt,setPartialAmt]=useState(String(entry.amount));
   const isPartial=payType==="partial";
+  if(alreadyPaid) return(
+    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+        <div style={S.mHeader}><div><div style={S.mTitle}>Fatura paga</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
+        <div style={{background:"rgba(74,222,128,.06)",border:"1px solid #4ade8033",borderRadius:11,padding:"14px",marginBottom:16,textAlign:"center"}}>
+          <div style={{fontSize:22}}>✅</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#4ade80",marginTop:6}}>Fatura quitada</div>
+          <div style={{fontSize:12,color:"#445",marginTop:4}}>{fmt(entry.amount)}</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose} style={{flex:1,padding:"11px",background:"#111820",border:"1px solid #1a2840",borderRadius:10,color:"#556",fontSize:13,fontWeight:600,cursor:"pointer"}}>Fechar</button>
+          <button onClick={()=>{onRevert(entry.faturaKey);onClose();}} style={{flex:1,padding:"11px",background:"rgba(248,113,113,.12)",border:"1px solid #f8717133",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>↩ Estornar</button>
+        </div>
+      </div>
+    </div>
+  );
   return(
     <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
@@ -882,11 +987,13 @@ function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,ca
 }
 
 // ─── Cartão Screen ────────────────────────────────────────────
-function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas,setCardFaturas,categories,nowMonth,toast}){
+function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas,setCardFaturas,categories,nowMonth,toast,onRevertFatura}){
   const [showCardForm,setShowCardForm]=useState(false);
   const [showPurchaseForm,setShowPurchaseForm]=useState(false);
   const [activeCardId,setActiveCardId]=useState(null);
   const [delCardId,setDelCardId]=useState(null);
+  const [delPurchId,setDelPurchId]=useState(null);
+  const [editPurch,setEditPurch]=useState(null);
   const [cardForm,setCardForm]=useState({name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]});
   const [purchForm,setPurchForm]=useState({description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""});
   const BLANK_CARD={name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]};
@@ -911,6 +1018,12 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
     setCardPurchases(cardPurchases.filter(p=>p.cardId!==id));
     const nf={...cardFaturas};Object.keys(nf).forEach(k=>{if(k.startsWith(id+"_"))delete nf[k];});
     setCardFaturas(nf);setDelCardId(null);toast("Cartão removido","info");
+  };
+  const handleDeletePurch=(id)=>{setCardPurchases(cardPurchases.filter(p=>p.id!==id));setDelPurchId(null);toast("Compra removida","info");};
+  const handleEditPurch=()=>{
+    if(!editPurch||!editPurch.description.trim()||!editPurch.amount) return;
+    setCardPurchases(cardPurchases.map(p=>p.id!==editPurch.id?p:{...p,...editPurch,amount:parseFloat(editPurch.amount),installments:parseInt(editPurch.installments)||1}));
+    setEditPurch(null);toast("✓ Compra atualizada");
   };
 
   return(
@@ -992,7 +1105,9 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
                           {item.total>1&&<div style={{fontSize:9,color:"#445"}}>{item.installmentNum}/{item.total}x</div>}
                         </div>
                         <div style={{fontSize:12,fontWeight:700,color:card.color}}>{fmt(item.amount)}</div>
-                        <button className="iconBtn" onClick={()=>setCardPurchases(cardPurchases.filter(p=>p.id!==item.id))}
+                        <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(item.amount),installments:String(item.installments||1)})}
+                          style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:20,height:20,borderRadius:5,fontSize:10}}>✏</button>
+                        <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
                           style={{...S.iconBtn,background:"rgba(239,68,68,.08)",color:"#f8717188",width:20,height:20,borderRadius:5,fontSize:10}}>✕</button>
                       </div>
                     ))}
@@ -1014,10 +1129,11 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
                             <div style={{fontSize:12,color:"#ccd",fontWeight:600}}>{mLabel(bm)}</div>
                             <div style={{fontSize:10,color:"#445"}}>Venceu {fmtDate(fat.dueDate)}{fat.partial?` · Parcial: ${fmt(fat.paidAmount)}`:""}</div>
                           </div>
-                          <div style={{fontSize:13,fontWeight:700,color:fat.paid?"#4ade80":card.color}}>{fmt(fat.total)}</div>
-                          <div style={{...S.badge,background:fat.paid?"rgba(74,222,128,.15)":"rgba(251,146,60,.12)",color:fat.paid?"#4ade80":"#fb923c",padding:"4px 8px",fontSize:9}}>
-                            {fat.paid?"✓ pago":"pendente"}
+                          <div style={{fontSize:13,fontWeight:700,color:fat.paid?"#4ade80":fat.partial?"#facc15":card.color}}>{fmt(fat.total)}</div>
+                          <div style={{...S.badge,background:fat.paid?"rgba(74,222,128,.15)":fat.partial?"rgba(250,204,21,.12)":"rgba(251,146,60,.12)",color:fat.paid?"#4ade80":fat.partial?"#facc15":"#fb923c",padding:"4px 8px",fontSize:9}}>
+                            {fat.paid?"✓ pago":fat.partial?"parcial":"pendente"}
                           </div>
+                          {fat.paid&&<button onClick={()=>onRevertFatura(fat.key)} style={{...S.iconBtn,background:"rgba(248,113,113,.1)",color:"#f87171",fontSize:9,padding:"2px 6px",height:"auto",borderRadius:5}}>↩</button>}
                         </div>
                       );
                     })}
@@ -1107,6 +1223,40 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
           </div>
         </div>
       )}
+
+      {/* Delete purchase confirmation */}
+      {delPurchId&&(
+        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelPurchId(null)}>
+          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+            <div style={S.mHeader}><div style={S.mTitle}>Excluir compra</div><button style={S.xBtn} onClick={()=>setDelPurchId(null)}>✕</button></div>
+            <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
+              <div style={{fontSize:13,fontWeight:700,color:"#dde",marginBottom:2}}>{cardPurchases.find(p=>p.id===delPurchId)?.description}</div>
+              <div style={{fontSize:11,color:"#f87171"}}>Remove a compra e todas as parcelas associadas.</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setDelPurchId(null)} style={{flex:1,padding:"11px",background:"#111820",border:"1px solid #1a2840",borderRadius:10,color:"#556",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
+              <button onClick={()=>handleDeletePurch(delPurchId)} style={{flex:1,padding:"11px",background:"rgba(239,68,68,.15)",border:"1px solid #f8717144",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit purchase modal */}
+      {editPurch&&(()=>{const ec=cards.find(c=>c.id===editPurch.cardId);const ec2=ec?.color||"#8ab4f8";return(
+        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPurch(null)}>
+          <div style={S.modal} className="modal-in">
+            <div style={S.mHeader}><div><div style={S.mTitle}>Editar Compra</div>{ec&&<div style={{fontSize:11,color:ec2,marginTop:2}}>💳 {ec.name}</div>}</div><button style={S.xBtn} onClick={()=>setEditPurch(null)}>✕</button></div>
+            <Field label="Descrição"><input style={S.inp} value={editPurch.description} onChange={e=>setEditPurch(p=>({...p,description:e.target.value}))}/></Field>
+            <div style={{display:"flex",gap:10}}>
+              <Field label="Valor total (R$)" style={{flex:1}}><input style={S.inp} type="number" min="0" step="0.01" value={editPurch.amount} onChange={e=>setEditPurch(p=>({...p,amount:e.target.value}))}/></Field>
+              <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" min={1} max={48} value={editPurch.installments} onChange={e=>setEditPurch(p=>({...p,installments:e.target.value}))}/></Field>
+            </div>
+            <Field label="Data da compra"><input style={S.inp} type="date" value={editPurch.purchaseDate} onChange={e=>setEditPurch(p=>({...p,purchaseDate:e.target.value}))}/></Field>
+            <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:48}} value={editPurch.notes||""} onChange={e=>setEditPurch(p=>({...p,notes:e.target.value}))}/></Field>
+            <button onClick={handleEditPurch} className="submitBtn" style={{...S.submitBtn,background:`linear-gradient(135deg,${ec2}33,${ec2}11)`,borderColor:`${ec2}44`,color:ec2}}>Salvar alterações</button>
+          </div>
+        </div>
+      );})()}
     </div>
   );
 }
@@ -1320,7 +1470,7 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
 }
 
 // ─── Profile Screen ───────────────────────────────────────────
-function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onTestNotif,onBackup,onRestore}){
+function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onTestNotif,onBackup,onRestore,theme,onTheme}){
   const [confirmReset,setConfirmReset]=useState(false);
   const permColor=notifPerm==="granted"?"#4ade80":notifPerm==="denied"?"#f87171":"#facc15";
   const permLabel=notifPerm==="granted"?"Ativadas":notifPerm==="denied"?"Bloqueadas pelo browser":notifPerm==="unsupported"?"Não suportado":"Não permitidas";
@@ -1390,8 +1540,15 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
           <ProfileItem icon="🗑️" label="Zerar todos os dados" sub="Remove todos os lançamentos e dívidas" onClick={()=>setConfirmReset(true)} danger last/>
         </ProfileSection>
 
+        <ProfileSection title="Aparência">
+          <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div><div style={{fontSize:13,fontWeight:600,color:"#dde"}}>{theme==="dark"?"🌙 Modo escuro":"☀️ Modo claro"}</div><div style={{fontSize:11,color:"#445",marginTop:2}}>Alterna entre escuro e claro</div></div>
+            <Toggle checked={theme==="light"} onChange={v=>onTheme(v?"light":"dark")}/>
+          </div>
+        </ProfileSection>
+
         <ProfileSection title="Sobre">
-          <ProfileItem icon="📱" label="Meu Financeiro" sub="Versão 1.1.0"/>
+          <ProfileItem icon="📱" label="Meu Financeiro" sub="Versão 1.2.0"/>
           <ProfileItem icon="🔧" label="Desenvolvido com" sub="React · SVG Charts · Claude" last/>
         </ProfileSection>
       </div>
@@ -1445,9 +1602,17 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
           <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
         </div>
         <Field label="Recorrência">
-          <div style={{display:"flex",gap:6}}>{[["none","Único"],["fixed","Fixo 🔄"],["installment","Parcelado 📋"]].map(([r,l])=>(<button key={r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo 🔄"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado 📋"]].map(([r,l])=>(<button key={r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
           {form.recurrence==="installment"&&(<div style={{marginTop:10}}><label style={{...S.lbl,marginBottom:5}}>Nº de parcelas</label><input style={{...S.inp,width:90}} type="number" min={2} max={60} value={form.installments} onChange={e=>set("installments",e.target.value)}/>{form.amount&&form.installments>1&&(<div style={{marginTop:8,background:"#080c12",border:"1px solid #1a3a6e44",borderRadius:9,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,color:"#556"}}>Total</span><span style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(parseFloat(form.amount))}</span><span style={{fontSize:11,color:"#334"}}>→</span><span style={{fontSize:11,color:"#556"}}>{form.installments}x de</span><span style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>{fmt(parseFloat(form.amount)/parseInt(form.installments))}</span></div>)}</div>)}
-          {form.recurrence==="fixed"&&<div style={{marginTop:8,fontSize:11,color:"#556",background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}}>💡 Aparece automaticamente em todos os meses seguintes</div>}
+          {(form.recurrence==="fixed"||form.recurrence==="quarterly"||form.recurrence==="annual")&&(<div style={{marginTop:10}}>
+            <div style={{fontSize:11,color:"#556",background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820",marginBottom:8}}>
+              {form.recurrence==="fixed"&&"💡 Aparece todo mês a partir da data"}
+              {form.recurrence==="quarterly"&&"💡 Aparece a cada 3 meses"}
+              {form.recurrence==="annual"&&"💡 Aparece uma vez por ano"}
+            </div>
+            <label style={{...S.lbl,marginBottom:5}}>Encerrar em (opcional)</label>
+            <MonthPicker value={form.endMonth||""} onChange={v=>set("endMonth",v)} now={new Date().toISOString().substring(0,7)} nullable/>
+          </div>)}
         </Field>
         <CatSelector cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
         <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
@@ -1579,7 +1744,7 @@ function GradCard({label,value,color,bg,icon,onAdd}){
 }
 function SumCard({label,value,color,icon,wide,onAdd}){return(<div style={{background:"#0d1118",border:"1px solid #111820",borderRadius:13,padding:"11px 12px",gridColumn:wide?"span 2":"span 1",display:"flex",alignItems:"center",gap:10}}><div style={{width:30,height:30,borderRadius:9,background:color+"18",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:14,fontWeight:700,flexShrink:0}}>{icon}</div><div style={{flex:1}}><div style={{fontSize:9,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{label}</div><div style={{fontSize:15,fontWeight:700,color,letterSpacing:"-0.4px"}}>{value}</div></div>{onAdd&&<button onClick={onAdd} className="sumAddBtn" style={{width:28,height:28,borderRadius:8,background:color+"22",border:`1px solid ${color}44`,color,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,flexShrink:0,lineHeight:1}}>+</button>}</div>);}
 function Field({label,children,style}){return <div style={{marginBottom:13,...style}}><label style={S.lbl}>{label}</label>{children}</div>;}
-function MonthPicker({value,onChange,now}){const opts=Array.from({length:24},(_,i)=>addM(now,i-12));return <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:"#080c12",border:"1px solid #111820",borderRadius:10,padding:"9px 11px",color:"#ccd",fontSize:13,outline:"none",fontFamily:"inherit",appearance:"none"}}>{opts.map(m=><option key={m} value={m}>{mLabel(m)}{m===now?" (atual)":""}</option>)}</select>;}
+function MonthPicker({value,onChange,now,nullable}){const opts=Array.from({length:24},(_,i)=>addM(now,i-12));return <select value={value||""} onChange={e=>onChange(e.target.value||"")} style={{width:"100%",background:"#080c12",border:"1px solid #111820",borderRadius:10,padding:"9px 11px",color:"#ccd",fontSize:13,outline:"none",fontFamily:"inherit",appearance:"none"}}>{nullable&&<option value="">Sem encerramento</option>}{opts.map(m=><option key={m} value={m}>{mLabel(m)}{m===now?" (atual)":""}</option>)}</select>;}
 function Leg({color,label,dashed}){return <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:20,height:2,borderTop:dashed?`2px dashed ${color}`:`2px solid ${color}`}}/><span style={{fontSize:10,color:"#445"}}>{label}</span></div>;}
 
 // ─── Styles ──────────────────────────────────────────────────
@@ -1759,7 +1924,7 @@ function PartialFatModal({ fat, card, onClose, onPay }) {
 }
 
 // ─── Saúde Financeira Screen ──────────────────────────────────
-function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals }) {
+function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets }) {
   const me = getMonthEntries(entries, dividas, nowMonth, cards, cardPurchases, cardFaturas);
   const rec = me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
   const dep = me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
@@ -1884,21 +2049,48 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
           </div>
         )}
 
-        {/* Goals CTA */}
+        {/* Goals editor */}
         <div style={{background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:4}}>🎯 Definir metas</div>
-          <div style={{fontSize:11,color:"#445",marginBottom:10}}>Configure suas metas na aba Perfil para um score mais personalizado.</div>
-          <div style={{display:"flex",gap:8,fontSize:11}}>
-            <div style={{flex:1,background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}}>
-              <div style={{color:"#445",marginBottom:2}}>Meta renda</div>
-              <div style={{color:metaRenda>0?"#8ab4f8":"#334",fontWeight:700}}>{metaRenda>0?fmt(metaRenda):"Não definida"}</div>
-            </div>
-            <div style={{flex:1,background:"#080c12",borderRadius:8,padding:"8px 10px",border:"1px solid #111820"}}>
-              <div style={{color:"#445",marginBottom:2}}>Meta economia</div>
-              <div style={{color:goals.savingsPct>0?"#8ab4f8":"#334",fontWeight:700}}>{goals.savingsPct>0?`${goals.savingsPct}% da renda`:"Não definida"}</div>
+          <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:12}}>🎯 Metas financeiras</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div><div style={{fontSize:10,color:"#445",marginBottom:5}}>Meta de renda mensal (R$)</div><input style={{width:"100%",boxSizing:"border-box",background:"#080c12",border:"1px solid #1a3a6e44",borderRadius:9,padding:"8px 12px",color:"#dde",fontSize:13,fontWeight:600,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="100" placeholder="Ex: 5000" value={goals.monthly||""} onChange={e=>onSaveGoals({...goals,monthly:parseFloat(e.target.value)||0})}/></div>
+            <div><div style={{fontSize:10,color:"#445",marginBottom:5}}>Meta de economia (% da renda)</div>
+              <div style={{display:"flex",gap:6}}>
+                {[0,10,15,20,30].map(p=>(
+                  <button key={p} onClick={()=>onSaveGoals({...goals,savingsPct:p})}
+                    style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${goals.savingsPct===p?"#8ab4f8":"#111820"}`,background:goals.savingsPct===p?"#0d1a2e":"transparent",color:goals.savingsPct===p?"#8ab4f8":"#445",fontSize:11,fontWeight:700,cursor:"pointer"}}>{p===0?"Nenhum":`${p}%`}</button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Budget per category */}
+        {catRank.length>0&&(
+          <div style={{background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:"14px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>💰 Orçamento por Categoria</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {catRank.map((c,i)=>{
+                const budget=budgets[c.id]||0;
+                const pctUsed=budget>0?Math.min(100,(c.value/budget)*100):0;
+                return(
+                  <div key={i}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                      <span style={{fontSize:12,color:"#ccd",flex:1}}>{c.name}</span>
+                      <span style={{fontSize:11,fontWeight:700,color:c.color}}>{fmt(c.value)}</span>
+                      {budget>0&&<span style={{fontSize:10,color:pctUsed>100?"#f87171":"#445"}}>/ {fmt(budget)}</span>}
+                    </div>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <input style={{flex:1,background:"#080c12",border:"1px solid #1a3a6e33",borderRadius:7,padding:"5px 9px",color:"#8ab4f8",fontSize:11,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="50" placeholder="Orçamento R$" value={budget||""} onChange={e=>onSaveBudgets({...budgets,[c.id]:parseFloat(e.target.value)||0})}/>
+                      {budget>0&&<div style={{flex:2,height:5,background:"#080c12",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pctUsed}%`,background:pctUsed>100?"#f87171":pctUsed>80?"#facc15":c.color,borderRadius:3,transition:"width .5s"}}/></div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
