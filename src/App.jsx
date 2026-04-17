@@ -39,7 +39,12 @@ async function requestNotifPermission() {
 }
 function fireNotification(title,body,tag) {
   if(Notification.permission!=="granted") return;
-  try { new Notification(title,{body,tag,icon:"https://fav.farm/💰"}); } catch{}
+  // Usa service worker se disponível (funciona em PWA/Android)
+  if(navigator.serviceWorker?.controller) {
+    navigator.serviceWorker.controller.postMessage({type:'NOTIFY',title,body,tag});
+  } else {
+    try { new Notification(title,{body,tag,icon:'/meu_financeiro/icon-192.png'}); } catch{}
+  }
 }
 function checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,settings) {
   if(!settings.enabled||Notification.permission!=="granted") return 0;

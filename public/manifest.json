@@ -1,0 +1,25 @@
+{
+  "name": "Meu Financeiro",
+  "short_name": "Financeiro",
+  "description": "Controle de finanças pessoais",
+  "start_url": "/meu_financeiro/",
+  "scope": "/meu_financeiro/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080c12",
+  "theme_color": "#080c12",
+  "icons": [
+    {
+      "src": "/meu_financeiro/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/meu_financeiro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
