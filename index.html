@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Meu Financeiro"/>
+  <meta name="theme-color" content="#080c12"/>
+  <link rel="manifest" href="/meu_financeiro/manifest.json"/>
+  <link rel="apple-touch-icon" href="/meu_financeiro/icon-192.png"/>
+  <title>Meu Financeiro 💰</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;background:#080c12}
+    #root{min-height:100%}
+    body{overscroll-behavior-y:contain}
+    #ld{position:fixed;inset:0;background:#080c12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:9999}
+    #ld .ic{font-size:46px;animation:lp 1.4s ease-in-out infinite}
+    #ld .br{width:44px;height:3px;background:#111820;border-radius:2px;overflow:hidden}
+    #ld .bf{height:100%;background:#4ade80;border-radius:2px;animation:lb 1.2s ease-in-out infinite}
+    #ld .tx{color:#445;font:13px/1 system-ui,sans-serif}
+    @keyframes lp{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    @keyframes lb{0%{width:0%}70%{width:100%}100%{width:100%}}
+  </style>
+  <script type="module" crossorigin src="/meu_financeiro/assets/index-jtTb9ybz.js"></script>
+</head>
+<body>
+  <div id="ld">
+    <div class="ic">💰</div>
+    <div class="br"><div class="bf"></div></div>
+    <div class="tx">Carregando...</div>
+  </div>
+  <div id="root"></div>
+</body>
+</html>
