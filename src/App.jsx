@@ -1,4 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebase';
+import LoginScreen from './LoginScreen';
 // ─── Utils ────────────────────────────────────────────────────
 const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
 const fmtShort = (v) => Math.abs(v)>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v.toFixed(0)}`;
@@ -26,6 +29,7 @@ const dueBadge  = (entry,mk) => {
 // ─── Storage ─────────────────────────────────────────────────
 const loadLS = (k,def) => { try{const d=localStorage.getItem(k);return d?JSON.parse(d):def;}catch{return def;} };
 const saveLS = (k,v)   => localStorage.setItem(k,JSON.stringify(v));
+
 
 // ─── Notifications ───────────────────────────────────────────
 const NOTIF_KEY      = "mf2_notif_settings";
@@ -209,8 +213,21 @@ function useToast() {
   return {toasts,toast};
 }
 
-// ─── App ─────────────────────────────────────────────────────
+// ─── App (auth gate) ─────────────────────────────────────────
 function App(){
+  const [fbUser, setFbUser] = useState(undefined);
+  useEffect(()=>onAuthStateChanged(auth, u=>setFbUser(u??null)),[]);
+  if(fbUser===undefined) return(
+    <div style={{position:'fixed',inset:0,background:'#080c12',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      <div style={{fontSize:40,animation:'lp 1.4s ease-in-out infinite'}}>💰</div>
+    </div>
+  );
+  if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
+  return <MainApp fbUser={fbUser} onLogout={()=>signOut(auth)}/>;
+}
+
+// ─── MainApp ─────────────────────────────────────────────────
+function MainApp({ fbUser, onLogout }){
   const [entries,      setEntries]      = useState(()=>loadLS("mf2_entries",[]));
   const [dividas,      setDividas]      = useState(()=>loadLS("mf2_dividas",[]));
   const [cards,        setCards]        = useState(()=>loadLS("mf2_cards",[]));
@@ -732,7 +749,7 @@ function App(){
       {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
       {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
       {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
-      {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme}/>}
+      {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout}/>}
 
       <nav style={S.bottomNav}>
         {[
@@ -1475,21 +1492,36 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
 }
 
 // ─── Profile Screen ───────────────────────────────────────────
-function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onTestNotif,onBackup,onRestore,theme,onTheme}){
+function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onTestNotif,onBackup,onRestore,theme,onTheme,fbUser,onLogout}){
   const [confirmReset,setConfirmReset]=useState(false);
+  const [confirmLogout,setConfirmLogout]=useState(false);
   const permColor=notifPerm==="granted"?"#4ade80":notifPerm==="denied"?"#f87171":"#facc15";
   const permLabel=notifPerm==="granted"?"Ativadas":notifPerm==="denied"?"Bloqueadas pelo browser":notifPerm==="unsupported"?"Não suportado":"Não permitidas";
+  const displayName = fbUser?.displayName || fbUser?.email?.split("@")[0] || "Usuário";
+  const photoURL    = fbUser?.photoURL;
   return(
     <div style={{paddingBottom:90,paddingTop:4}}>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 16px 20px",borderBottom:"1px solid #0f1825"}}>
-        <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"2px solid #1a3a6e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:12}}>👤</div>
-        <div style={{fontSize:15,fontWeight:700,color:"#dde",marginBottom:3}}>Usuário</div>
+        {photoURL
+          ? <img src={photoURL} alt="" style={{width:72,height:72,borderRadius:"50%",border:"2px solid #1a3a6e",marginBottom:12,objectFit:"cover"}}/>
+          : <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"2px solid #1a3a6e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:12}}>👤</div>
+        }
+        <div style={{fontSize:15,fontWeight:700,color:"#dde",marginBottom:3}}>{displayName}</div>
+        <div style={{fontSize:11,color:"#445",marginBottom:2}}>{fbUser?.email}</div>
         <div style={{fontSize:11,color:"#445"}}>{entries.length} lançamentos · {(dividas||[]).length} dívidas</div>
       </div>
       <div style={{padding:"16px 14px",display:"flex",flexDirection:"column",gap:12}}>
         <ProfileSection title="Conta">
-          <ProfileItem icon="👤" label="Criar conta" sub="Sincronize seus dados na nuvem" badge="Em breve" disabled/>
-          <ProfileItem icon="🔑" label="Entrar" sub="Acesse sua conta existente" badge="Em breve" disabled last/>
+          {!confirmLogout
+            ? <ProfileItem icon="🚪" label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)}/>
+            : <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                <span style={{fontSize:13,color:"#dde"}}>Confirmar saída?</span>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setConfirmLogout(false)} style={{padding:"6px 12px",background:"#0d1118",border:"1px solid #111820",borderRadius:8,color:"#667",fontSize:12,cursor:"pointer"}}>Cancelar</button>
+                  <button onClick={onLogout} style={{padding:"6px 12px",background:"#2a1a1a",border:"1px solid #f87171",borderRadius:8,color:"#f87171",fontSize:12,fontWeight:700,cursor:"pointer"}}>Sair</button>
+                </div>
+              </div>
+          }
         </ProfileSection>
 
         <ProfileSection title="Notificações">
