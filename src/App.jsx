@@ -1,4 +1,4 @@
-
+import { useState, useMemo, useEffect, useCallback } from 'react';
 // ─── Utils ────────────────────────────────────────────────────
 const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
 const fmtShort = (v) => Math.abs(v)>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v.toFixed(0)}`;
@@ -2111,3 +2111,5 @@ function HealthBar({ label, value, max, color, suffix, detail }) {
     </div>
   );
 }
+
+export default App;
