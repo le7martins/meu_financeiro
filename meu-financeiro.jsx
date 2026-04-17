@@ -30,7 +30,7 @@ const saveLS = (k,v)   => localStorage.setItem(k,JSON.stringify(v));
 // ─── Notifications ───────────────────────────────────────────
 const NOTIF_KEY      = "mf2_notif_settings";
 const NOTIF_LAST_KEY = "mf2_notif_last";
-const defaultNotifSettings = { enabled:true, daysBefore:3, overdueAlert:true };
+const defaultNotifSettings = { enabled:true, daysBefore:3, overdueAlert:true, incomeAlert:true };
 async function requestNotifPermission() {
   if(!("Notification" in window)) return "unsupported";
   if(Notification.permission==="granted") return "granted";
@@ -44,21 +44,33 @@ function fireNotification(title,body,tag) {
 function checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,settings) {
   if(!settings.enabled||Notification.permission!=="granted") return 0;
   const NOW=getNow();
-  const me=getMonthEntries(entries,dividas,NOW,cards,cardPurchases,cardFaturas);
-  const pending=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="a_pagar");
-  const overdue=[],dueToday=[],dueSoon=[];
-  for(const e of pending){
-    const due=e.isDivida||e.recurrence==="none"?e.date:`${NOW}-${e.date.split("-")[2]}`;
-    const days=daysUntil(due);
+  const NEXT=addM(NOW,1);
+  const mkDate=(e,m)=>(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
+  const meNow =getMonthEntries(entries,dividas,NOW, cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NOW}));
+  const meNext=getMonthEntries(entries,dividas,NEXT,cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NEXT}));
+  const me=[...meNow,...meNext];
+  const pendingExp=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="a_pagar");
+  const pendingInc=settings.incomeAlert!==false?me.filter(e=>e.type==="receita"&&e.statusForMonth==="a_pagar"):[];
+  const overdue=[],dueToday=[],dueSoon=[],incToday=[],incSoon=[];
+  for(const e of pendingExp){
+    const days=daysUntil(mkDate(e,e._mk));
     if(days===null) continue;
     if(days<0&&settings.overdueAlert) overdue.push({...e,days});
     else if(days===0) dueToday.push(e);
     else if(days>0&&days<=settings.daysBefore) dueSoon.push({...e,days});
   }
+  for(const e of pendingInc){
+    const days=daysUntil(mkDate(e,e._mk));
+    if(days===null) continue;
+    if(days===0) incToday.push(e);
+    else if(days>0&&days<=settings.daysBefore) incSoon.push({...e,days});
+  }
   let fired=0;
   if(overdue.length>0){fireNotification(`⚠️ ${overdue.length} conta${overdue.length>1?"s":""} vencida${overdue.length>1?"s":""}`,overdue.map(e=>`${e.description} (${Math.abs(e.days)}d atraso)`).join(", "),"mf-overdue");fired++;}
   if(dueToday.length>0){fireNotification(`🔴 ${dueToday.length} conta${dueToday.length>1?"s":""} vence${dueToday.length>1?"m":""} hoje`,dueToday.map(e=>e.description).join(", "),"mf-today");fired++;}
-  if(dueSoon.length>0){fireNotification(`⏰ ${dueSoon.length} conta${dueSoon.length>1?"s":""} vencendo em breve`,dueSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-soon");fired++;}
+  if(dueSoon.length>0){fireNotification(`⏰ ${dueSoon.length} despesa${dueSoon.length>1?"s":""} vence${dueSoon.length>1?"m":""} em breve`,dueSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-soon");fired++;}
+  if(incToday.length>0){fireNotification(`💰 ${incToday.length} recebimento${incToday.length>1?"s":""} esperado${incToday.length>1?"s":""} hoje`,incToday.map(e=>e.description).join(", "),"mf-inc-today");fired++;}
+  if(incSoon.length>0){fireNotification(`📥 ${incSoon.length} recebimento${incSoon.length>1?"s":""} em breve`,incSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-inc-soon");fired++;}
   return fired;
 }
 
@@ -1328,7 +1340,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
         <ProfileSection title="Notificações">
           <div style={{padding:"13px 14px",borderBottom:"1px solid #0f1825"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div><div style={{fontSize:13,fontWeight:600,color:"#dde"}}>🔔 Alertas de vencimento</div><div style={{fontSize:11,color:permColor,marginTop:2}}>{permLabel}</div></div>
+              <div><div style={{fontSize:13,fontWeight:600,color:"#dde"}}>🔔 Alertas de vencimento e recebimento</div><div style={{fontSize:11,color:permColor,marginTop:2}}>{permLabel}</div></div>
               {notifPerm==="granted"
                 ?<Toggle checked={notifSettings.enabled} onChange={v=>onNotifSettings({...notifSettings,enabled:v})}/>
                 :notifPerm!=="unsupported"&&<button onClick={onRequestPerm} style={{padding:"6px 12px",background:"#1a3a6e",border:"1px solid #2a4a8e",borderRadius:8,color:"#8ab4f8",fontSize:11,fontWeight:700,cursor:"pointer"}}>Permitir</button>}
@@ -1346,6 +1358,10 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                 <div><div style={{fontSize:12,color:"#dde",fontWeight:600}}>Alertar contas vencidas</div><div style={{fontSize:10,color:"#445"}}>Notificar sobre pagamentos atrasados</div></div>
                 <Toggle checked={notifSettings.overdueAlert} onChange={v=>onNotifSettings({...notifSettings,overdueAlert:v})}/>
+              </div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div><div style={{fontSize:12,color:"#dde",fontWeight:600}}>Alertar recebimentos</div><div style={{fontSize:10,color:"#445"}}>Notificar sobre receitas esperadas</div></div>
+                <Toggle checked={notifSettings.incomeAlert!==false} onChange={v=>onNotifSettings({...notifSettings,incomeAlert:v})}/>
               </div>
               <button onClick={onTestNotif} style={{width:"100%",padding:"9px",background:"rgba(138,180,248,.1)",border:"1px solid #1a3a6e44",borderRadius:9,color:"#8ab4f8",fontSize:12,fontWeight:600,cursor:"pointer"}}>🔔 Verificar agora</button>
             </>)}
