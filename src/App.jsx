@@ -210,7 +210,7 @@ function useToast() {
   const toast=useCallback((msg,type="success")=>{
     const id=Date.now();
     setToasts(p=>[...p,{id,msg,type}]);
-    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),2800);
+    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3000);
   },[]);
   return {toasts,toast};
 }
@@ -259,6 +259,7 @@ function MainApp({ fbUser, onLogout }){
   const [budgets,      setBudgets]      = useState(()=>loadLS(k("budgets"),{}));
   const [filterCat,    setFilterCat]    = useState("all");
   const [dbReady,      setDbReady]      = useState(false);
+  const [showMoreNav,  setShowMoreNav]  = useState(false);
   const {toasts,toast} = useToast();
 
   // ─── Firestore: carregar + migrar dados na nuvem ──────────────
@@ -616,14 +617,21 @@ function MainApp({ fbUser, onLogout }){
     <div style={S.root} className={theme === "light" ? "light-mode" : ""} data-theme={theme}>
       <style>{CSS}</style>
 
-      {/* Toast container */}
-      <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,display:"flex",flexDirection:"column",gap:6,alignItems:"center",pointerEvents:"none",width:"90%",maxWidth:360}}>
-        {toasts.map(t=>(
-          <div key={t.id} className="toast-in"
-            style={{background:t.type==="error"?"#2a0d0d":t.type==="celebrate"?"#0d2a1a":"#0d1a2e",border:`1px solid ${t.type==="error"?"#f8717144":t.type==="celebrate"?"#4ade8044":"#1a3a6e44"}`,color:t.type==="error"?"#f87171":t.type==="celebrate"?"#4ade80":"#8ab4f8",padding:"9px 16px",borderRadius:10,fontSize:12,fontWeight:600,boxShadow:"0 4px 20px rgba(0,0,0,.5)",whiteSpace:"nowrap"}}>
-            {t.msg}
-          </div>
-        ))}
+      {/* Toast container — posicionado acima da bottom nav */}
+      <div style={{position:"fixed",bottom:82,left:"50%",transform:"translateX(-50%)",zIndex:999,display:"flex",flexDirection:"column",gap:6,alignItems:"center",pointerEvents:"none",width:"92%",maxWidth:380}}>
+        {toasts.map(t=>{
+          const icon=t.type==="error"?"❌":t.type==="celebrate"?"🎉":t.type==="info"?"ℹ️":"✅";
+          const bg=t.type==="error"?"#2a0d0d":t.type==="celebrate"?"#0d2a1a":t.type==="info"?"#0d1a2e":"#0a2010";
+          const border=t.type==="error"?"#f8717155":t.type==="celebrate"?"#4ade8055":t.type==="info"?"#8ab4f855":"#4ade8055";
+          const color=t.type==="error"?"#fca5a5":t.type==="celebrate"?"#6ee7b7":t.type==="info"?"#93c5fd":"#4ade80";
+          return(
+            <div key={t.id} className="toast-in"
+              style={{background:bg,border:`1.5px solid ${border}`,color,padding:"11px 14px",borderRadius:12,fontSize:13,fontWeight:600,boxShadow:"0 8px 24px rgba(0,0,0,.6)",display:"flex",alignItems:"center",gap:8,width:"100%"}}>
+              <span style={{fontSize:16,flexShrink:0}}>{icon}</span>
+              <span style={{flex:1}}>{t.msg}</span>
+            </div>
+          );
+        })}
       </div>
 
       <header style={S.header}>
@@ -665,7 +673,7 @@ function MainApp({ fbUser, onLogout }){
               </div>
               <span style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
             </div>
-            <div style={{fontSize:36,fontWeight:800,color:"#fff",letterSpacing:"-1px",lineHeight:1}}>{fmt(saldo)}</div>
+            <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
             <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
               {accumSaldo!==null&&<div><span style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>Saldo acumulado </span><span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span></div>}
               {healthScore&&<div style={{display:"flex",alignItems:"center",gap:4}}>
@@ -718,18 +726,27 @@ function MainApp({ fbUser, onLogout }){
         {/* Próximos vencimentos */}
         {upcomingDue.length>0&&(
           <div style={{padding:"0 14px 10px"}}>
-            <div style={{fontSize:10,color:"#facc15",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7,fontWeight:700}}>⏰ Próximos Vencimentos</div>
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+              <div style={{fontSize:10,color:"#facc15",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}>⏰ Próximos Vencimentos</div>
+              <span style={{fontSize:9,background:"#facc15",color:"#0d1118",padding:"2px 7px",borderRadius:4,fontWeight:800}}>{upcomingDue.length}</span>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
               {upcomingDue.map((e,i)=>{
                 const dayColor=e._days<0?"#f87171":e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
                 const dayLabel=e._days<0?`${Math.abs(e._days)}d atraso`:e._days===0?"Hoje":`${e._days}d`;
                 return(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#0d1118",border:`1px solid ${dayColor}22`,borderRadius:9,padding:"7px 10px"}}>
-                    <div style={{width:6,height:6,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}><div style={{fontSize:12,color:"#dde",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div><div style={{fontSize:9,color:"#445"}}>{fmtDate(e._due)}</div></div>
-                    <div style={{fontSize:11,fontWeight:700,color:e.type==="receita"?"#4ade80":"#fb923c"}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
-                    <div style={{fontSize:9,fontWeight:700,color:dayColor,background:dayColor+"18",border:`1px solid ${dayColor}33`,borderRadius:4,padding:"2px 6px",flexShrink:0}}>{dayLabel}</div>
-                  </div>
+                  <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
+                    style={{display:"flex",alignItems:"center",gap:8,background:e._days<0?"rgba(248,113,113,.07)":e._days===0?"rgba(251,146,60,.07)":"#0d1118",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
+                    onMouseEnter={ev=>ev.currentTarget.style.borderColor=dayColor+"88"}
+                    onMouseLeave={ev=>ev.currentTarget.style.borderColor=dayColor+"33"}>
+                    <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:12,color:"#dde",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
+                      <div style={{fontSize:9,color:"#445",marginTop:1}}>{fmtDate(e._due)}</div>
+                    </div>
+                    <div style={{fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":"#fb923c",flexShrink:0}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
+                    <div style={{fontSize:9,fontWeight:700,color:dayColor,background:dayColor+"18",border:`1px solid ${dayColor}33`,borderRadius:4,padding:"2px 7px",flexShrink:0}}>{dayLabel}</div>
+                  </button>
                 );
               })}
             </div>
@@ -804,22 +821,53 @@ function MainApp({ fbUser, onLogout }){
       {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout}/>}
       {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
 
+      {/* Bottom nav — 4 abas principais + "Mais" */}
       <nav style={S.bottomNav}>
         {[
-          ["lancamentos","Contas",<svg key="l" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
-          ["graficos","Análise",<svg key="g" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
-          ["cartoes","Cartões",<svg key="c" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
-          ["saude","Saúde",<svg key="s" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>],
-          ["dividas","Dívidas",<svg key="d" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>],
-          ["perfil","Perfil",<svg key="p" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
-          ...(fbUser.email===ADMIN_EMAIL?[["admin","Admin",<svg key="adm" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>]]:[] ),
+          ["lancamentos","Contas",<svg key="l" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
+          ["graficos","Análise",<svg key="g" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
+          ["cartoes","Cartões",<svg key="c" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
+          ["perfil","Perfil",<svg key="p" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
         ].map(([tab,label,icon])=>(
-          <button key={tab} onClick={()=>setActiveTab(tab)} className="navBtn" style={{...S.navBtn,...(activeTab===tab?S.navBtnActive:{})}}>
+          <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}} className="navBtn"
+            style={{...S.navBtn,borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
             <span style={{opacity:activeTab===tab?1:0.45,color:activeTab===tab?"#8ab4f8":"#556",transition:"all .2s"}}>{icon}</span>
             <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"#334",marginTop:2}}>{label}</span>
           </button>
         ))}
+        {/* Botão "Mais" */}
+        <button className="navBtn" onClick={()=>setShowMoreNav(p=>!p)}
+          style={{...S.navBtn,borderTop:["saude","dividas","admin"].includes(activeTab)?"2px solid #8ab4f8":"2px solid transparent",...(["saude","dividas","admin"].includes(activeTab)?S.navBtnActive:{})}}>
+          <span style={{opacity:showMoreNav||["saude","dividas","admin"].includes(activeTab)?1:0.45,color:showMoreNav||["saude","dividas","admin"].includes(activeTab)?"#8ab4f8":"#556",fontSize:20,lineHeight:1}}>⋯</span>
+          <span style={{fontSize:9,fontWeight:["saude","dividas","admin"].includes(activeTab)?700:500,color:["saude","dividas","admin"].includes(activeTab)?"#8ab4f8":"#334",marginTop:2}}>Mais</span>
+        </button>
       </nav>
+
+      {/* Menu "Mais" expandido */}
+      {showMoreNav&&(
+        <div style={{position:"fixed",bottom:68,right:8,background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:6,zIndex:51,boxShadow:"0 8px 32px rgba(0,0,0,.7)",minWidth:150}}>
+          {[
+            ["saude","💊 Saúde"],
+            ["dividas","💳 Dívidas"],
+            ...(fbUser.email===ADMIN_EMAIL?[["admin","🛡 Admin"]]:[] ),
+          ].map(([tab,label])=>(
+            <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}}
+              style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"11px 14px",background:activeTab===tab?"#111820":"transparent",border:"none",borderRadius:9,color:activeTab===tab?"#8ab4f8":"#ccd",fontSize:13,fontWeight:activeTab===tab?700:500,cursor:"pointer",textAlign:"left"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* FAB — novo lançamento (visível na aba Contas) */}
+      {activeTab==="lancamentos"&&!showForm&&!editTarget&&!delTarget&&(
+        <button onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);}}
+          style={{position:"fixed",bottom:82,right:16,width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e55",color:"#8ab4f8",fontSize:28,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.6)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .15s,box-shadow .15s"}}
+          onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.boxShadow="0 10px 28px rgba(0,0,0,.7)";}}
+          onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,.6)";}}>
+          +
+        </button>
+      )}
 
       {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}}/>}
       {editTarget&&<EditModal entry={editTarget.entry} monthKey={editTarget.monthKey} categories={categories} entries={entries} onUpdateCats={saveCategories} onSave={handleSaveEdit} onClose={()=>setEditTarget(null)}/>}
@@ -1672,6 +1720,10 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const [editCats,setEditCats]=useState(false);
   const [addingCat,setAddingCat]=useState(false);
+  const [touched,setTouched]=useState({});
+  const descErr=touched.description&&!form.description?.trim()?"Descrição obrigatória":null;
+  const amtErr=touched.amount&&(!form.amount||parseFloat(form.amount)<=0)?"Informe um valor válido":null;
+  const isValid=form.description?.trim()&&form.amount&&parseFloat(form.amount)>0;
   const [newName,setNewName]=useState("");
   const [newColor,setNewColor]=useState("#6C8EEF");
   const type=lockedType||form.type;
@@ -1684,12 +1736,16 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
     <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={S.modal} className="modal-in">
         <div style={S.mHeader}><div><div style={S.mTitle}>Novo Lançamento</div><div style={{fontSize:11,color:typeColor,fontWeight:600,marginTop:3}}>{type==="receita"?"🟢 Receita":"🔴 Despesa"}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
-        <Field label="Descrição">
-          <input style={S.inp} placeholder={type==="receita"?"Ex: Salário, VA, VR...":"Ex: Conta de luz, Aluguel..."} value={form.description} onChange={e=>set("description",e.target.value)}/>
+        <Field label={<>Descrição <span style={{color:"#f87171"}}>*</span></>}>
+          <input style={{...S.inp,borderColor:descErr?"#f87171":"var(--border,#111820)"}} placeholder={type==="receita"?"Ex: Salário, VA, VR...":"Ex: Conta de luz, Aluguel..."} value={form.description} onChange={e=>set("description",e.target.value)} onBlur={()=>setTouched(p=>({...p,description:true}))}/>
+          {descErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171"}}>⚠️ {descErr}</div>}
           {type==="receita"&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:7}}>{["Salário","VA","VR","Freelance","13º Salário","Férias","PLR","Bônus","Dividendos","Aluguel recebido"].map(s=>(<button key={s} onClick={()=>set("description",s)} style={{padding:"4px 9px",background:form.description===s?"#4ade8020":"rgba(255,255,255,0.04)",border:`1px solid ${form.description===s?"#4ade8055":"#111820"}`,borderRadius:6,color:form.description===s?"#4ade80":"#556",fontSize:11,cursor:"pointer",fontWeight:500}}>{s}</button>))}</div>)}
         </Field>
         <div style={{display:"flex",gap:10}}>
-          <Field label="Valor (R$)" style={{flex:1}}><input style={S.inp} type="number" placeholder="0,00" min="0" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)}/></Field>
+          <Field label={<>Valor (R$) <span style={{color:"#f87171"}}>*</span></>} style={{flex:1}}>
+            <input style={{...S.inp,borderColor:amtErr?"#f87171":"var(--border,#111820)"}} type="number" placeholder="0,00" min="0" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
+            {amtErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171"}}>⚠️ {amtErr}</div>}
+          </Field>
           <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
         </div>
         <Field label="Recorrência">
@@ -1708,9 +1764,10 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
         <CatSelector cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
         <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
         <Field label="Status"><div style={{display:"flex",gap:8}}>{(type==="receita"?[["a_pagar","⏳ A Receber","#fb923c"],["pago","✓ Recebido","#4ade80"]]:[["a_pagar","⏳ A Pagar","#fb923c"],["pago","✓ Pago","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>
-        <button onClick={onAdd} className="submitBtn"
-          style={{...S.submitBtn,opacity:(!form.description||!form.amount)?0.35:1,cursor:(!form.description||!form.amount)?"not-allowed":"pointer",background:type==="receita"?"linear-gradient(135deg,#1a4a2e,#0d2a1a)":"linear-gradient(135deg,#1a3a6e,#0d2247)",borderColor:type==="receita"?"#4ade8033":"#2a4a8e44",color:typeColor}}
-          disabled={!form.description||!form.amount}>Adicionar {type==="receita"?"Receita":"Despesa"}</button>
+        <button onClick={()=>{setTouched({description:true,amount:true});if(isValid)onAdd();}} className="submitBtn"
+          style={{...S.submitBtn,opacity:isValid?1:0.45,cursor:isValid?"pointer":"not-allowed",background:type==="receita"?"linear-gradient(135deg,#1a4a2e,#0d2a1a)":"linear-gradient(135deg,#1a3a6e,#0d2247)",borderColor:type==="receita"?"#4ade8033":"#2a4a8e44",color:typeColor}}>
+          Adicionar {type==="receita"?"Receita":"Despesa"}
+        </button>
       </div>
     </div>
   );
