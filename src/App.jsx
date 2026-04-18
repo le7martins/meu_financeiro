@@ -832,15 +832,15 @@ function MainApp({ fbUser, onLogout }){
         ].map(([tab,label,icon])=>(
           <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}} className="navBtn"
             style={{...S.navBtn,borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
-            <span style={{opacity:activeTab===tab?1:0.45,color:activeTab===tab?"#8ab4f8":"#556",transition:"all .2s"}}>{icon}</span>
-            <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text4)",marginTop:2}}>{label}</span>
+            <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
+            <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
           </button>
         ))}
         {/* Botão "Mais" */}
         <button className="navBtn" onClick={()=>setShowMoreNav(p=>!p)}
           style={{...S.navBtn,borderTop:["saude","perfil","admin"].includes(activeTab)?"2px solid #8ab4f8":"2px solid transparent",...(["saude","perfil","admin"].includes(activeTab)?S.navBtnActive:{})}}>
-          <span style={{opacity:showMoreNav||["saude","perfil","admin"].includes(activeTab)?1:0.45,color:showMoreNav||["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"#556",fontSize:20,lineHeight:1}}>⋯</span>
-          <span style={{fontSize:9,fontWeight:["saude","perfil","admin"].includes(activeTab)?700:500,color:["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text4)",marginTop:2}}>Mais</span>
+          <span style={{color:showMoreNav||["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",fontSize:20,lineHeight:1,opacity:showMoreNav||["saude","perfil","admin"].includes(activeTab)?1:0.75}}>⋯</span>
+          <span style={{fontSize:9,fontWeight:["saude","perfil","admin"].includes(activeTab)?700:500,color:["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",marginTop:2}}>Mais</span>
         </button>
       </nav>
 
@@ -2068,7 +2068,7 @@ const CSS=`
   :root {
     --bg:#080c12; --card-bg:#0d1118; --card-bg2:#111820;
     --border:#111820; --border2:#0d1520; --border3:#0f1825;
-    --text1:#dde; --text2:#ccd; --text3:#445; --text4:#334;
+    --text1:#dde; --text2:#ccd; --text3:#889; --text4:#667;
     --inp-bg:#080c12; --nav-bg:#080c12;
     --hero-bg: linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%);
     --panel-bg:#0d1118; --panel-bg2:#080c12;
