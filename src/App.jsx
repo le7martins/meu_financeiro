@@ -363,17 +363,6 @@ function MainApp({ fbUser, onLogout }){
 
   const monthEntries=useMemo(()=>getMonthEntries(entries,dividas,selMonth,cards,cardPurchases,cardFaturas),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
 
-  // Recent transactions across all months (last 8)
-  const recentTx=useMemo(()=>{
-    const all=[];
-    const months=[NOW,...[1,2].map(i=>addM(NOW,-i))];
-    for(const m of months){
-      const me=getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
-      me.forEach(e=>all.push({...e,_month:m}));
-    }
-    return all.sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
-  },[entries,dividas,cards,cardPurchases,cardFaturas,NOW]);
-
   const accumSaldo=useMemo(()=>{
     const allDates=[...entries.map(e=>e.date.substring(0,7)),...dividas.map(d=>d.startMonth)];
     if(!allDates.length) return null;
@@ -722,30 +711,6 @@ function MainApp({ fbUser, onLogout }){
                   <div style={{fontSize:13,fontWeight:700,color:healthScore.savingPct<10?"#f87171":healthScore.savingPct<20?"#facc15":"#4ade80"}}>{healthScore.savingPct.toFixed(0)}%</div>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Recent transactions */}
-        {recentTx.length>0&&(
-          <div style={{padding:"0 14px 10px"}}>
-            <div style={{fontSize:10,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7}}>Movimentações recentes</div>
-            <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {recentTx.map(e=>(
-                <div key={`recent_${e.id}_${e._month}`} style={{display:"flex",alignItems:"center",gap:9,background:"#0d1118",border:"1px solid #111820",borderRadius:10,padding:"8px 12px"}}>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:12,fontWeight:600,color:"#dde",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
-                    <div style={{fontSize:10,color:"#334"}}>{fmtDate(e.date)} · {mLabel(e._month)}</div>
-                  </div>
-                  <div style={{fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":e.isDivida?"#f87171":e.isFatura?e.cardColor:"#dde",flexShrink:0}}>
-                    {e.type==="receita"?"+":"-"}{fmt(eVal(e))}
-                  </div>
-                  <div style={{...S.badge,background:e.statusForMonth==="pago"?"rgba(74,222,128,.12)":"rgba(251,146,60,.12)",color:e.statusForMonth==="pago"?"#4ade80":"#fb923c",padding:"2px 6px"}}>
-                    {e.statusForMonth==="pago"?"pago":"pendente"}
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}
