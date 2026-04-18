@@ -2070,27 +2070,119 @@ const CSS=`
     --border:#111820; --border2:#0d1520; --border3:#0f1825;
     --text1:#dde; --text2:#ccd; --text3:#445; --text4:#334;
     --inp-bg:#080c12; --nav-bg:#080c12;
+    --hero-bg: linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%);
   }
 
-  /* ── Light mode overrides ── */
-  .light-mode { --bg:#f0f4f8; --card-bg:#ffffff; --card-bg2:#e8edf3;
-    --border:#d0d8e4; --border2:#c8d2e0; --border3:#dde4ee;
-    --text1:#1a2332; --text2:#2a3444; --text3:#667788; --text4:#889aaa;
-    --inp-bg:#f8fafc; --nav-bg:#ffffff; }
+  /* ── Light mode CSS variables ── */
+  .light-mode {
+    --bg:#f8f9fa; --card-bg:#ffffff; --card-bg2:#f1f3f5;
+    --border:#e5e7eb; --border2:#d1d5db; --border3:#e9ecef;
+    --text1:#111827; --text2:#374151; --text3:#6b7280; --text4:#9ca3af;
+    --inp-bg:#ffffff; --nav-bg:#ffffff;
+    --hero-bg: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 50%,#f0fdf4 100%);
+  }
 
+  /* ── Light mode base ── */
   .light-mode { background: var(--bg); color: var(--text1); }
+
+  /* Inputs, selects, textareas */
   .light-mode input, .light-mode select, .light-mode textarea {
-    background: var(--inp-bg) !important; color: var(--text1) !important; border-color: var(--border) !important; }
+    background: var(--inp-bg) !important; color: var(--text1) !important;
+    border-color: var(--border) !important; }
   .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
-  .light-mode .eCard { background: var(--card-bg) !important; border-color: var(--border) !important; }
-  .light-mode .eCard:hover { border-color: #aabbcc !important; }
-  .light-mode .fTab { border-color: var(--border) !important; color: var(--text2) !important; }
-  .light-mode .fTab:hover { border-color: #aabbcc !important; color: var(--text1) !important; }
-  .light-mode .fTabActive, .light-mode .fTab[style*="background:#0d1a2e"] { background: #e8f0fe !important; border-color: #6699cc !important; color: #1a3a6e !important; }
-  .light-mode nav { background: var(--nav-bg) !important; border-top-color: var(--border) !important; box-shadow: 0 -2px 12px rgba(0,0,0,.08) !important; }
-  .light-mode .hscroll { background: transparent; }
-  .light-mode .modal-in { background: var(--card-bg) !important; }
+  .light-mode input[type=date]::-webkit-calendar-picker-indicator { filter: none !important; }
   select option { background: var(--card-bg); }
+
+  /* Cards (entry rows) */
+  .light-mode .eCard { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
+  .light-mode .eCard:hover { border-color: #d1d5db !important; box-shadow: 0 2px 8px rgba(0,0,0,.09) !important; }
+
+  /* Navigation tabs */
+  .light-mode .fTab { border-color: #e5e7eb !important; color: #374151 !important; background: #ffffff !important; }
+  .light-mode .fTab:hover { border-color: #9ca3af !important; color: #111827 !important; background: #f9fafb !important; }
+  .light-mode .fTabActive { background: #eff6ff !important; border-color: #2563eb !important; color: #1d4ed8 !important; }
+
+  /* Bottom nav */
+  .light-mode nav { background: #ffffff !important; border-top: 1px solid #e5e7eb !important; box-shadow: 0 -2px 12px rgba(0,0,0,.06) !important; }
+  .light-mode .navBtn { color: #6b7280 !important; }
+  .light-mode .navBtn:hover { background: #f9fafb !important; }
+
+  /* Modals */
+  .light-mode .modal-in { background: #ffffff !important; border-color: #e5e7eb !important; }
+
+  /* Scroll */
+  .light-mode .hscroll { background: transparent; }
+  .light-mode ::-webkit-scrollbar-thumb { background: #d1d5db !important; }
+
+  /* Buttons */
+  .light-mode .submitBtn { background: linear-gradient(135deg,#1e40af,#1d4ed8) !important; border-color: #3b82f6 !important; color: #ffffff !important; }
+  .light-mode .submitBtn:hover:not(:disabled) { background: linear-gradient(135deg,#1d4ed8,#2563eb) !important; }
+  .light-mode .hbtn { background: #f9fafb !important; border-color: #e5e7eb !important; color: #374151 !important; }
+  .light-mode .add-btn { background: linear-gradient(135deg,#1e40af,#1d4ed8) !important; border-color: #3b82f6 !important; color: #ffffff !important; }
+  .light-mode .arrowBtn { background: #ffffff !important; border-color: #e5e7eb !important; color: #374151 !important; }
+  .light-mode .arrowBtn:hover { border-color: #2563eb !important; color: #2563eb !important; }
+  .light-mode .iconBtn:hover { opacity: 0.75 !important; }
+
+  /* Header */
+  .light-mode header { background: #ffffff; border-bottom-color: #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
+
+  /* Hero/Saldo card */
+  .light-mode .heroCard { background: var(--hero-bg) !important; border-color: #bbf7d0 !important; }
+
+  /* Summary stat cards (GradCard) */
+  .light-mode .gradCard { box-shadow: 0 1px 4px rgba(0,0,0,.07) !important; }
+
+  /* Chart boxes */
+  .light-mode .chartBox { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,.06) !important; }
+
+  /* Section panels with hard-coded dark backgrounds */
+  .light-mode .panelCard { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
+
+  /* Toast notifications in light mode */
+  .light-mode .toast-in { box-shadow: 0 4px 16px rgba(0,0,0,.15) !important; }
+
+  /* FAB button */
+  .light-mode .fabBtn { background: linear-gradient(135deg,#16a34a,#15803d) !important; border-color: #22c55e44 !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(22,163,74,.35) !important; }
+  .light-mode .fabMenu button { background: #ffffff !important; box-shadow: 0 4px 14px rgba(0,0,0,.12) !important; }
+
+  /* More-nav popup */
+  .light-mode .moreNav { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 8px 24px rgba(0,0,0,.12) !important; }
+  .light-mode .moreNav button { color: #374151 !important; }
+  .light-mode .moreNav button:hover { background: #f9fafb !important; }
+
+  /* Status toggle badges */
+  .light-mode .statusToggleBtn { border-color: rgba(0,0,0,.08) !important; }
+
+  /* Profile sections */
+  .light-mode .profileSection { background: #ffffff !important; border-color: #e5e7eb !important; }
+  .light-mode .profileItem { border-bottom-color: #f3f4f6 !important; }
+  .light-mode .profileItem:hover { background: #f9fafb !important; }
+
+  /* Toggle switch in light mode */
+  .light-mode .toggleSwitch { background: #e5e7eb !important; border-color: #d1d5db !important; }
+  .light-mode .toggleSwitch[data-on="true"] { background: #dcfce7 !important; border-color: #16a34a !important; }
+  .light-mode .toggleSwitch .toggleThumb { background: #6b7280 !important; }
+  .light-mode .toggleSwitch[data-on="true"] .toggleThumb { background: #16a34a !important; }
+
+  /* Upcoming due section */
+  .light-mode .upcomingBtn { background: #ffffff !important; }
+  .light-mode .upcomingBtn:hover { background: #f9fafb !important; }
+
+  /* Category filter chips */
+  .light-mode .catChip { border-color: #e5e7eb !important; color: #374151 !important; }
+
+  /* Health panel */
+  .light-mode .healthPanel { background: #ffffff !important; border-color: #e5e7eb !important; }
+
+  /* Group dividers */
+  .light-mode .groupDivider { border-bottom-color: #e5e7eb !important; }
+
+  /* Search input */
+  .light-mode .searchWrap svg { stroke: #9ca3af !important; }
+
+  /* Empty state */
+  .light-mode .emptyState .emptyTitle { color: #374151 !important; }
+  .light-mode .emptyState .emptySub { color: #6b7280 !important; }
 `;
 
 // ─── Recent Activity Component ────────────────────────────────
