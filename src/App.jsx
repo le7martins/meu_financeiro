@@ -672,11 +672,11 @@ function MainApp({ fbUser, onLogout }){
               <div style={{width:36,height:36,borderRadius:10,background:"rgba(74,222,128,.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
               </div>
-              <span style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
+              <span className="heroSubtext" style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
             </div>
             <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
-            <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-              {accumSaldo!==null&&<div><span style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>Saldo acumulado </span><span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span></div>}
+            <div className="heroCardFooter" style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+              {accumSaldo!==null&&<div><span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>Saldo acumulado </span><span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span></div>}
               {healthScore&&<div style={{display:"flex",alignItems:"center",gap:4}}>
                 <div style={{width:6,height:6,borderRadius:"50%",background:healthScore.color}}/>
                 <span style={{fontSize:10,color:healthScore.color,fontWeight:600}}>{healthScore.level} · {healthScore.score}pts</span>
@@ -1999,19 +1999,19 @@ const S={
   header:     {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 8px",borderBottom:"1px solid #0d1520"},
   headerLeft: {display:"flex",alignItems:"center",gap:12},
   appName:    {fontSize:20,fontWeight:800,color:"var(--text1, #fff)",letterSpacing:"-0.5px"},
-  appSub:     {fontSize:11,color:"#445",marginTop:1},
+  appSub:     {fontSize:11,color:"var(--text3, #445)",marginTop:1},
   heroCard:   {background:"var(--hero-bg, linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%))",border:"1px solid rgba(74,222,128,.2)",borderRadius:20,padding:"20px 20px",position:"relative",overflow:"hidden"},
-  arrowBtn:   {width:42,height:42,borderRadius:13,background:"#0d1118",border:"1px solid #111820",display:"flex",alignItems:"center",justifyContent:"center",color:"#556",cursor:"pointer"},
-  hbtn:       {display:"flex",alignItems:"center",gap:5,background:"#0d1118",border:"1px solid #111820",color:"#556",padding:"7px 11px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer"},
+  arrowBtn:   {width:42,height:42,borderRadius:13,background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3, #556)",cursor:"pointer"},
+  hbtn:       {display:"flex",alignItems:"center",gap:5,background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",color:"var(--text3, #556)",padding:"7px 11px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer"},
   addBtn:     {background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8"},
-  fTab:       {flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"6px 11px",background:"transparent",border:"1px solid #0f1825",borderRadius:8,color:"#334",fontSize:11,fontWeight:500,cursor:"pointer"},
-  fTabActive: {background:"#0d1a2e",border:"1px solid #1a3a6e",color:"#8ab4f8"},
+  fTab:       {flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"6px 11px",background:"transparent",border:"1px solid var(--border3, #0f1825)",borderRadius:8,color:"var(--text4, #334)",fontSize:11,fontWeight:500,cursor:"pointer"},
+  fTabActive: {background:"var(--tab-active-bg, #0d1a2e)",border:"1px solid var(--tab-active-border, #1a3a6e)",color:"var(--tab-active-color, #8ab4f8)"},
   fCount:     {background:"#0f1825",color:"#334",borderRadius:4,fontSize:10,padding:"1px 5px",fontWeight:700},
   fCountActive:{background:"#1a3a6e44",color:"#8ab4f8"},
   list:       {padding:"0 14px",display:"flex",flexDirection:"column",gap:7},
   card:       {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:13,padding:"11px 12px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8},
   cardL:      {display:"flex",alignItems:"flex-start",gap:9,flex:1,minWidth:0},
-  cardTitle:  {fontSize:13,fontWeight:600,color:"#dde",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
+  cardTitle:  {fontSize:13,fontWeight:600,color:"var(--text1, #dde)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
   cardMeta:   {display:"flex",gap:4,marginTop:3,alignItems:"center",flexWrap:"wrap"},
   tag:        {fontSize:9,borderRadius:4,padding:"1px 5px",border:"1px solid",fontWeight:600},
   cardR:      {display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0},
@@ -2019,23 +2019,23 @@ const S={
   badge:      {fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",padding:"2px 6px",borderRadius:4},
   empty:      {textAlign:"center",padding:"52px 20px"},
   chartBox:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:14,padding:"14px 12px",marginBottom:12},
-  chartTitle: {fontSize:11,fontWeight:700,color:"#8ab4f8",marginBottom:14,textTransform:"uppercase",letterSpacing:"0.07em"},
+  chartTitle: {fontSize:11,fontWeight:700,color:"var(--accent, #8ab4f8)",marginBottom:14,textTransform:"uppercase",letterSpacing:"0.07em"},
   bottomNav:  {position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"var(--nav-bg, #080c12)",borderTop:"1px solid var(--border, #0f1825)",display:"flex",zIndex:50},
   navBtn:     {flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 4px 14px",background:"transparent",border:"none",cursor:"pointer",gap:3},
-  navBtnActive:{background:"#0d1118"},
+  navBtnActive:{background:"var(--card-bg, #0d1118)"},
   overlay:    {position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",backdropFilter:"blur(7px)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100},
   modal:      {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderTopLeftRadius:20,borderTopRightRadius:20,padding:"20px 18px 36px",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto"},
   mHeader:    {display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18},
-  mTitle:     {fontSize:15,fontWeight:700,color:"#dde"},
-  xBtn:       {background:"#111820",border:"none",color:"#445",width:28,height:28,borderRadius:7,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"},
-  lbl:        {display:"block",fontSize:9,color:"#445",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6},
+  mTitle:     {fontSize:15,fontWeight:700,color:"var(--text1, #dde)"},
+  xBtn:       {background:"var(--card-bg2, #111820)",border:"1px solid var(--border, transparent)",color:"var(--text3, #445)",width:28,height:28,borderRadius:7,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"},
+  lbl:        {display:"block",fontSize:9,color:"var(--text3, #445)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6},
   inp:        {width:"100%",background:"var(--inp-bg, #080c12)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"9px 11px",color:"var(--text2, #ccd)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit"},
-  typeBtn:    {flex:1,padding:"9px",background:"rgba(255,255,255,.04)",border:"1px solid #111820",borderRadius:9,color:"#556",fontSize:12,fontWeight:600,cursor:"pointer"},
-  chipBtn:    {flex:1,padding:"7px 6px",background:"transparent",border:"1px solid #111820",borderRadius:8,color:"#445",fontSize:11,fontWeight:500,cursor:"pointer"},
-  chipActive: {background:"#0d1a2e",border:"1px solid #1a3a6e",color:"#8ab4f8"},
-  submitBtn:  {width:"100%",padding:"12px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8",borderRadius:11,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4,fontFamily:"inherit"},
+  typeBtn:    {flex:1,padding:"9px",background:"var(--card-bg2, rgba(255,255,255,.04))",border:"1px solid var(--border, #111820)",borderRadius:9,color:"var(--text3, #556)",fontSize:12,fontWeight:600,cursor:"pointer"},
+  chipBtn:    {flex:1,padding:"7px 6px",background:"transparent",border:"1px solid var(--border, #111820)",borderRadius:8,color:"var(--text3, #445)",fontSize:11,fontWeight:500,cursor:"pointer"},
+  chipActive: {background:"var(--tab-active-bg, #0d1a2e)",border:"1px solid var(--tab-active-border, #1a3a6e)",color:"var(--tab-active-color, #8ab4f8)"},
+  submitBtn:  {width:"100%",padding:"12px",background:"var(--submit-bg, linear-gradient(135deg,#1a3a6e,#0d2247))",border:"1px solid var(--submit-border, #2a4a8e44)",color:"var(--submit-color, #8ab4f8)",borderRadius:11,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4,fontFamily:"inherit"},
   scopeBtn:   {display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:"1px solid",borderRadius:11,cursor:"pointer",background:"transparent",fontFamily:"inherit",width:"100%",textAlign:"left"},
-  selInput:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"#ccd",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23445' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
+  selInput:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"var(--text2, #ccd)",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23445' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
 };
 
 const CSS=`
@@ -2073,6 +2073,9 @@ const CSS=`
     --hero-bg: linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%);
     --panel-bg:#0d1118; --panel-bg2:#080c12;
     --section-border:#0d1520;
+    --accent:#8ab4f8;
+    --tab-active-bg:#0d1a2e; --tab-active-border:#1a3a6e; --tab-active-color:#8ab4f8;
+    --submit-bg:linear-gradient(135deg,#1a3a6e,#0d2247); --submit-border:#2a4a8e44; --submit-color:#8ab4f8;
   }
 
   /* ── Light mode CSS variables ── */
@@ -2084,6 +2087,9 @@ const CSS=`
     --hero-bg: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 60%,#f0fdf4 100%);
     --panel-bg:#ffffff; --panel-bg2:#f9fafb;
     --section-border:#e5e7eb;
+    --accent:#2563eb;
+    --tab-active-bg:#eff6ff; --tab-active-border:#2563eb; --tab-active-color:#1d4ed8;
+    --submit-bg:linear-gradient(135deg,#1e40af,#1d4ed8); --submit-border:#3b82f6; --submit-color:#ffffff;
   }
 
   /* ── Light mode base ── */
@@ -2356,6 +2362,69 @@ const CSS=`
   /* SVG chart legend text */
   [data-theme="light"] .chartBox [style*="color:#445"] { color: #6b7280 !important; }
   [data-theme="light"] .chartBox [style*="color:#ccd"] { color: #374151 !important; }
+
+  /* ── Hero card class-based overrides ── */
+  .light-mode .heroSubtext { color: #374151 !important; }
+  .light-mode .heroMuted { color: #6b7280 !important; }
+  .light-mode .heroCardFooter { border-top-color: rgba(0,0,0,.08) !important; }
+  .light-mode .monthLabel { color: #111827 !important; }
+
+  /* ── Accent colors mapped to light equivalents ── */
+  .light-mode [style*="color:#4ade80"]:not([style*="background"]) { color: #16a34a !important; }
+  .light-mode [style*="color:#34d399"]:not([style*="background"]) { color: #059669 !important; }
+  .light-mode [style*="color:#f87171"]:not([style*="background"]) { color: #dc2626 !important; }
+  .light-mode [style*="color:#fb923c"]:not([style*="background"]) { color: #ea580c !important; }
+  .light-mode [style*="color:#facc15"]:not([style*="background"]) { color: #d97706 !important; }
+  .light-mode [style*="color:#8ab4f8"]:not([style*="background"]) { color: #2563eb !important; }
+  .light-mode [style*="color:#a78bfa"]:not([style*="background"]) { color: #7c3aed !important; }
+
+  /* ── Card title and meta text ── */
+  .light-mode .eCard [style*="color:#dde"] { color: #111827 !important; }
+  .light-mode .eCard [style*="color:#ccd"] { color: #374151 !important; }
+  .light-mode .eCard [style*="color:#445"] { color: #6b7280 !important; }
+  .light-mode .eCard [style*="color:#334"] { color: #9ca3af !important; }
+  .light-mode .eCard [style*="color:#556"] { color: #6b7280 !important; }
+
+  /* ── Section headers ── */
+  .light-mode [style*="borderBottom"][style*="#0d1520"] { border-bottom-color: #e5e7eb !important; }
+  .light-mode [style*="borderBottom"][style*="#0f1825"] { border-bottom-color: #e5e7eb !important; }
+  .light-mode [style*="borderBottom"][style*="#111820"] { border-bottom-color: #e5e7eb !important; }
+
+  /* ── Cartão screen (credit cards) ── */
+  .light-mode [style*="background:#0d1118"][style*="borderRadius:18"] { background: #ffffff !important; }
+  .light-mode [style*="background:#0d1118"][style*="borderRadius:14"] { background: #ffffff !important; border-color: #e5e7eb !important; }
+
+  /* ── Saúde screen ── */
+  .light-mode [style*="background:linear-gradient(135deg,#0d1118,#111820)"] { background: #f9fafb !important; }
+  .light-mode [style*="background:rgba(138,180,248,.06)"] { background: #eff6ff !important; border-color: #bfdbfe !important; }
+  .light-mode [style*="border:\"1px solid #1a3a6e\""] { border-color: #bfdbfe !important; }
+
+  /* ── Profile screen ── */
+  .light-mode [style*="background:#0d1118"][style*="borderRadius:13"] { background: #ffffff !important; border-color: #e5e7eb !important; }
+  .light-mode [style*="borderBottom:\"none\""] { border-bottom: none; }
+  .light-mode [style*="borderBottom"][style*="#0f1825"] { border-bottom-color: #e5e7eb !important; }
+
+  /* ── Modal backgrounds ── */
+  .light-mode [style*="background:#080c12"][style*="borderRadius:11"],
+  .light-mode [style*="background:#080c12"][style*="borderRadius:12"] { background: #f9fafb !important; }
+  .light-mode [style*="background:#080c12"][style*="borderRadius:8"] { background: #f9fafb !important; }
+  .light-mode [style*="background:#080c12"][style*="borderRadius:9"] { background: #f9fafb !important; }
+  .light-mode [style*="background:#080c12"][style*="borderRadius:10"] { background: #f9fafb !important; }
+  .light-mode [style*="background:\"#111820\""] { background: #f3f4f6 !important; }
+
+  /* ── Upcoming due buttons ── */
+  .light-mode [style*="background:#0d1118"][style*="border"][style*="borderRadius:10"] { background: #ffffff !important; }
+  .light-mode [style*="background:rgba(248,113,113,.07)"] { background: #fef2f2 !important; }
+  .light-mode [style*="background:rgba(251,146,60,.07)"] { background: #fff7ed !important; }
+
+  /* ── Health score circle track ── */
+  .light-mode [stroke="#111820"] { stroke: #e5e7eb !important; }
+  .light-mode [fill="#111820"] { fill: #f3f4f6 !important; }
+  .light-mode [fill="#445"] { fill: #6b7280 !important; }
+
+  /* ── Scrollbar ── */
+  .light-mode ::-webkit-scrollbar-thumb { background: #d1d5db !important; }
+  .light-mode ::-webkit-scrollbar { background: #f9fafb; }
 `;
 
 // ─── Recent Activity Component ────────────────────────────────
