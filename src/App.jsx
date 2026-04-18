@@ -828,7 +828,7 @@ function MainApp({ fbUser, onLogout }){
           ["lancamentos","Contas",<svg key="l" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
           ["graficos","Análise",<svg key="g" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
           ["cartoes","Cartões",<svg key="c" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
-          ["perfil","Perfil",<svg key="p" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
+          ["dividas","Dívidas",<svg key="d" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>],
         ].map(([tab,label,icon])=>(
           <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}} className="navBtn"
             style={{...S.navBtn,borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
@@ -838,9 +838,9 @@ function MainApp({ fbUser, onLogout }){
         ))}
         {/* Botão "Mais" */}
         <button className="navBtn" onClick={()=>setShowMoreNav(p=>!p)}
-          style={{...S.navBtn,borderTop:["saude","dividas","admin"].includes(activeTab)?"2px solid #8ab4f8":"2px solid transparent",...(["saude","dividas","admin"].includes(activeTab)?S.navBtnActive:{})}}>
-          <span style={{opacity:showMoreNav||["saude","dividas","admin"].includes(activeTab)?1:0.45,color:showMoreNav||["saude","dividas","admin"].includes(activeTab)?"#8ab4f8":"#556",fontSize:20,lineHeight:1}}>⋯</span>
-          <span style={{fontSize:9,fontWeight:["saude","dividas","admin"].includes(activeTab)?700:500,color:["saude","dividas","admin"].includes(activeTab)?"#8ab4f8":"#334",marginTop:2}}>Mais</span>
+          style={{...S.navBtn,borderTop:["saude","perfil","admin"].includes(activeTab)?"2px solid #8ab4f8":"2px solid transparent",...(["saude","perfil","admin"].includes(activeTab)?S.navBtnActive:{})}}>
+          <span style={{opacity:showMoreNav||["saude","perfil","admin"].includes(activeTab)?1:0.45,color:showMoreNav||["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"#556",fontSize:20,lineHeight:1}}>⋯</span>
+          <span style={{fontSize:9,fontWeight:["saude","perfil","admin"].includes(activeTab)?700:500,color:["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"#334",marginTop:2}}>Mais</span>
         </button>
       </nav>
 
@@ -849,7 +849,7 @@ function MainApp({ fbUser, onLogout }){
         <div style={{position:"fixed",bottom:68,right:8,background:"#0d1118",border:"1px solid #111820",borderRadius:14,padding:6,zIndex:51,boxShadow:"0 8px 32px rgba(0,0,0,.7)",minWidth:150}}>
           {[
             ["saude","💊 Saúde"],
-            ["dividas","💳 Dívidas"],
+            ["perfil","👤 Perfil"],
             ...(fbUser.email===ADMIN_EMAIL?[["admin","🛡 Admin"]]:[] ),
           ].map(([tab,label])=>(
             <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}}
