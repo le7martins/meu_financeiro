@@ -19,8 +19,29 @@ jobs:
       - name: Install Firebase Admin
         run: npm install firebase-admin --no-save
 
-      - name: Write service account key
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
+      - name: Write and fix service account key
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          python3 << 'PYEOF'
+          import os, json, re
+          raw = os.environ['SA_JSON']
+          try:
+              json.loads(raw)
+              with open('/tmp/sa.json', 'w') as f: f.write(raw)
+              print('JSON OK')
+          except Exception as e:
+              print(f'Fixing JSON: {e}')
+              # Corrige newlines literais dentro do valor private_key
+              fixed = re.sub(
+                  r'"private_key"\s*:\s*"([\s\S]*?)"(\s*[,}])',
+                  lambda m: '"private_key": "' + m.group(1).replace('\n', '\\n') + '"' + m.group(2),
+                  raw
+              )
+              json.loads(fixed)
+              with open('/tmp/sa.json', 'w') as f: f.write(fixed)
+              print('JSON corrigido e salvo')
+          PYEOF
 
       - name: Run notification script
         env:
