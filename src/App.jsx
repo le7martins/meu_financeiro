@@ -656,7 +656,7 @@ function MainApp({ fbUser, onLogout }){
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div style={{textAlign:"center"}}>
-            <div style={{fontSize:22,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>{MNAMES[+selMonth.split("-")[1]-1]}</div>
+            <div className="monthLabel" style={{fontSize:22,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>{MNAMES[+selMonth.split("-")[1]-1]}</div>
             <div style={{fontSize:13,color:"#556",fontWeight:500,marginTop:-1}}>{selMonth.split("-")[0]}</div>
             {selMonth===NOW&&<div style={{fontSize:9,color:"#4ade80",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginTop:1}}>Mês atual</div>}
           </div>
@@ -667,7 +667,7 @@ function MainApp({ fbUser, onLogout }){
 
         {/* Hero saldo */}
         <div style={{padding:"10px 14px 6px"}}>
-          <div style={S.heroCard}>
+          <div style={S.heroCard} className="heroCard">
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
               <div style={{width:36,height:36,borderRadius:10,background:"rgba(74,222,128,.18)",display:"flex",alignItems:"center",justifyContent:"center"}}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
@@ -1978,14 +1978,14 @@ function DonutSVG({data,total}){
 
 // ─── Helpers ─────────────────────────────────────────────────
 function GradCard({label,value,color,bg,icon,onAdd}){
-  return(<div style={{background:bg,border:`1px solid ${color}22`,borderRadius:16,padding:"14px 14px",position:"relative",overflow:"hidden"}}>
+  return(<div className="gradCard" style={{background:bg,border:`1px solid ${color}22`,borderRadius:16,padding:"14px 14px",position:"relative",overflow:"hidden"}}>
     <div style={{position:"absolute",top:0,right:0,width:80,height:80,borderRadius:"50%",background:`radial-gradient(circle at top right, ${color}18, transparent 70%)`,pointerEvents:"none"}}/>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-      <div style={{width:34,height:34,borderRadius:10,background:`${color}20`,display:"flex",alignItems:"center",justifyContent:"center"}}>{icon}</div>
+      <div className="gradCardIcon" style={{width:34,height:34,borderRadius:10,background:`${color}20`,display:"flex",alignItems:"center",justifyContent:"center"}}>{icon}</div>
       {onAdd&&<button onClick={onAdd} className="sumAddBtn" style={{width:26,height:26,borderRadius:7,background:`${color}22`,border:`1px solid ${color}44`,color,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>}
     </div>
-    <div style={{fontSize:11,color:`${color}99`,fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div>
-    <div style={{fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>{value}</div>
+    <div className="gradCardLabel" style={{fontSize:11,color:`${color}99`,fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div>
+    <div className="gradCardValue" style={{fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>{value}</div>
   </div>);
 }
 function SumCard({label,value,color,icon,wide,onAdd}){return(<div style={{background:"#0d1118",border:"1px solid #111820",borderRadius:13,padding:"11px 12px",gridColumn:wide?"span 2":"span 1",display:"flex",alignItems:"center",gap:10}}><div style={{width:30,height:30,borderRadius:9,background:color+"18",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:14,fontWeight:700,flexShrink:0}}>{icon}</div><div style={{flex:1}}><div style={{fontSize:9,color:"#445",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{label}</div><div style={{fontSize:15,fontWeight:700,color,letterSpacing:"-0.4px"}}>{value}</div></div>{onAdd&&<button onClick={onAdd} className="sumAddBtn" style={{width:28,height:28,borderRadius:8,background:color+"22",border:`1px solid ${color}44`,color,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,flexShrink:0,lineHeight:1}}>+</button>}</div>);}
@@ -2071,19 +2071,27 @@ const CSS=`
     --text1:#dde; --text2:#ccd; --text3:#445; --text4:#334;
     --inp-bg:#080c12; --nav-bg:#080c12;
     --hero-bg: linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%);
+    --panel-bg:#0d1118; --panel-bg2:#080c12;
+    --section-border:#0d1520;
   }
 
   /* ── Light mode CSS variables ── */
   .light-mode {
     --bg:#f8f9fa; --card-bg:#ffffff; --card-bg2:#f1f3f5;
-    --border:#e5e7eb; --border2:#d1d5db; --border3:#e9ecef;
+    --border:#e5e7eb; --border2:#d1d5db; --border3:#f3f4f6;
     --text1:#111827; --text2:#374151; --text3:#6b7280; --text4:#9ca3af;
     --inp-bg:#ffffff; --nav-bg:#ffffff;
-    --hero-bg: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 50%,#f0fdf4 100%);
+    --hero-bg: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 60%,#f0fdf4 100%);
+    --panel-bg:#ffffff; --panel-bg2:#f9fafb;
+    --section-border:#e5e7eb;
   }
 
   /* ── Light mode base ── */
   .light-mode { background: var(--bg); color: var(--text1); }
+
+  /* ── Global color resets in light mode ──
+     All the hardcoded dark colors (#0d1118, #080c12, #111820, #0f1825) must become
+     light equivalents. We use attribute selector for broad coverage. */
 
   /* Inputs, selects, textareas */
   .light-mode input, .light-mode select, .light-mode textarea {
@@ -2091,11 +2099,62 @@ const CSS=`
     border-color: var(--border) !important; }
   .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
   .light-mode input[type=date]::-webkit-calendar-picker-indicator { filter: none !important; }
-  select option { background: var(--card-bg); }
+  .light-mode select option { background: #ffffff; color: #111827; }
+
+  /* ── Text color overrides ── */
+  /* Primary text (#dde / #ccd → dark) */
+  .light-mode [style*="color:#dde"], .light-mode [style*="color: #dde"] { color: #111827 !important; }
+  .light-mode [style*="color:#ccd"], .light-mode [style*="color: #ccd"] { color: #374151 !important; }
+  /* Secondary/muted text (#445 / #334 / #556 → gray) */
+  .light-mode [style*="color:#445"], .light-mode [style*="color: #445"] { color: #6b7280 !important; }
+  .light-mode [style*="color:#334"], .light-mode [style*="color: #334"] { color: #9ca3af !important; }
+  .light-mode [style*="color:#556"], .light-mode [style*="color: #556"] { color: #6b7280 !important; }
+  /* White text → dark */
+  .light-mode [style*="color:#fff"], .light-mode [style*="color: #fff"],
+  .light-mode [style*="color:white"] { color: #111827 !important; }
+  .light-mode [style*='color:"#fff"'] { color: #111827 !important; }
+  /* rgba(255,255,255,...) text → dark */
+  .light-mode [style*="color:rgba(255,255,255,.6)"] { color: #6b7280 !important; }
+  .light-mode [style*="color:rgba(255,255,255,.35)"] { color: #9ca3af !important; }
+
+  /* ── Background overrides for dark panels ── */
+  .light-mode [style*="background:#0d1118"], .light-mode [style*="background: #0d1118"] { background: #ffffff !important; }
+  .light-mode [style*="background:#080c12"], .light-mode [style*="background: #080c12"] { background: #f9fafb !important; }
+  .light-mode [style*="background:#111820"], .light-mode [style*="background: #111820"] { background: #f3f4f6 !important; }
+  .light-mode [style*="background:#0f1825"], .light-mode [style*="background: #0f1825"] { background: #f3f4f6 !important; }
+  .light-mode [style*="background:#0d1520"], .light-mode [style*="background: #0d1520"] { background: #f9fafb !important; }
+  .light-mode [style*="background:#1a1208"], .light-mode [style*="background: #1a1208"] { background: #fff7ed !important; }
+  .light-mode [style*="background:#0d2a1a"], .light-mode [style*="background: #0d2a1a"] { background: #f0fdf4 !important; }
+  .light-mode [style*="background:#0a2a1a"], .light-mode [style*="background: #0a2a1a"] { background: #f0fdf4 !important; }
+  .light-mode [style*="background:#0d1a2e"], .light-mode [style*="background: #0d1a2e"] { background: #eff6ff !important; }
+  .light-mode [style*="background:#1a3a6e"], .light-mode [style*="background: #1a3a6e"] { background: #dbeafe !important; }
+  .light-mode [style*="background:#0a2010"], .light-mode [style*="background: #0a2010"] { background: #f0fdf4 !important; }
+  .light-mode [style*="background:#0d3520"], .light-mode [style*="background: #0d3520"] { background: #dcfce7 !important; }
+  .light-mode [style*="background:#2a0d0d"], .light-mode [style*="background: #2a0d0d"] { background: #fef2f2 !important; }
+  .light-mode [style*="background:#0d2247"], .light-mode [style*="background: #0d2247"] { background: #eff6ff !important; }
+  .light-mode [style*="background:linear-gradient(135deg,#0d1118,#111820)"] { background: #f9fafb !important; }
+  .light-mode [style*="background:linear-gradient(135deg,#1a3a6e,#0d2247)"] { background: linear-gradient(135deg,#2563eb,#1d4ed8) !important; }
+  .light-mode [style*="background:linear-gradient(90deg,#0a2a1a,#0d3520,#0a2a1a)"] { background: linear-gradient(90deg,#f0fdf4,#dcfce7,#f0fdf4) !important; }
+
+  /* ── Border overrides ── */
+  .light-mode [style*="borderBottom:\"1px solid #0d1520\""], .light-mode [style*="borderBottom:\"1px solid #0f1825\""],
+  .light-mode [style*="borderBottom:\"1px solid #111820\""] { border-bottom-color: #e5e7eb !important; }
+  .light-mode [style*="border-bottom: 1px solid #0f1825"] { border-bottom-color: #e5e7eb !important; }
 
   /* Cards (entry rows) */
   .light-mode .eCard { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
   .light-mode .eCard:hover { border-color: #d1d5db !important; box-shadow: 0 2px 8px rgba(0,0,0,.09) !important; }
+
+  /* ── GradCard (Receitas / Despesas / Pago / A Pagar) ──
+     Replace tinted/washed backgrounds with white + colored left border */
+  .light-mode .gradCard {
+    background: #ffffff !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.07) !important;
+  }
+  .light-mode .gradCardValue { color: #111827 !important; }
+  .light-mode .gradCardLabel { opacity: 0.8; }
 
   /* Navigation tabs */
   .light-mode .fTab { border-color: #e5e7eb !important; color: #374151 !important; background: #ffffff !important; }
@@ -2106,6 +2165,7 @@ const CSS=`
   .light-mode nav { background: #ffffff !important; border-top: 1px solid #e5e7eb !important; box-shadow: 0 -2px 12px rgba(0,0,0,.06) !important; }
   .light-mode .navBtn { color: #6b7280 !important; }
   .light-mode .navBtn:hover { background: #f9fafb !important; }
+  .light-mode .navBtnActive { background: #f3f4f6 !important; }
 
   /* Modals */
   .light-mode .modal-in { background: #ffffff !important; border-color: #e5e7eb !important; }
@@ -2126,17 +2186,30 @@ const CSS=`
   /* Header */
   .light-mode header { background: #ffffff; border-bottom-color: #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,.06); }
 
-  /* Hero/Saldo card */
-  .light-mode .heroCard { background: var(--hero-bg) !important; border-color: #bbf7d0 !important; }
+  /* ── Hero / Saldo card ── */
+  .light-mode .heroCard {
+    background: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 60%,#f0fdf4 100%) !important;
+    border-color: #bbf7d0 !important;
+    box-shadow: 0 2px 12px rgba(22,163,74,.1) !important;
+  }
+  /* Text inside hero card */
+  .light-mode .heroCard [style*="color:rgba(255,255,255,.6)"] { color: #374151 !important; }
+  .light-mode .heroCard [style*="color:rgba(255,255,255,.35)"] { color: #6b7280 !important; }
+  .light-mode .heroCard [style*="color:rgba(255,255,255,.08)"] { border-top-color: rgba(0,0,0,.08) !important; }
+  .light-mode .heroCard [style*="background:rgba(74,222,128,.18)"] { background: rgba(22,163,74,.15) !important; }
 
-  /* Summary stat cards (GradCard) */
-  .light-mode .gradCard { box-shadow: 0 1px 4px rgba(0,0,0,.07) !important; }
+  /* Month navigator in light mode */
+  .light-mode [style*="color:#fff"][style*="fontWeight:800"][style*="letterSpacing"] { color: #111827 !important; }
 
   /* Chart boxes */
   .light-mode .chartBox { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,.06) !important; }
-
-  /* Section panels with hard-coded dark backgrounds */
-  .light-mode .panelCard { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
+  .light-mode .chartBox [style*="color:#8ab4f8"] { color: #2563eb !important; }
+  .light-mode .chartBox [style*="fill:#8ab4f8"] { fill: #2563eb !important; }
+  .light-mode .chartBox [style*="stroke:#111820"] { stroke: #e5e7eb !important; }
+  .light-mode .chartBox [style*="fill:#0d1118"] { fill: #ffffff !important; }
+  .light-mode .chartBox [style*="fill:#1a2840"] { fill: #e5e7eb !important; }
+  .light-mode .chartBox [style*="background:#080c12"] { background: #f9fafb !important; }
+  .light-mode .chartBox [style*="background:#0d1118"] { background: #f9fafb !important; }
 
   /* Toast notifications in light mode */
   .light-mode .toast-in { box-shadow: 0 4px 16px rgba(0,0,0,.15) !important; }
@@ -2183,6 +2256,106 @@ const CSS=`
   /* Empty state */
   .light-mode .emptyState .emptyTitle { color: #374151 !important; }
   .light-mode .emptyState .emptySub { color: #6b7280 !important; }
+
+  /* ── Specific element fixes in light mode ── */
+
+  /* Month label (large white text) */
+  [data-theme="light"] .monthLabel { color: #111827 !important; }
+
+  /* Section header titles (#dde text) */
+  [data-theme="light"] [style*="color:#dde"] { color: #111827 !important; }
+  [data-theme="light"] [style*="color:#ccd"] { color: #374151 !important; }
+  [data-theme="light"] [style*="color:#445"] { color: #6b7280 !important; }
+  [data-theme="light"] [style*="color:#334"] { color: #9ca3af !important; }
+  [data-theme="light"] [style*="color:#556"] { color: #6b7280 !important; }
+  [data-theme="light"] [style*="color:#667"] { color: #6b7280 !important; }
+  [data-theme="light"] [style*="color:#222"] { color: #6b7280 !important; }
+
+  /* Dark panel backgrounds */
+  [data-theme="light"] [style*="background:#0d1118"] { background: #ffffff !important; border-color: #e5e7eb !important; }
+  [data-theme="light"] [style*="background:#080c12"] { background: #f9fafb !important; }
+  [data-theme="light"] [style*="background:#111820"] { background: #f3f4f6 !important; }
+  [data-theme="light"] [style*="background:#0f1825"] { background: #f3f4f6 !important; }
+  [data-theme="light"] [style*="background:#0d1520"] { background: #f9fafb !important; }
+  [data-theme="light"] [style*="background:#1a1208"] { background: #fff7ed !important; }
+  [data-theme="light"] [style*="background:#0d2a1a"] { background: #f0fdf4 !important; }
+  [data-theme="light"] [style*="background:#0a2a1a"] { background: #f0fdf4 !important; }
+  [data-theme="light"] [style*="background:#0d1a2e"] { background: #eff6ff !important; }
+  [data-theme="light"] [style*="background:#1a3a6e"] { background: #dbeafe !important; }
+  [data-theme="light"] [style*="background:#0a2010"] { background: #f0fdf4 !important; }
+  [data-theme="light"] [style*="background:#0d3520"] { background: #dcfce7 !important; }
+  [data-theme="light"] [style*="background:#2a0d0d"] { background: #fef2f2 !important; }
+  [data-theme="light"] [style*="background:#0d2247"] { background: #eff6ff !important; }
+  [data-theme="light"] [style*="background:linear-gradient(135deg,#0d1118"] { background: #f9fafb !important; }
+  [data-theme="light"] [style*="background:linear-gradient(135deg,#1a3a6e"] { background: linear-gradient(135deg,#2563eb,#1d4ed8) !important; color: #fff !important; }
+  [data-theme="light"] [style*="background:linear-gradient(135deg,#1a4a2e"] { background: linear-gradient(135deg,#16a34a,#15803d) !important; color: #fff !important; }
+  [data-theme="light"] [style*="background:linear-gradient(90deg,#0a2a1a"] { background: linear-gradient(90deg,#f0fdf4,#dcfce7,#f0fdf4) !important; }
+
+  /* Border-top dividers */
+  [data-theme="light"] [style*="borderTop:\"1px solid rgba(255,255,255,.08)\""] { border-top-color: rgba(0,0,0,.08) !important; }
+
+  /* White text on now-light backgrounds */
+  [data-theme="light"] [style*="color:#fff"] { color: #111827 !important; }
+  [data-theme="light"] [style*="color: #fff"] { color: #111827 !important; }
+  [data-theme="light"] [style*="color:rgba(255,255,255,.6)"] { color: #6b7280 !important; }
+  [data-theme="light"] [style*="color:rgba(255,255,255,.35)"] { color: #9ca3af !important; }
+
+  /* Exception: white text stays white on colored/gradient buttons */
+  [data-theme="light"] [style*="background:linear-gradient(135deg,#1a3a6e"] [style*="color:#8ab4f8"] { color: #ffffff !important; }
+  [data-theme="light"] [style*="background:linear-gradient(135deg,#1e40af"] { color: #ffffff !important; }
+
+  /* Keep colored accent text (green, red, orange, yellow, blue) — don't override */
+  [data-theme="light"] [style*="color:#4ade80"] { color: #16a34a !important; }
+  [data-theme="light"] [style*="color:#34d399"] { color: #059669 !important; }
+  [data-theme="light"] [style*="color:#f87171"] { color: #dc2626 !important; }
+  [data-theme="light"] [style*="color:#fb923c"] { color: #ea580c !important; }
+  [data-theme="light"] [style*="color:#facc15"] { color: #d97706 !important; }
+  [data-theme="light"] [style*="color:#8ab4f8"] { color: #2563eb !important; }
+  [data-theme="light"] [style*="color:#a78bfa"] { color: #7c3aed !important; }
+
+  /* Card screen dark backgrounds */
+  [data-theme="light"] [style*="background:#0d1118"][style*="borderRadius:18"] { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 2px 8px rgba(0,0,0,.08) !important; }
+
+  /* Health indicator in header */
+  [data-theme="light"] [style*="background:#0d1118"][style*="border"][style*="borderRadius:8"] { background: #f9fafb !important; }
+
+  /* Upcoming due buttons */
+  [data-theme="light"] [style*="background:#0d1118"][style*="border"][style*="borderRadius:10"] { background: #ffffff !important; }
+
+  /* Section separators (borderBottom dark) */
+  [data-theme="light"] [style*="borderBottom:\"1px solid #0d1520\""] { border-bottom-color: #e5e7eb !important; }
+  [data-theme="light"] [style*="borderBottom:\"1px solid #0f1825\""] { border-bottom-color: #e5e7eb !important; }
+  [data-theme="light"] [style*="borderBottom:\"1px solid #111820\""] { border-bottom-color: #e5e7eb !important; }
+
+  /* SumCard */
+  [data-theme="light"] [style*="background:#0d1118"][style*="border:\"1px solid #111820\""] { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
+
+  /* Progress bar track */
+  [data-theme="light"] [style*="height:5px"][style*="background:#080c12"],
+  [data-theme="light"] [style*="height:5"][style*="background:#080c12"] { background: #e5e7eb !important; }
+  [data-theme="light"] [style*="height:3"][style*="background:#080c12"] { background: #e5e7eb !important; }
+  [data-theme="light"] [style*="height:4"][style*="background:#080c12"] { background: #e5e7eb !important; }
+
+  /* Modal cancel/close buttons */
+  [data-theme="light"] [style*="background:#111820"][style*="border:\"1px solid #1a2840\""] { background: #f3f4f6 !important; border-color: #e5e7eb !important; color: #374151 !important; }
+  [data-theme="light"] .xBtn { background: #f3f4f6 !important; color: #374151 !important; }
+
+  /* Installment preview box */
+  [data-theme="light"] [style*="background:#080c12"][style*="border:\"1px solid #1a3a6e44\""] { background: #eff6ff !important; border-color: #bfdbfe !important; }
+
+  /* Nav active background */
+  [data-theme="light"] .navBtnActive { background: #f3f4f6 !important; }
+
+  /* Month in SVG chart tooltip */
+  [data-theme="light"] [fill="#0d1118"] { fill: #ffffff !important; }
+  [data-theme="light"] [fill="#1a2840"] { fill: #e5e7eb !important; }
+  [data-theme="light"] [fill="#445"] { fill: #6b7280 !important; }
+  [data-theme="light"] [fill="#8ab4f8"] { fill: #2563eb !important; }
+  [data-theme="light"] [stroke="#111820"] { stroke: #e5e7eb !important; }
+
+  /* SVG chart legend text */
+  [data-theme="light"] .chartBox [style*="color:#445"] { color: #6b7280 !important; }
+  [data-theme="light"] .chartBox [style*="color:#ccd"] { color: #374151 !important; }
 `;
 
 // ─── Recent Activity Component ────────────────────────────────
