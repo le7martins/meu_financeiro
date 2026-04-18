@@ -4,12 +4,12 @@
  * Roda via GitHub Actions (diariamente às 08:00 BRT).
  * Requer: FIREBASE_SERVICE_ACCOUNT (JSON), VITE_VAPID_KEY no env.
  */
-import { initializeApp, cert } from 'firebase-admin/app';
+import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || '{}');
-initializeApp({ credential: cert(serviceAccount) });
+// GOOGLE_APPLICATION_CREDENTIALS aponta para o arquivo gravado pelo workflow
+initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
 

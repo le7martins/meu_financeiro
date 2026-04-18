@@ -19,7 +19,10 @@ jobs:
       - name: Install Firebase Admin
         run: npm install firebase-admin --no-save
 
+      - name: Write service account key
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > /tmp/sa.json
+
       - name: Run notification script
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
         run: node scripts/notify.mjs
