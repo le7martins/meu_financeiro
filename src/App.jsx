@@ -223,17 +223,20 @@ function App(){
     </div>
   );
   if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
-  return <MainApp fbUser={fbUser} onLogout={()=>signOut(auth)}/>;
+  return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={()=>signOut(auth)}/>;
 }
 
 // ─── MainApp ─────────────────────────────────────────────────
 function MainApp({ fbUser, onLogout }){
-  const [entries,      setEntries]      = useState(()=>loadLS("mf2_entries",[]));
-  const [dividas,      setDividas]      = useState(()=>loadLS("mf2_dividas",[]));
-  const [cards,        setCards]        = useState(()=>loadLS("mf2_cards",[]));
-  const [cardPurchases,setCardPurchases]= useState(()=>loadLS("mf2_cpurchases",[]));
-  const [cardFaturas,  setCardFaturas]  = useState(()=>loadLS("mf2_cfaturas",{}));
-  const [categories,   setCategories]   = useState(()=>loadLS("mf2_cats",DEFAULT_CATS));
+  const uid = fbUser.uid;
+  const k = (key) => `mf2_${uid}_${key}`;
+
+  const [entries,      setEntries]      = useState(()=>loadLS(k("entries"),[]));
+  const [dividas,      setDividas]      = useState(()=>loadLS(k("dividas"),[]));
+  const [cards,        setCards]        = useState(()=>loadLS(k("cards"),[]));
+  const [cardPurchases,setCardPurchases]= useState(()=>loadLS(k("cpurchases"),[]));
+  const [cardFaturas,  setCardFaturas]  = useState(()=>loadLS(k("cfaturas"),{}));
+  const [categories,   setCategories]   = useState(()=>loadLS(k("cats"),DEFAULT_CATS));
   const [selMonth,     setSelMonth]     = useState(getNow());
   const [activeTab,    setActiveTab]    = useState("lancamentos");
   const [showForm,     setShowForm]     = useState(false);
@@ -247,30 +250,30 @@ function MainApp({ fbUser, onLogout }){
   const [search,       setSearch]       = useState("");
   const [groupBy,      setGroupBy]      = useState(false);
   const [notifPerm,    setNotifPerm]    = useState(()=>"Notification" in window?Notification.permission:"unsupported");
-  const [notifSettings,setNotifSettings]= useState(()=>loadLS(NOTIF_KEY,defaultNotifSettings));
-  const [theme,        setTheme]        = useState(()=>loadLS("mf2_theme","dark"));
-  const [goals,        setGoals]        = useState(()=>loadLS("mf2_goals",{monthly:0,savingsPct:20}));
-  const [budgets,      setBudgets]      = useState(()=>loadLS("mf2_budgets",{}));
+  const [notifSettings,setNotifSettings]= useState(()=>loadLS(k("notif_settings"),defaultNotifSettings));
+  const [theme,        setTheme]        = useState(()=>loadLS(k("theme"),"dark"));
+  const [goals,        setGoals]        = useState(()=>loadLS(k("goals"),{monthly:0,savingsPct:20}));
+  const [budgets,      setBudgets]      = useState(()=>loadLS(k("budgets"),{}));
   const [filterCat,    setFilterCat]    = useState("all");
   const {toasts,toast} = useToast();
 
-  const saveEntries   =(e)=>{setEntries(e);   saveLS("mf2_entries",e);};
-  const saveDividas   =(d)=>{setDividas(d);   saveLS("mf2_dividas",d);};
-  const saveCards     =(c)=>{setCards(c);     saveLS("mf2_cards",c);};
-  const saveCardPurchases=(p)=>{setCardPurchases(p);saveLS("mf2_cpurchases",p);};
-  const saveCardFaturas  =(f)=>{setCardFaturas(f); saveLS("mf2_cfaturas",f);};
-  const saveCategories=(c)=>{setCategories(c);saveLS("mf2_cats",c);};
-  const saveNotifSettings=(s)=>{setNotifSettings(s);saveLS(NOTIF_KEY,s);};
-  const saveTheme=(t)=>{setTheme(t);saveLS("mf2_theme",t);};
-  const saveGoals=(g)=>{setGoals(g);saveLS("mf2_goals",g);};
-  const saveBudgets=(b)=>{setBudgets(b);saveLS("mf2_budgets",b);};
+  const saveEntries   =(e)=>{setEntries(e);   saveLS(k("entries"),e);};
+  const saveDividas   =(d)=>{setDividas(d);   saveLS(k("dividas"),d);};
+  const saveCards     =(c)=>{setCards(c);     saveLS(k("cards"),c);};
+  const saveCardPurchases=(p)=>{setCardPurchases(p);saveLS(k("cpurchases"),p);};
+  const saveCardFaturas  =(f)=>{setCardFaturas(f); saveLS(k("cfaturas"),f);};
+  const saveCategories=(c)=>{setCategories(c);saveLS(k("cats"),c);};
+  const saveNotifSettings=(s)=>{setNotifSettings(s);saveLS(k("notif_settings"),s);};
+  const saveTheme=(t)=>{setTheme(t);saveLS(k("theme"),t);};
+  const saveGoals=(g)=>{setGoals(g);saveLS(k("goals"),g);};
+  const saveBudgets=(b)=>{setBudgets(b);saveLS(k("budgets"),b);};
 
   const NOW=getNow();
 
   useEffect(()=>{
     if(notifSettings.enabled&&Notification.permission==="granted"){
-      const lastCheck=loadLS(NOTIF_LAST_KEY,null);
-      if(lastCheck!==TODAY) setTimeout(()=>{checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings);saveLS(NOTIF_LAST_KEY,TODAY);},1500);
+      const lastCheck=loadLS(k("notif_last"),null);
+      if(lastCheck!==TODAY) setTimeout(()=>{checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings);saveLS(k("notif_last"),TODAY);},1500);
     }
   },[]);
 
