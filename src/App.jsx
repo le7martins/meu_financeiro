@@ -792,7 +792,7 @@ function MainApp({ fbUser, onLogout }){
             <div style={S.empty}>
               <div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💸</div>
               <div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>{search?"Nenhum resultado":filterCat!=="all"?"Nenhum lançamento nesta categoria":"Nenhum lançamento"}</div>
-              <div style={{color:"#223",fontSize:12,marginTop:3}}>{search?"Tente outro termo":filterCat!=="all"?"Mude o filtro de categoria":"Use os cards + acima para adicionar"}</div>
+              <div style={{color:"var(--text4)",fontSize:12,marginTop:3}}>{search?"Tente outro termo":filterCat!=="all"?"Mude o filtro de categoria":"Use os cards + acima para adicionar"}</div>
             </div>
           )}
           {grouped
@@ -804,7 +804,7 @@ function MainApp({ fbUser, onLogout }){
                 <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0 5px",borderBottom:"1px solid var(--border2)",marginBottom:6}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:catColor(catId)}}/>
                   <div style={{fontSize:11,fontWeight:700,color:catColor(catId),textTransform:"uppercase",letterSpacing:"0.06em",flex:1}}>{catName(catId)}</div>
-                  <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(total)}{budget>0&&<span style={{fontSize:9,color:budgetPct>100?"#f87171":"#445",marginLeft:4}}>/ {fmt(budget)}</span>}</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(total)}{budget>0&&<span style={{fontSize:9,color:budgetPct>100?"#f87171":"var(--text3)",marginLeft:4}}>/ {fmt(budget)}</span>}</div>
                 </div>
                 {budget>0&&<div style={{height:3,background:"var(--bg)",borderRadius:2,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${budgetPct}%`,background:budgetPct>100?"#f87171":budgetPct>80?"#facc15":catColor(catId),borderRadius:2,transition:"width .5s"}}/></div>}
                 {items.map(renderCard)}
@@ -1179,7 +1179,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
       </div>
 
       <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:14}}>
-        {cards.length===0&&<div style={S.empty}><div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💳</div><div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>Nenhum cartão cadastrado</div><div style={{color:"#223",fontSize:12,marginTop:3}}>Adicione um cartão para controlar suas faturas</div></div>}
+        {cards.length===0&&<div style={S.empty}><div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💳</div><div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>Nenhum cartão cadastrado</div><div style={{color:"var(--text4)",fontSize:12,marginTop:3}}>Adicione um cartão para controlar suas faturas</div></div>}
 
         {cards.map(card=>{
           const allBillings=getCardBillingMonths(card,cardPurchases);
@@ -1355,7 +1355,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {categories.filter(c=>c.type==="both"||c.type==="despesa").map(cat=>(
                   <button key={cat.id} onClick={()=>setPurchForm(p=>({...p,category:cat.id}))}
-                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${purchForm.category===cat.id?cat.color:"transparent"}`,background:purchForm.category===cat.id?cat.color+"22":"rgba(255,255,255,.05)",color:purchForm.category===cat.id?cat.color:"#667",fontSize:11,cursor:"pointer",fontWeight:500}}>
+                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${purchForm.category===cat.id?cat.color:"transparent"}`,background:purchForm.category===cat.id?cat.color+"22":"rgba(255,255,255,.05)",color:purchForm.category===cat.id?cat.color:"var(--text3)",fontSize:11,cursor:"pointer",fontWeight:500}}>
                     <span style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}
                   </button>
                 ))}
@@ -1597,7 +1597,7 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {despCats.map(cat=>(
                   <button key={cat.id} onClick={()=>setDform(p=>({...p,category:cat.id}))}
-                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${dform.category===cat.id?cat.color:"transparent"}`,background:dform.category===cat.id?cat.color+"22":"rgba(255,255,255,.05)",color:dform.category===cat.id?cat.color:"#667",fontSize:11,cursor:"pointer",fontWeight:500}}>
+                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${dform.category===cat.id?cat.color:"transparent"}`,background:dform.category===cat.id?cat.color+"22":"rgba(255,255,255,.05)",color:dform.category===cat.id?cat.color:"var(--text3)",fontSize:11,cursor:"pointer",fontWeight:500}}>
                     <span style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}
                   </button>
                 ))}
@@ -1676,7 +1676,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
             : <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                 <span style={{fontSize:13,color:"var(--text1)"}}>Confirmar saída?</span>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setConfirmLogout(false)} style={{padding:"6px 12px",background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:8,color:"#667",fontSize:12,cursor:"pointer"}}>Cancelar</button>
+                  <button onClick={()=>setConfirmLogout(false)} style={{padding:"6px 12px",background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",fontSize:12,cursor:"pointer"}}>Cancelar</button>
                   <button onClick={onLogout} style={{padding:"6px 12px",background:"#2a1a1a",border:"1px solid #f87171",borderRadius:8,color:"#f87171",fontSize:12,fontWeight:700,cursor:"pointer"}}>Sair</button>
                 </div>
               </div>
@@ -1697,7 +1697,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
                 <div style={{display:"flex",gap:6}}>
                   {[1,2,3,5,7].map(d=>(
                     <button key={d} onClick={()=>onNotifSettings({...notifSettings,daysBefore:d})}
-                      style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${notifSettings.daysBefore===d?"#8ab4f8":"#111820"}`,background:notifSettings.daysBefore===d?"#0d1a2e":"transparent",color:notifSettings.daysBefore===d?"#8ab4f8":"#445",fontSize:12,fontWeight:700,cursor:"pointer"}}>{d}d</button>
+                      style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${notifSettings.daysBefore===d?"#8ab4f8":"#111820"}`,background:notifSettings.daysBefore===d?"#0d1a2e":"transparent",color:notifSettings.daysBefore===d?"#8ab4f8":"var(--text3)",fontSize:12,fontWeight:700,cursor:"pointer"}}>{d}d</button>
                   ))}
                 </div>
               </div>
@@ -1803,8 +1803,8 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
   );
 }
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
-function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#334" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
-function Toggle({checked,onChange,disabled}){return(<button onClick={()=>!disabled&&onChange(!checked)} style={{width:44,height:24,borderRadius:12,background:checked?"#1a3a6e":"#111820",border:`1.5px solid ${checked?"#8ab4f8":"#1a2840"}`,cursor:disabled?"default":"pointer",position:"relative",transition:"all .2s",flexShrink:0}}><div style={{width:18,height:18,borderRadius:"50%",background:checked?"#8ab4f8":"#334",position:"absolute",top:"50%",transform:`translateY(-50%) translateX(${checked?20:2}px)`,transition:"all .2s"}}/></button>);}
+function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
+function Toggle({checked,onChange,disabled}){return(<button onClick={()=>!disabled&&onChange(!checked)} style={{width:44,height:24,borderRadius:12,background:checked?"#1a3a6e":"#111820",border:`1.5px solid ${checked?"#8ab4f8":"#1a2840"}`,cursor:disabled?"default":"pointer",position:"relative",transition:"all .2s",flexShrink:0}}><div style={{width:18,height:18,borderRadius:"50%",background:checked?"#8ab4f8":"#667",position:"absolute",top:"50%",transform:`translateY(-50%) translateX(${checked?20:2}px)`,transition:"all .2s"}}/></button>);}
 
 // ─── Form Modal ───────────────────────────────────────────────
 function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose}){
@@ -1912,7 +1912,7 @@ function DeleteModal({entry,onDelete,onClose}){
 
 // ─── Category Selector ────────────────────────────────────────
 function CatSelector({cats,selected,onSelect,editCats,setEditCats,addingCat,setAddingCat,newName,setNewName,newColor,setNewColor,usedIds,onAddCat,onRemoveCat}){
-  return(<div style={{marginBottom:13}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><label style={S.lbl}>Categoria</label><button onClick={()=>{setEditCats(p=>!p);setAddingCat(false);}} style={{background:editCats?"#1a3a6e44":"transparent",border:`1px solid ${editCats?"#1a3a6e":"#111820"}`,borderRadius:6,padding:"3px 8px",color:editCats?"#8ab4f8":"#445",fontSize:10,cursor:"pointer",fontWeight:600}}>{editCats?"✓ Concluir":"✏ Editar"}</button></div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{cats.map(cat=>(<div key={cat.id} style={{position:"relative",display:"inline-flex"}}><button onClick={()=>!editCats&&onSelect(cat.id)} style={{padding:editCats?"4px 22px 4px 9px":"5px 9px",borderRadius:7,border:`1px solid ${selected===cat.id&&!editCats?cat.color:"transparent"}`,background:selected===cat.id&&!editCats?cat.color+"22":"rgba(255,255,255,.05)",color:selected===cat.id&&!editCats?cat.color:"#667",fontSize:11,cursor:editCats?"default":"pointer",fontWeight:500}}><span style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}</button>{editCats&&(usedIds.has(cat.id)?<div style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:"50%",background:"#1a2840",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#445" strokeWidth="2.5"><path d="M18 11v-3a6 6 0 00-12 0v3"/><rect x="3" y="11" width="18" height="11" rx="2"/></svg></div>:<button onClick={()=>onRemoveCat(cat.id)} style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>✕</button>)}</div>))}{editCats&&!addingCat&&<button onClick={()=>setAddingCat(true)} style={{padding:"5px 10px",borderRadius:7,border:"1px dashed #1a3a6e",background:"transparent",color:"#8ab4f8",fontSize:11,cursor:"pointer",fontWeight:600}}>+ Nova</button>}</div>{addingCat&&(<div style={{marginTop:10,background:"var(--bg)",border:"1px solid #1a3a6e44",borderRadius:11,padding:"12px"}}><div style={{fontSize:10,color:"#8ab4f8",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Nova categoria</div><div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}><input style={{...S.inp,flex:1}} placeholder="Nome" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&onAddCat()} autoFocus/><label style={{position:"relative",cursor:"pointer",flexShrink:0}}><div style={{width:36,height:36,borderRadius:9,background:newColor,border:"2px solid #1a2840",boxShadow:`0 0 10px ${newColor}55`}}/><input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)} style={{position:"absolute",opacity:0,width:1,height:1}}/></label></div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>{PRESET_COLORS.map(c=><button key={c} onClick={()=>setNewColor(c)} style={{width:20,height:20,borderRadius:"50%",background:c,border:`2px solid ${newColor===c?"#fff":"transparent"}`,cursor:"pointer",flexShrink:0}}/>)}</div><div style={{display:"flex",gap:6}}><button onClick={onAddCat} disabled={!newName.trim()} style={{...S.submitBtn,flex:1,padding:"9px",fontSize:12,marginTop:0,opacity:!newName.trim()?0.35:1}}>✓ Adicionar</button><button onClick={()=>{setAddingCat(false);setNewName("");}} style={{padding:"9px 14px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:9,color:"var(--text3)",fontSize:12,cursor:"pointer"}}>Cancelar</button></div></div>)}</div>);
+  return(<div style={{marginBottom:13}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><label style={S.lbl}>Categoria</label><button onClick={()=>{setEditCats(p=>!p);setAddingCat(false);}} style={{background:editCats?"#1a3a6e44":"transparent",border:`1px solid ${editCats?"#1a3a6e":"#111820"}`,borderRadius:6,padding:"3px 8px",color:editCats?"#8ab4f8":"var(--text3)",fontSize:10,cursor:"pointer",fontWeight:600}}>{editCats?"✓ Concluir":"✏ Editar"}</button></div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{cats.map(cat=>(<div key={cat.id} style={{position:"relative",display:"inline-flex"}}><button onClick={()=>!editCats&&onSelect(cat.id)} style={{padding:editCats?"4px 22px 4px 9px":"5px 9px",borderRadius:7,border:`1px solid ${selected===cat.id&&!editCats?cat.color:"transparent"}`,background:selected===cat.id&&!editCats?cat.color+"22":"rgba(255,255,255,.05)",color:selected===cat.id&&!editCats?cat.color:"var(--text3)",fontSize:11,cursor:editCats?"default":"pointer",fontWeight:500}}><span style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}</button>{editCats&&(usedIds.has(cat.id)?<div style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:"50%",background:"#1a2840",display:"flex",alignItems:"center",justifyContent:"center"}}><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2.5"><path d="M18 11v-3a6 6 0 00-12 0v3"/><rect x="3" y="11" width="18" height="11" rx="2"/></svg></div>:<button onClick={()=>onRemoveCat(cat.id)} style={{position:"absolute",top:-4,right:-4,width:16,height:16,borderRadius:"50%",background:"#ef4444",border:"none",color:"#fff",fontSize:9,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>✕</button>)}</div>))}{editCats&&!addingCat&&<button onClick={()=>setAddingCat(true)} style={{padding:"5px 10px",borderRadius:7,border:"1px dashed #1a3a6e",background:"transparent",color:"#8ab4f8",fontSize:11,cursor:"pointer",fontWeight:600}}>+ Nova</button>}</div>{addingCat&&(<div style={{marginTop:10,background:"var(--bg)",border:"1px solid #1a3a6e44",borderRadius:11,padding:"12px"}}><div style={{fontSize:10,color:"#8ab4f8",fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Nova categoria</div><div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}><input style={{...S.inp,flex:1}} placeholder="Nome" value={newName} onChange={e=>setNewName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&onAddCat()} autoFocus/><label style={{position:"relative",cursor:"pointer",flexShrink:0}}><div style={{width:36,height:36,borderRadius:9,background:newColor,border:"2px solid #1a2840",boxShadow:`0 0 10px ${newColor}55`}}/><input type="color" value={newColor} onChange={e=>setNewColor(e.target.value)} style={{position:"absolute",opacity:0,width:1,height:1}}/></label></div><div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:8}}>{PRESET_COLORS.map(c=><button key={c} onClick={()=>setNewColor(c)} style={{width:20,height:20,borderRadius:"50%",background:c,border:`2px solid ${newColor===c?"#fff":"transparent"}`,cursor:"pointer",flexShrink:0}}/>)}</div><div style={{display:"flex",gap:6}}><button onClick={onAddCat} disabled={!newName.trim()} style={{...S.submitBtn,flex:1,padding:"9px",fontSize:12,marginTop:0,opacity:!newName.trim()?0.35:1}}>✓ Adicionar</button><button onClick={()=>{setAddingCat(false);setNewName("");}} style={{padding:"9px 14px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:9,color:"var(--text3)",fontSize:12,cursor:"pointer"}}>Cancelar</button></div></div>)}</div>);
 }
 
 // ─── SVG Charts ───────────────────────────────────────────────
@@ -2644,7 +2644,7 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
               <div style={{display:"flex",gap:6}}>
                 {[0,10,15,20,30].map(p=>(
                   <button key={p} onClick={()=>onSaveGoals({...goals,savingsPct:p})}
-                    style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${goals.savingsPct===p?"#8ab4f8":"#111820"}`,background:goals.savingsPct===p?"#0d1a2e":"transparent",color:goals.savingsPct===p?"#8ab4f8":"#445",fontSize:11,fontWeight:700,cursor:"pointer"}}>{p===0?"Nenhum":`${p}%`}</button>
+                    style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${goals.savingsPct===p?"#8ab4f8":"#111820"}`,background:goals.savingsPct===p?"#0d1a2e":"transparent",color:goals.savingsPct===p?"#8ab4f8":"var(--text3)",fontSize:11,fontWeight:700,cursor:"pointer"}}>{p===0?"Nenhum":`${p}%`}</button>
                 ))}
               </div>
             </div>
@@ -2665,7 +2665,7 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
                       <div style={{width:7,height:7,borderRadius:"50%",background:c.color,flexShrink:0}}/>
                       <span style={{fontSize:12,color:"var(--text2)",flex:1}}>{c.name}</span>
                       <span style={{fontSize:11,fontWeight:700,color:c.color}}>{fmt(c.value)}</span>
-                      {budget>0&&<span style={{fontSize:10,color:pctUsed>100?"#f87171":"#445"}}>/ {fmt(budget)}</span>}
+                      {budget>0&&<span style={{fontSize:10,color:pctUsed>100?"#f87171":"var(--text3)"}}>/ {fmt(budget)}</span>}
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
                       <input style={{flex:1,background:"var(--bg)",border:"1px solid #1a3a6e33",borderRadius:7,padding:"5px 9px",color:"#8ab4f8",fontSize:11,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="50" placeholder="Orçamento R$" value={budget||""} onChange={e=>onSaveBudgets({...budgets,[c.id]:parseFloat(e.target.value)||0})}/>
@@ -2697,7 +2697,7 @@ function AdminScreen({ fbUser }) {
   const fmtDt = (iso) => { try{ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch{ return iso; } };
   const providerIcon = (p) => p==='google.com'?'🔵':p==='password'?'📧':'🔗';
 
-  if(loading) return <div style={{padding:40,textAlign:'center',color:'#445'}}>Carregando...</div>;
+  if(loading) return <div style={{padding:40,textAlign:'center',color:'var(--text3)'}}>Carregando...</div>;
   if(error)   return <div style={{padding:24,color:'#f87171',fontSize:13}}>{error}</div>;
 
   return(
