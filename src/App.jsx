@@ -870,11 +870,11 @@ function MainApp({ fbUser, onLogout }){
           {showFabMenu&&(
             <div style={{position:"fixed",bottom:144,right:16,display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",zIndex:49}}>
               <button onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);setShowFabMenu(false);}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",background:"rgba(74,222,128,.15)",border:"1.5px solid #4ade8055",borderRadius:12,color:"#4ade80",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,.5)",whiteSpace:"nowrap"}}>
+                style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#0d2a1a",border:"1.5px solid #4ade8066",borderRadius:12,color:"#4ade80",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.8)",whiteSpace:"nowrap"}}>
                 <span style={{fontSize:16}}>📈</span> Receita
               </button>
               <button onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);setShowFabMenu(false);}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",background:"rgba(251,146,60,.15)",border:"1.5px solid #fb923c55",borderRadius:12,color:"#fb923c",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,.5)",whiteSpace:"nowrap"}}>
+                style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#1a1208",border:"1.5px solid #fb923c66",borderRadius:12,color:"#fb923c",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.8)",whiteSpace:"nowrap"}}>
                 <span style={{fontSize:16}}>📉</span> Despesa
               </button>
             </div>
