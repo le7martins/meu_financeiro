@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
-import { loadUserData, saveData, hasCloudData } from './db';
+import { loadUserData, saveData, hasCloudData, saveUserProfile, loadAllProfiles, ADMIN_EMAIL } from './db';
 import LoginScreen from './LoginScreen';
 // ─── Utils ────────────────────────────────────────────────────
 const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
@@ -217,7 +217,7 @@ function useToast() {
 // ─── App (auth gate) ─────────────────────────────────────────
 function App(){
   const [fbUser, setFbUser] = useState(undefined);
-  useEffect(()=>onAuthStateChanged(auth, u=>setFbUser(u??null)),[]);
+  useEffect(()=>onAuthStateChanged(auth, u=>{ setFbUser(u??null); if(u) saveUserProfile(u); }),[]);
   if(fbUser===undefined) return(
     <div style={{position:'fixed',inset:0,background:'#080c12',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <div style={{fontSize:40,animation:'lp 1.4s ease-in-out infinite'}}>💰</div>
@@ -826,6 +826,7 @@ function MainApp({ fbUser, onLogout }){
       {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
       {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
       {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout}/>}
+      {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
 
       <nav style={S.bottomNav}>
         {[
@@ -835,6 +836,7 @@ function MainApp({ fbUser, onLogout }){
           ["saude","Saúde",<svg key="s" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>],
           ["dividas","Dívidas",<svg key="d" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>],
           ["perfil","Perfil",<svg key="p" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
+          ...(fbUser.email===ADMIN_EMAIL?[["admin","Admin",<svg key="adm" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>]]:[] ),
         ].map(([tab,label,icon])=>(
           <button key={tab} onClick={()=>setActiveTab(tab)} className="navBtn" style={{...S.navBtn,...(activeTab===tab?S.navBtnActive:{})}}>
             <span style={{opacity:activeTab===tab?1:0.45,color:activeTab===tab?"#8ab4f8":"#556",transition:"all .2s"}}>{icon}</span>
@@ -2204,6 +2206,56 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Screen ─────────────────────────────────────────────
+function AdminScreen({ fbUser }) {
+  const [profiles, setProfiles] = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState('');
+
+  useEffect(()=>{
+    loadAllProfiles()
+      .then(p=>{ setProfiles(p.sort((a,b)=>new Date(b.lastLogin)-new Date(a.lastLogin))); setLoading(false); })
+      .catch(e=>{ setError('Sem permissão ou erro: '+e.message); setLoading(false); });
+  },[]);
+
+  const fmtDt = (iso) => { try{ const d=new Date(iso); return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }catch{ return iso; } };
+  const providerIcon = (p) => p==='google.com'?'🔵':p==='password'?'📧':'🔗';
+
+  if(loading) return <div style={{padding:40,textAlign:'center',color:'#445'}}>Carregando...</div>;
+  if(error)   return <div style={{padding:24,color:'#f87171',fontSize:13}}>{error}</div>;
+
+  return(
+    <div style={{paddingBottom:90,paddingTop:4}}>
+      <div style={{padding:'20px 16px 12px',borderBottom:'1px solid #0f1825'}}>
+        <div style={{fontSize:16,fontWeight:800,color:'#dde'}}>🛡️ Painel Admin</div>
+        <div style={{fontSize:11,color:'#445',marginTop:2}}>{profiles.length} conta{profiles.length!==1?'s':''} cadastrada{profiles.length!==1?'s':''}</div>
+      </div>
+      <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:10}}>
+        {profiles.map(p=>(
+          <div key={p.uid} style={{background:'#0d1118',border:'1px solid #111820',borderRadius:12,padding:'13px 14px',display:'flex',gap:12,alignItems:'flex-start'}}>
+            {p.photoURL
+              ? <img src={p.photoURL} alt="" style={{width:40,height:40,borderRadius:'50%',objectFit:'cover',flexShrink:0}}/>
+              : <div style={{width:40,height:40,borderRadius:'50%',background:'linear-gradient(135deg,#1a3a6e,#0d2247)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>👤</div>
+            }
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:700,color:'#dde',marginBottom:2}}>
+                {p.displayName||'Sem nome'} {p.email===ADMIN_EMAIL&&<span style={{fontSize:9,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.2)',borderRadius:4,padding:'1px 6px',marginLeft:4}}>ADMIN</span>}
+              </div>
+              <div style={{fontSize:11,color:'#8ab4f8',marginBottom:4}}>{p.email}</div>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <span style={{fontSize:10,color:'#445'}}>{providerIcon(p.provider)} {p.provider==='google.com'?'Google':'E-mail'}</span>
+                <span style={{fontSize:10,color:'#334'}}>Cadastro: {fmtDt(p.createdAt)}</span>
+              </div>
+              <div style={{fontSize:10,color:'#334',marginTop:2}}>Último acesso: {fmtDt(p.lastLogin)}</div>
+              <div style={{fontSize:9,color:'#222',marginTop:3,fontFamily:'monospace'}}>{p.uid}</div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
