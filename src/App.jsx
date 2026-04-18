@@ -260,6 +260,7 @@ function MainApp({ fbUser, onLogout }){
   const [filterCat,    setFilterCat]    = useState("all");
   const [dbReady,      setDbReady]      = useState(false);
   const [showMoreNav,  setShowMoreNav]  = useState(false);
+  const [showFabMenu,  setShowFabMenu]  = useState(false);
   const {toasts,toast} = useToast();
 
   // ─── Firestore: carregar + migrar dados na nuvem ──────────────
@@ -861,12 +862,32 @@ function MainApp({ fbUser, onLogout }){
 
       {/* FAB — novo lançamento (visível na aba Contas) */}
       {activeTab==="lancamentos"&&!showForm&&!editTarget&&!delTarget&&(
-        <button onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);}}
-          style={{position:"fixed",bottom:82,right:16,width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e55",color:"#8ab4f8",fontSize:28,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.6)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .15s,box-shadow .15s"}}
-          onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.boxShadow="0 10px 28px rgba(0,0,0,.7)";}}
-          onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,.6)";}}>
-          +
-        </button>
+        <>
+          {/* Backdrop para fechar o menu */}
+          {showFabMenu&&<div style={{position:"fixed",inset:0,zIndex:48}} onClick={()=>setShowFabMenu(false)}/>}
+
+          {/* Mini-menu: Receita / Despesa */}
+          {showFabMenu&&(
+            <div style={{position:"fixed",bottom:144,right:16,display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",zIndex:49}}>
+              <button onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);setShowFabMenu(false);}}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",background:"rgba(74,222,128,.15)",border:"1.5px solid #4ade8055",borderRadius:12,color:"#4ade80",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,.5)",whiteSpace:"nowrap"}}>
+                <span style={{fontSize:16}}>📈</span> Receita
+              </button>
+              <button onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);setShowFabMenu(false);}}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"9px 14px",background:"rgba(251,146,60,.15)",border:"1.5px solid #fb923c55",borderRadius:12,color:"#fb923c",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 4px 16px rgba(0,0,0,.5)",whiteSpace:"nowrap"}}>
+                <span style={{fontSize:16}}>📉</span> Despesa
+              </button>
+            </div>
+          )}
+
+          {/* Botão FAB principal */}
+          <button onClick={()=>setShowFabMenu(p=>!p)}
+            style={{position:"fixed",bottom:82,right:16,width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e55",color:"#8ab4f8",fontSize:26,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.6)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .15s,box-shadow .15s",transform:showFabMenu?"rotate(45deg)":"rotate(0deg)"}}
+            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 10px 28px rgba(0,0,0,.7)";}}
+            onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,.6)";}}>
+            +
+          </button>
+        </>
       )}
 
       {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}}/>}
