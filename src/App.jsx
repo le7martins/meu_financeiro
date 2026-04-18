@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from './firebase';
 import { loadUserData, saveData, hasCloudData, saveUserProfile, loadAllProfiles, ADMIN_EMAIL } from './db';
 import { registerFCMToken, onForegroundMessage } from './fcm';
@@ -1615,13 +1615,46 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
 }
 
 // ─── Profile Screen ───────────────────────────────────────────
-function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onTestNotif,onBackup,onRestore,theme,onTheme,fbUser,onLogout}){
+function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout}){
   const [confirmReset,setConfirmReset]=useState(false);
   const [confirmLogout,setConfirmLogout]=useState(false);
+  const [editName,setEditName]=useState(false);
+  const [newName,setNewName]=useState('');
+  const [nameLoading,setNameLoading]=useState(false);
+  const [editPass,setEditPass]=useState(false);
+  const [curPass,setCurPass]=useState('');
+  const [newPass,setNewPass]=useState('');
+  const [passLoading,setPassLoading]=useState(false);
+  const [passErr,setPassErr]=useState('');
   const permColor=notifPerm==="granted"?"#4ade80":notifPerm==="denied"?"#f87171":"#facc15";
   const permLabel=notifPerm==="granted"?"Ativadas":notifPerm==="denied"?"Bloqueadas pelo browser":notifPerm==="unsupported"?"Não suportado":"Não permitidas";
-  const displayName = fbUser?.displayName || fbUser?.email?.split("@")[0] || "Usuário";
-  const photoURL    = fbUser?.photoURL;
+  const displayName=fbUser?.displayName||fbUser?.email?.split("@")[0]||"Usuário";
+  const photoURL=fbUser?.photoURL;
+  const isEmailProvider=fbUser?.providerData?.some(p=>p.providerId==="password");
+
+  const handleSaveName=async()=>{
+    if(!newName.trim())return;
+    setNameLoading(true);
+    try{
+      await updateProfile(fbUser,{displayName:newName.trim()});
+      setEditName(false);
+    }catch(e){console.warn(e);}
+    setNameLoading(false);
+  };
+  const handleSavePass=async()=>{
+    if(newPass.length<6){setPassErr("Mínimo 6 caracteres");return;}
+    setPassLoading(true);setPassErr('');
+    try{
+      const cred=EmailAuthProvider.credential(fbUser.email,curPass);
+      await reauthenticateWithCredential(fbUser,cred);
+      await updatePassword(fbUser,newPass);
+      setEditPass(false);setCurPass('');setNewPass('');
+    }catch(e){
+      setPassErr(e.code==='auth/wrong-password'?'Senha atual incorreta':'Erro ao alterar senha');
+    }
+    setPassLoading(false);
+  };
+
   return(
     <div style={{paddingBottom:90,paddingTop:4}}>
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 16px 20px",borderBottom:"1px solid #0f1825"}}>
@@ -1634,9 +1667,12 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
         <div style={{fontSize:11,color:"#445"}}>{entries.length} lançamentos · {(dividas||[]).length} dívidas</div>
       </div>
       <div style={{padding:"16px 14px",display:"flex",flexDirection:"column",gap:12}}>
+
         <ProfileSection title="Conta">
+          <ProfileItem icon="✏️" label="Alterar nome" sub={displayName} onClick={()=>{setNewName(displayName);setEditName(true);}}/>
+          {isEmailProvider&&<ProfileItem icon="🔑" label="Alterar senha" sub="Trocar senha da conta" onClick={()=>{setEditPass(true);setCurPass('');setNewPass('');setPassErr('');}}/>}
           {!confirmLogout
-            ? <ProfileItem icon="🚪" label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)}/>
+            ? <ProfileItem icon="🚪" label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)} danger/>
             : <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                 <span style={{fontSize:13,color:"#dde"}}>Confirmar saída?</span>
                 <div style={{display:"flex",gap:8}}>
@@ -1648,7 +1684,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
         </ProfileSection>
 
         <ProfileSection title="Notificações">
-          <div style={{padding:"13px 14px",borderBottom:"1px solid #0f1825"}}>
+          <div style={{padding:"13px 14px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               <div><div style={{fontSize:13,fontWeight:600,color:"#dde"}}>🔔 Alertas de vencimento e recebimento</div><div style={{fontSize:11,color:permColor,marginTop:2}}>{permLabel}</div></div>
               {notifPerm==="granted"
@@ -1665,18 +1701,16 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
                   ))}
                 </div>
               </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
                 <div><div style={{fontSize:12,color:"#dde",fontWeight:600}}>Alertar contas vencidas</div><div style={{fontSize:10,color:"#445"}}>Notificar sobre pagamentos atrasados</div></div>
                 <Toggle checked={notifSettings.overdueAlert} onChange={v=>onNotifSettings({...notifSettings,overdueAlert:v})}/>
               </div>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <div><div style={{fontSize:12,color:"#dde",fontWeight:600}}>Alertar recebimentos</div><div style={{fontSize:10,color:"#445"}}>Notificar sobre receitas esperadas</div></div>
                 <Toggle checked={notifSettings.incomeAlert!==false} onChange={v=>onNotifSettings({...notifSettings,incomeAlert:v})}/>
               </div>
-              <button onClick={onTestNotif} style={{width:"100%",padding:"9px",background:"rgba(138,180,248,.1)",border:"1px solid #1a3a6e44",borderRadius:9,color:"#8ab4f8",fontSize:12,fontWeight:600,cursor:"pointer"}}>🔔 Verificar agora</button>
             </>)}
           </div>
-          <ProfileItem icon="📅" label="Verificar ao abrir" sub="Checa vencimentos uma vez por dia" last/>
         </ProfileSection>
 
         <ProfileSection title="Exportar dados">
@@ -1708,11 +1742,47 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
         </ProfileSection>
 
         <ProfileSection title="Sobre">
-          <ProfileItem icon="📱" label="Meu Financeiro" sub="Versão 1.2.0"/>
-          <ProfileItem icon="🔧" label="Desenvolvido com" sub="React · SVG Charts · Claude" last/>
+          <ProfileItem icon="📱" label="Meu Financeiro" sub="Versão 1.2.0" last/>
         </ProfileSection>
       </div>
 
+      {/* Modal: alterar nome */}
+      {editName&&(
+        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditName(false)}>
+          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+            <div style={S.mHeader}><div style={S.mTitle}>Alterar nome</div><button style={S.xBtn} onClick={()=>setEditName(false)}>✕</button></div>
+            <input style={{...S.inp,marginBottom:16}} placeholder="Seu nome" value={newName} onChange={e=>setNewName(e.target.value)} autoFocus/>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setEditName(false)} style={{flex:1,padding:"11px",background:"#111820",border:"1px solid #1a2840",borderRadius:10,color:"#556",fontSize:13,cursor:"pointer"}}>Cancelar</button>
+              <button onClick={handleSaveName} disabled={nameLoading||!newName.trim()} style={{flex:1,padding:"11px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:"pointer",opacity:nameLoading||!newName.trim()?0.5:1}}>
+                {nameLoading?"Salvando...":"Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: alterar senha */}
+      {editPass&&(
+        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPass(false)}>
+          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+            <div style={S.mHeader}><div style={S.mTitle}>Alterar senha</div><button style={S.xBtn} onClick={()=>setEditPass(false)}>✕</button></div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+              <div><label style={S.lbl}>Senha atual</label><input style={S.inp} type="password" placeholder="••••••••" value={curPass} onChange={e=>setCurPass(e.target.value)}/></div>
+              <div><label style={S.lbl}>Nova senha</label><input style={S.inp} type="password" placeholder="Mínimo 6 caracteres" value={newPass} onChange={e=>setNewPass(e.target.value)}/></div>
+              {passErr&&<div style={{fontSize:12,color:"#f87171"}}>⚠️ {passErr}</div>}
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setEditPass(false)} style={{flex:1,padding:"11px",background:"#111820",border:"1px solid #1a2840",borderRadius:10,color:"#556",fontSize:13,cursor:"pointer"}}>Cancelar</button>
+              <button onClick={handleSavePass} disabled={passLoading||!curPass||!newPass} style={{flex:1,padding:"11px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:"pointer",opacity:passLoading||!curPass||!newPass?0.5:1}}>
+                {passLoading?"Salvando...":"Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: confirmar reset */}
       {confirmReset&&(
         <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmReset(false)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
