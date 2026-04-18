@@ -1742,6 +1742,14 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
   const [editCats,setEditCats]=useState(false);
   const [addingCat,setAddingCat]=useState(false);
   const [touched,setTouched]=useState({});
+  const [displayAmt,setDisplayAmt]=useState(form.amount?parseFloat(form.amount).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'');
+  const handleAmtChange=(e)=>{
+    const digits=e.target.value.replace(/\D/g,'');
+    if(!digits){setDisplayAmt('');set('amount','');return;}
+    const num=parseInt(digits,10)/100;
+    setDisplayAmt(num.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+    set('amount',String(num));
+  };
   const descErr=touched.description&&!form.description?.trim()?"Descrição obrigatória":null;
   const amtErr=touched.amount&&(!form.amount||parseFloat(form.amount)<=0)?"Informe um valor válido":null;
   const isValid=form.description?.trim()&&form.amount&&parseFloat(form.amount)>0;
@@ -1758,13 +1766,12 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
       <div style={S.modal} className="modal-in">
         <div style={S.mHeader}><div><div style={S.mTitle}>Novo Lançamento</div><div style={{fontSize:11,color:typeColor,fontWeight:600,marginTop:3}}>{type==="receita"?"🟢 Receita":"🔴 Despesa"}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label={<>Descrição <span style={{color:"#f87171"}}>*</span></>}>
-          <input style={{...S.inp,borderColor:descErr?"#f87171":"var(--border,#111820)"}} placeholder={type==="receita"?"Ex: Salário, VA, VR...":"Ex: Conta de luz, Aluguel..."} value={form.description} onChange={e=>set("description",e.target.value)} onBlur={()=>setTouched(p=>({...p,description:true}))}/>
+          <input style={{...S.inp,borderColor:descErr?"#f87171":"var(--border,#111820)"}} placeholder={type==="receita"?"Ex: Salário, freelance...":"Ex: Conta de luz, aluguel..."} value={form.description} onChange={e=>set("description",e.target.value)} onBlur={()=>setTouched(p=>({...p,description:true}))}/>
           {descErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171"}}>⚠️ {descErr}</div>}
-          {type==="receita"&&(<div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:7}}>{["Salário","VA","VR","Freelance","13º Salário","Férias","PLR","Bônus","Dividendos","Aluguel recebido"].map(s=>(<button key={s} onClick={()=>set("description",s)} style={{padding:"4px 9px",background:form.description===s?"#4ade8020":"rgba(255,255,255,0.04)",border:`1px solid ${form.description===s?"#4ade8055":"#111820"}`,borderRadius:6,color:form.description===s?"#4ade80":"#556",fontSize:11,cursor:"pointer",fontWeight:500}}>{s}</button>))}</div>)}
         </Field>
         <div style={{display:"flex",gap:10}}>
           <Field label={<>Valor (R$) <span style={{color:"#f87171"}}>*</span></>} style={{flex:1}}>
-            <input style={{...S.inp,borderColor:amtErr?"#f87171":"var(--border,#111820)"}} type="number" placeholder="0,00" min="0" step="0.01" value={form.amount} onChange={e=>set("amount",e.target.value)} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
+            <input style={{...S.inp,borderColor:amtErr?"#f87171":"var(--border,#111820)"}} type="text" inputMode="numeric" placeholder="0,00" value={displayAmt} onChange={handleAmtChange} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
             {amtErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171"}}>⚠️ {amtErr}</div>}
           </Field>
           <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
