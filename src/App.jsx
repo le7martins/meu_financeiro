@@ -1937,7 +1937,7 @@ function BarSVG({data,type,faded}){
     <div style={{position:"relative",width:"100%"}} onMouseLeave={()=>setTip(null)} onTouchEnd={()=>setTimeout(()=>setTip(null),2000)}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
         <defs>{series.filter(s=>s.line).map(s=>(<linearGradient key={s.key} id={`g_${s.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={s.color} stopOpacity="0.2"/><stop offset="100%" stopColor={s.color} stopOpacity="0"/></linearGradient>))}</defs>
-        {yTicks.map((v,i)=>(<g key={i}><line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} stroke="var(--border)" strokeDasharray="3 3"/><text x={PL-4} y={toY(v)+4} textAnchor="end" fill="var(--text3)" fontSize="9">{fmtShort(v)}</text></g>))}
+        {yTicks.map((v,i)=>(<g key={i}><line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} stroke="#111820" strokeDasharray="3 3"/><text x={PL-4} y={toY(v)+4} textAnchor="end" fill="#445" fontSize="9">{fmtShort(v)}</text></g>))}
         {minVal<0&&<line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} stroke="#334" strokeWidth="1"/>}
         {type==="evolucao"&&series.filter(s=>!s.line).map(s=>(<path key={s.key+"_a"} d={areaFor(s.key)} fill={s.color} opacity="0.12"/>))}
         {type==="evolucao"&&series.filter(s=>s.line).map(s=>(<path key={s.key+"_a"} d={areaFor(s.key)} fill={`url(#g_${s.key})`}/>))}
@@ -1950,7 +1950,7 @@ function BarSVG({data,type,faded}){
           });
         })}
         {type==="evolucao"&&series.filter(s=>s.line).map(s=>data.map((d,i)=>(<circle key={i} cx={toX(i)} cy={toY(d[s.key]||0)} r="3" fill={s.color} onMouseEnter={()=>setTip({di:i,d,x:toX(i)})} onTouchStart={()=>setTip({di:i,d,x:toX(i)})}/>)))}
-        {data.map((d,i)=>(<text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6} textAnchor="middle" fill="var(--text3)" fontSize="9">{d.month}</text>))}
+        {data.map((d,i)=>(<text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6} textAnchor="middle" fill="#445" fontSize="9">{d.month}</text>))}
         {tip&&(()=>{const tx=Math.min(Math.max(tip.x-44,PL),W-92),ty=PT+8,d=tip.d;return(<g><rect x={tx} y={ty} width={90} height={type==="evolucao"?56:42} rx="6" fill="#0d1118" stroke="#1a2840" strokeWidth="1"/><text x={tx+45} y={ty+14} textAnchor="middle" fill="#8ab4f8" fontSize="9" fontWeight="bold">{d.month}</text><text x={tx+4} y={ty+27} fill="#4ade80" fontSize="9">↑ {fmtShort(d.receitas)}</text><text x={tx+4} y={ty+40} fill="#fb923c" fontSize="9">↓ {fmtShort(d.despesas)}</text>{type==="evolucao"&&<text x={tx+4} y={ty+53} fill="#8ab4f8" fontSize="9">≈ {fmtShort(d.saldo)}</text>}</g>);})()}
       </svg>
     </div>
@@ -2263,6 +2263,12 @@ const CSS=`
   .light-mode .emptyState .emptyTitle { color: #374151 !important; }
   .light-mode .emptyState .emptySub { color: #6b7280 !important; }
 
+  /* SVG text/lines in charts (fill/stroke attrs don't support CSS vars, override via CSS) */
+  .light-mode .chartBox text[fill="#445"] { fill: #6b7280 !important; }
+  .light-mode .chartBox line[stroke="#111820"] { stroke: #e5e7eb !important; }
+  .light-mode .scoreCard circle[stroke="#111820"] { stroke: #e5e7eb !important; }
+  .light-mode .scoreCard text[fill="#445"] { fill: #6b7280 !important; }
+
   /* ── Specific element fixes in light mode ── */
 
   /* Month label (large white text) */
@@ -2355,9 +2361,9 @@ const CSS=`
   /* Month in SVG chart tooltip */
   [data-theme="light"] [fill="#0d1118"] { fill: #ffffff !important; }
   [data-theme="light"] [fill="#1a2840"] { fill: #e5e7eb !important; }
-  [data-theme="light"] [fill="var(--text3)"] { fill: #6b7280 !important; }
+  [data-theme="light"] [fill="#445"] { fill: #6b7280 !important; }
   [data-theme="light"] [fill="#8ab4f8"] { fill: #2563eb !important; }
-  [data-theme="light"] [stroke="var(--border)"] { stroke: #e5e7eb !important; }
+  [data-theme="light"] [stroke="#111820"] { stroke: #e5e7eb !important; }
 
   /* SVG chart legend text */
   [data-theme="light"] .chartBox [style*="color:#445"] { color: #6b7280 !important; }
@@ -2418,9 +2424,9 @@ const CSS=`
   .light-mode [style*="background:rgba(251,146,60,.07)"] { background: #fff7ed !important; }
 
   /* ── Health score circle track ── */
-  .light-mode [stroke="var(--border)"] { stroke: #e5e7eb !important; }
+  .light-mode [stroke="#111820"] { stroke: #e5e7eb !important; }
   .light-mode [fill="#111820"] { fill: #f3f4f6 !important; }
-  .light-mode [fill="var(--text3)"] { fill: #6b7280 !important; }
+  .light-mode [fill="#445"] { fill: #6b7280 !important; }
 
   /* ── Scrollbar ── */
   .light-mode ::-webkit-scrollbar-thumb { background: #d1d5db !important; }
@@ -2563,18 +2569,18 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
       <div style={{padding:"14px 14px 0",display:"flex",flexDirection:"column",gap:12}}>
 
         {/* Score */}
-        <div style={{background:"linear-gradient(135deg,var(--card-bg),var(--card-bg2))",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px",textAlign:"center"}}>
+        <div className="scoreCard" style={{background:"linear-gradient(135deg,var(--card-bg),var(--card-bg2))",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px",textAlign:"center"}}>
           <div style={{fontSize:11,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Score do mês</div>
           <div style={{position:"relative",width:110,height:110,margin:"0 auto 12px"}}>
             <svg viewBox="0 0 110 110" style={{width:"100%",height:"100%"}}>
-              <circle cx="55" cy="55" r="46" fill="none" stroke="var(--border)" strokeWidth="10"/>
+              <circle cx="55" cy="55" r="46" fill="none" stroke="#111820" strokeWidth="10"/>
               <circle cx="55" cy="55" r="46" fill="none" stroke={scoreColor} strokeWidth="10"
                 strokeDasharray={`${(score/100)*289} 289`}
                 strokeLinecap="round"
                 transform="rotate(-90 55 55)"
                 style={{transition:"stroke-dasharray .8s ease"}}/>
               <text x="55" y="52" textAnchor="middle" fill={scoreColor} fontSize="26" fontWeight="800">{score}</text>
-              <text x="55" y="68" textAnchor="middle" fill="var(--text3)" fontSize="10">pontos</text>
+              <text x="55" y="68" textAnchor="middle" fill="#445" fontSize="10">pontos</text>
             </svg>
           </div>
           <div style={{fontSize:16,fontWeight:700,color:scoreColor}}>{scoreLabel}</div>
