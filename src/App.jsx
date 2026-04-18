@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
+import { loadUserData, saveData, hasCloudData } from './db';
 import LoginScreen from './LoginScreen';
 // ─── Utils ────────────────────────────────────────────────────
 const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
@@ -231,6 +232,7 @@ function MainApp({ fbUser, onLogout }){
   const uid = fbUser.uid;
   const k = (key) => `mf2_${uid}_${key}`;
 
+  // Carrega do localStorage como estado inicial (cache offline)
   const [entries,      setEntries]      = useState(()=>loadLS(k("entries"),[]));
   const [dividas,      setDividas]      = useState(()=>loadLS(k("dividas"),[]));
   const [cards,        setCards]        = useState(()=>loadLS(k("cards"),[]));
@@ -255,27 +257,98 @@ function MainApp({ fbUser, onLogout }){
   const [goals,        setGoals]        = useState(()=>loadLS(k("goals"),{monthly:0,savingsPct:20}));
   const [budgets,      setBudgets]      = useState(()=>loadLS(k("budgets"),{}));
   const [filterCat,    setFilterCat]    = useState("all");
+  const [dbReady,      setDbReady]      = useState(false);
   const {toasts,toast} = useToast();
 
-  const saveEntries   =(e)=>{setEntries(e);   saveLS(k("entries"),e);};
-  const saveDividas   =(d)=>{setDividas(d);   saveLS(k("dividas"),d);};
-  const saveCards     =(c)=>{setCards(c);     saveLS(k("cards"),c);};
-  const saveCardPurchases=(p)=>{setCardPurchases(p);saveLS(k("cpurchases"),p);};
-  const saveCardFaturas  =(f)=>{setCardFaturas(f); saveLS(k("cfaturas"),f);};
-  const saveCategories=(c)=>{setCategories(c);saveLS(k("cats"),c);};
-  const saveNotifSettings=(s)=>{setNotifSettings(s);saveLS(k("notif_settings"),s);};
-  const saveTheme=(t)=>{setTheme(t);saveLS(k("theme"),t);};
-  const saveGoals=(g)=>{setGoals(g);saveLS(k("goals"),g);};
-  const saveBudgets=(b)=>{setBudgets(b);saveLS(k("budgets"),b);};
+  // ─── Firestore: carregar + migrar dados na nuvem ──────────────
+  useEffect(()=>{
+    async function syncFromCloud(){
+      try {
+        const cloud = await loadUserData(uid);
+        const hasCloud = Object.keys(cloud).length > 0;
+
+        if(hasCloud){
+          // Nuvem tem dados → usa como fonte de verdade
+          if(cloud.entries)   { setEntries(cloud.entries);   saveLS(k("entries"),   cloud.entries);   }
+          if(cloud.dividas)   { setDividas(cloud.dividas);   saveLS(k("dividas"),   cloud.dividas);   }
+          if(cloud.cards)     { setCards(cloud.cards);       saveLS(k("cards"),     cloud.cards);     }
+          if(cloud.purchases) { setCardPurchases(cloud.purchases); saveLS(k("cpurchases"), cloud.purchases); }
+          if(cloud.faturas)   { setCardFaturas(cloud.faturas);    saveLS(k("cfaturas"),   cloud.faturas);   }
+          if(cloud.settings){
+            const s = cloud.settings;
+            if(s.categories)    { setCategories(s.categories);       saveLS(k("cats"),          s.categories);    }
+            if(s.notifSettings) { setNotifSettings(s.notifSettings); saveLS(k("notif_settings"),s.notifSettings); }
+            if(s.theme)         { setTheme(s.theme);                 saveLS(k("theme"),         s.theme);         }
+            if(s.goals)         { setGoals(s.goals);                 saveLS(k("goals"),         s.goals);         }
+            if(s.budgets)       { setBudgets(s.budgets);             saveLS(k("budgets"),        s.budgets);       }
+          }
+        } else {
+          // Sem dados na nuvem → migra o que estiver no localStorage
+          const lsEntries   = loadLS(k("entries"),[]);
+          const lsDividas   = loadLS(k("dividas"),[]);
+          const lsCards     = loadLS(k("cards"),[]);
+          const lsPurchases = loadLS(k("cpurchases"),[]);
+          const lsFaturas   = loadLS(k("cfaturas"),{});
+          const lsCats      = loadLS(k("cats"),DEFAULT_CATS);
+          if(lsEntries.length||lsDividas.length||lsCards.length){
+            await Promise.all([
+              saveData(uid,'entries',  lsEntries),
+              saveData(uid,'dividas',  lsDividas),
+              saveData(uid,'cards',    lsCards),
+              saveData(uid,'purchases',lsPurchases),
+              saveData(uid,'faturas',  lsFaturas),
+              saveData(uid,'settings', {
+                categories: lsCats,
+                notifSettings: loadLS(k("notif_settings"),defaultNotifSettings),
+                theme: loadLS(k("theme"),"dark"),
+                goals: loadLS(k("goals"),{monthly:0,savingsPct:20}),
+                budgets: loadLS(k("budgets"),{}),
+              }),
+            ]);
+          }
+        }
+      } catch(e){
+        console.warn('[Firestore] Usando dados locais (offline?):', e.message);
+      } finally {
+        setDbReady(true);
+      }
+    }
+    syncFromCloud();
+  },[uid]);
+
+  // ─── Funções de salvamento: localStorage + Firestore ─────────
+  const saveEntries   =(e)=>{ setEntries(e);        saveLS(k("entries"),e);    saveData(uid,'entries',e);   };
+  const saveDividas   =(d)=>{ setDividas(d);        saveLS(k("dividas"),d);    saveData(uid,'dividas',d);   };
+  const saveCards     =(c)=>{ setCards(c);          saveLS(k("cards"),c);      saveData(uid,'cards',c);     };
+  const saveCardPurchases=(p)=>{ setCardPurchases(p); saveLS(k("cpurchases"),p); saveData(uid,'purchases',p); };
+  const saveCardFaturas  =(f)=>{ setCardFaturas(f);   saveLS(k("cfaturas"),f);   saveData(uid,'faturas',f);   };
+
+  const _saveSettings=(patch)=>{
+    const cur = {
+      categories: loadLS(k("cats"),DEFAULT_CATS),
+      notifSettings: loadLS(k("notif_settings"),defaultNotifSettings),
+      theme: loadLS(k("theme"),"dark"),
+      goals: loadLS(k("goals"),{monthly:0,savingsPct:20}),
+      budgets: loadLS(k("budgets"),{}),
+      ...patch,
+    };
+    saveData(uid,'settings',cur);
+  };
+  const saveCategories   =(c)=>{ setCategories(c);    saveLS(k("cats"),c);           _saveSettings({categories:c});    };
+  const saveNotifSettings=(s)=>{ setNotifSettings(s); saveLS(k("notif_settings"),s); _saveSettings({notifSettings:s}); };
+  const saveTheme        =(t)=>{ setTheme(t);         saveLS(k("theme"),t);           _saveSettings({theme:t});         };
+  const saveGoals        =(g)=>{ setGoals(g);         saveLS(k("goals"),g);           _saveSettings({goals:g});         };
+  const saveBudgets      =(b)=>{ setBudgets(b);       saveLS(k("budgets"),b);         _saveSettings({budgets:b});       };
 
   const NOW=getNow();
 
   useEffect(()=>{
+    if(!dbReady) return;
     if(notifSettings.enabled&&Notification.permission==="granted"){
       const lastCheck=loadLS(k("notif_last"),null);
       if(lastCheck!==TODAY) setTimeout(()=>{checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings);saveLS(k("notif_last"),TODAY);},1500);
     }
-  },[]);
+  },[dbReady]);
 
   const monthEntries=useMemo(()=>getMonthEntries(entries,dividas,selMonth,cards,cardPurchases,cardFaturas),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
 
