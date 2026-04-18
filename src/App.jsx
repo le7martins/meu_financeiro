@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { loadUserData, saveData, hasCloudData, saveUserProfile, loadAllProfiles, ADMIN_EMAIL } from './db';
+import { registerFCMToken, onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
 // ─── Utils ────────────────────────────────────────────────────
 const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
@@ -311,10 +312,20 @@ function MainApp({ fbUser, onLogout }){
         console.warn('[Firestore] Usando dados locais (offline?):', e.message);
       } finally {
         setDbReady(true);
+        registerFCMToken(uid);
       }
     }
     syncFromCloud();
   },[uid]);
+
+  // ─── FCM: mensagens em primeiro plano ────────────────────────
+  useEffect(()=>{
+    const unsub = onForegroundMessage(payload=>{
+      const { title, body } = payload.notification || {};
+      if(title) toast(`🔔 ${title}${body?`: ${body}`:""}`, "info");
+    });
+    return unsub;
+  },[]);
 
   // ─── Funções de salvamento: localStorage + Firestore ─────────
   const saveEntries   =(e)=>{ setEntries(e);        saveLS(k("entries"),e);    saveData(uid,'entries',e);   };
