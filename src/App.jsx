@@ -583,7 +583,7 @@ function MainApp({ fbUser, onLogout }){
             <div style={S.cardMeta}>
               {!entry.isFatura&&<span style={{...S.tag,color:catColor(entry.category),borderColor:catColor(entry.category)+"44",background:catColor(entry.category)+"18"}}>{catName(entry.category)}</span>}
               {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"#f87171":"#8ab4f8",borderColor:entry.isDivida?"#f8717144":"#1a3a6e",background:entry.isDivida?"rgba(248,113,113,.12)":"#0d1a2e"}}>{entry.recurLabel}</span>}
-              <span style={{fontSize:10,color:"#334"}}>{fmtDate(entry.date)}</span>
+              <span style={{fontSize:10,color:"#334"}}>{fmtDate(entry.isRecurring&&entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura?`${selMonth}-${entry.date.split("-")[2]}`:entry.date)}</span>
             </div>
             {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,background:badge.bg,color:badge.color}}>{badge.text}</div>}
             {entry.notes&&<div style={{fontSize:10,color:"#556",marginTop:3,fontStyle:"italic"}}>💬 {entry.notes}</div>}
