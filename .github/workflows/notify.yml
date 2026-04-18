@@ -22,4 +22,4 @@ jobs:
       - name: Run notification script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node --input-type=module scripts/notify.js
+        run: node scripts/notify.mjs
