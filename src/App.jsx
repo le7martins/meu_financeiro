@@ -757,7 +757,7 @@ function MainApp({ fbUser, onLogout }){
         {/* Search + controls — always visible */}
         <div style={{padding:"0 14px 8px",display:"flex",flexDirection:"column",gap:7}}>
           <div style={{position:"relative"}}>
-            <svg style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#445" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <svg style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input style={{...S.inp,paddingLeft:30,fontSize:12}} placeholder="Buscar por descrição ou observação..." value={search} onChange={e=>setSearch(e.target.value)}/>
             {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:14}}>✕</button>}
           </div>
@@ -779,7 +779,7 @@ function MainApp({ fbUser, onLogout }){
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
             {[{id:"all",name:"Todas"},...categories.filter(c=>{const used=monthEntries.some(e=>e.category===c.id);return used;})].map(c=>(
               <button key={c.id} onClick={()=>setFilterCat(c.id)}
-                style={{padding:"3px 9px",borderRadius:6,border:`1px solid ${filterCat===c.id?(c.color||"#8ab4f8"):"#111820"}`,background:filterCat===c.id?(c.color||"#8ab4f8")+"22":"transparent",color:filterCat===c.id?(c.color||"#8ab4f8"):"#445",fontSize:10,fontWeight:600,cursor:"pointer"}}>
+                style={{padding:"3px 9px",borderRadius:6,border:`1px solid ${filterCat===c.id?(c.color||"#8ab4f8"):"#111820"}`,background:filterCat===c.id?(c.color||"#8ab4f8")+"22":"transparent",color:filterCat===c.id?(c.color||"#8ab4f8"):"var(--text3)",fontSize:10,fontWeight:600,cursor:"pointer"}}>
                 {c.id!=="all"&&<span style={{width:5,height:5,borderRadius:"50%",background:c.color,display:"inline-block",marginRight:4,verticalAlign:"middle"}}/>}{c.name}
               </button>
             ))}
@@ -931,7 +931,7 @@ function FaturaPayModal({entry,onPay,onRevert,onClose}){
         <div style={{display:"flex",gap:8,marginBottom:16}}>
           {[["total","✓ Pagar total"],["partial","Pagar parcial"]].map(([t,l])=>(
             <button key={t} onClick={()=>setPayType(t)}
-              style={{flex:1,padding:"10px",background:payType===t?"#0d1a2e":"transparent",border:`1px solid ${payType===t?"#1a3a6e":"#111820"}`,borderRadius:10,color:payType===t?"#8ab4f8":"#445",fontSize:12,fontWeight:600,cursor:"pointer"}}>{l}</button>
+              style={{flex:1,padding:"10px",background:payType===t?"#0d1a2e":"transparent",border:`1px solid ${payType===t?"#1a3a6e":"#111820"}`,borderRadius:10,color:payType===t?"#8ab4f8":"var(--text3)",fontSize:12,fontWeight:600,cursor:"pointer"}}>{l}</button>
           ))}
         </div>
         {isPartial&&(
@@ -1531,8 +1531,8 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
                   return(
                     <button key={m} onClick={()=>toggleMonth(d,m)} title={`${mLabel(m)} — ${isPaid?"Pago":"Pendente"}`}
                       style={{flexShrink:0,width:28,height:28,borderRadius:7,border:`1px solid ${isNow?"#8ab4f8":(isPaid?"#4ade8033":"#111820")}`,background:isPaid?"rgba(74,222,128,.2)":isNow?"rgba(138,180,248,.12)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:1}}>
-                      <span style={{fontSize:7,color:isPaid?"#4ade80":isNow?"#8ab4f8":"#334",fontWeight:700,lineHeight:1}}>{mShort(m)}</span>
-                      <span style={{fontSize:8,color:isPaid?"#4ade80":isNow?"#8ab4f8":"#334",lineHeight:1}}>{isPaid?"✓":i+1}</span>
+                      <span style={{fontSize:7,color:isPaid?"#4ade80":isNow?"#8ab4f8":"var(--text4)",fontWeight:700,lineHeight:1}}>{mShort(m)}</span>
+                      <span style={{fontSize:8,color:isPaid?"#4ade80":isNow?"#8ab4f8":"var(--text4)",lineHeight:1}}>{isPaid?"✓":i+1}</span>
                     </button>
                   );
                 })}
@@ -1724,7 +1724,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
             <label style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 0",borderTop:"1px solid #0f1825",cursor:"pointer"}}>
               <span style={{fontSize:18,flexShrink:0}}>📂</span>
               <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>Restaurar backup</div><div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>Importa dados de um arquivo JSON</div></div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#334" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               <input type="file" accept=".json" onChange={onRestore} style={{display:"none"}}/>
             </label>
           </div>
@@ -1804,7 +1804,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
 }
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
 function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
-function Toggle({checked,onChange,disabled}){return(<button onClick={()=>!disabled&&onChange(!checked)} style={{width:44,height:24,borderRadius:12,background:checked?"#1a3a6e":"#111820",border:`1.5px solid ${checked?"#8ab4f8":"#1a2840"}`,cursor:disabled?"default":"pointer",position:"relative",transition:"all .2s",flexShrink:0}}><div style={{width:18,height:18,borderRadius:"50%",background:checked?"#8ab4f8":"#667",position:"absolute",top:"50%",transform:`translateY(-50%) translateX(${checked?20:2}px)`,transition:"all .2s"}}/></button>);}
+function Toggle({checked,onChange,disabled}){return(<button onClick={()=>!disabled&&onChange(!checked)} style={{width:44,height:24,borderRadius:12,background:checked?"#1a3a6e":"#111820",border:`1.5px solid ${checked?"#8ab4f8":"#1a2840"}`,cursor:disabled?"default":"pointer",position:"relative",transition:"all .2s",flexShrink:0}}><div style={{width:18,height:18,borderRadius:"50%",background:checked?"#8ab4f8":"var(--text4)",position:"absolute",top:"50%",transform:`translateY(-50%) translateX(${checked?20:2}px)`,transition:"all .2s"}}/></button>);}
 
 // ─── Form Modal ───────────────────────────────────────────────
 function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose}){
@@ -1937,8 +1937,8 @@ function BarSVG({data,type,faded}){
     <div style={{position:"relative",width:"100%"}} onMouseLeave={()=>setTip(null)} onTouchEnd={()=>setTimeout(()=>setTip(null),2000)}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
         <defs>{series.filter(s=>s.line).map(s=>(<linearGradient key={s.key} id={`g_${s.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={s.color} stopOpacity="0.2"/><stop offset="100%" stopColor={s.color} stopOpacity="0"/></linearGradient>))}</defs>
-        {yTicks.map((v,i)=>(<g key={i}><line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} stroke="#111820" strokeDasharray="3 3"/><text x={PL-4} y={toY(v)+4} textAnchor="end" fill="#445" fontSize="9">{fmtShort(v)}</text></g>))}
-        {minVal<0&&<line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} stroke="#334" strokeWidth="1"/>}
+        {yTicks.map((v,i)=>(<g key={i}><line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} stroke="#111820" strokeDasharray="3 3"/><text x={PL-4} y={toY(v)+4} textAnchor="end" fill="#889" fontSize="9">{fmtShort(v)}</text></g>))}
+        {minVal<0&&<line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} stroke="#667" strokeWidth="1"/>}
         {type==="evolucao"&&series.filter(s=>!s.line).map(s=>(<path key={s.key+"_a"} d={areaFor(s.key)} fill={s.color} opacity="0.12"/>))}
         {type==="evolucao"&&series.filter(s=>s.line).map(s=>(<path key={s.key+"_a"} d={areaFor(s.key)} fill={`url(#g_${s.key})`}/>))}
         {type==="evolucao"&&series.map(s=>(<path key={s.key} d={pathFor(s.key)} fill="none" stroke={s.color} strokeWidth={s.line?"1.5":"2"} strokeDasharray={s.line?"4 2":"none"}/>))}
@@ -1950,7 +1950,7 @@ function BarSVG({data,type,faded}){
           });
         })}
         {type==="evolucao"&&series.filter(s=>s.line).map(s=>data.map((d,i)=>(<circle key={i} cx={toX(i)} cy={toY(d[s.key]||0)} r="3" fill={s.color} onMouseEnter={()=>setTip({di:i,d,x:toX(i)})} onTouchStart={()=>setTip({di:i,d,x:toX(i)})}/>)))}
-        {data.map((d,i)=>(<text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6} textAnchor="middle" fill="#445" fontSize="9">{d.month}</text>))}
+        {data.map((d,i)=>(<text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6} textAnchor="middle" fill="#889" fontSize="9">{d.month}</text>))}
         {tip&&(()=>{const tx=Math.min(Math.max(tip.x-44,PL),W-92),ty=PT+8,d=tip.d;return(<g><rect x={tx} y={ty} width={90} height={type==="evolucao"?56:42} rx="6" fill="#0d1118" stroke="#1a2840" strokeWidth="1"/><text x={tx+45} y={ty+14} textAnchor="middle" fill="#8ab4f8" fontSize="9" fontWeight="bold">{d.month}</text><text x={tx+4} y={ty+27} fill="#4ade80" fontSize="9">↑ {fmtShort(d.receitas)}</text><text x={tx+4} y={ty+40} fill="#fb923c" fontSize="9">↓ {fmtShort(d.despesas)}</text>{type==="evolucao"&&<text x={tx+4} y={ty+53} fill="#8ab4f8" fontSize="9">≈ {fmtShort(d.saldo)}</text>}</g>);})()}
       </svg>
     </div>
@@ -1971,7 +1971,7 @@ function DonutSVG({data,total}){
   return(
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
       {slices.map((s,i)=>(<path key={i} d={s.path} fill={s.color} opacity={hover===null||hover===i?1:0.4} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} onTouchStart={()=>setHover(i)} style={{cursor:"pointer",transition:"opacity .2s"}}/>))}
-      {hover!==null&&slices[hover]?(<><text x={CX} y={CY-8} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">{(slices[hover].pct*100).toFixed(1)}%</text><text x={CX} y={CY+10} textAnchor="middle" fill={slices[hover].color} fontSize="9">{slices[hover].name}</text></>):(<text x={CX} y={CY+5} textAnchor="middle" fill="#556" fontSize="10">Total</text>)}
+      {hover!==null&&slices[hover]?(<><text x={CX} y={CY-8} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">{(slices[hover].pct*100).toFixed(1)}%</text><text x={CX} y={CY+10} textAnchor="middle" fill={slices[hover].color} fontSize="9">{slices[hover].name}</text></>):(<text x={CX} y={CY+5} textAnchor="middle" fill="#889" fontSize="10">Total</text>)}
     </svg>
   );
 }
@@ -2035,7 +2035,7 @@ const S={
   chipActive: {background:"var(--tab-active-bg, #0d1a2e)",border:"1px solid var(--tab-active-border, #1a3a6e)",color:"var(--tab-active-color, #8ab4f8)"},
   submitBtn:  {width:"100%",padding:"12px",background:"var(--submit-bg, linear-gradient(135deg,#1a3a6e,#0d2247))",border:"1px solid var(--submit-border, #2a4a8e44)",color:"var(--submit-color, #8ab4f8)",borderRadius:11,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4,fontFamily:"inherit"},
   scopeBtn:   {display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:"1px solid",borderRadius:11,cursor:"pointer",background:"transparent",fontFamily:"inherit",width:"100%",textAlign:"left"},
-  selInput:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"var(--text2, #ccd)",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23445' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
+  selInput:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"var(--text2, #ccd)",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
 };
 
 const CSS=`
@@ -2046,7 +2046,7 @@ const CSS=`
   ::-webkit-scrollbar-thumb { background: #1a2a40; border-radius: 2px; }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.35); }
   select option { background: #0d1118; }
-  ::placeholder { color: #334; }
+  ::placeholder { color: #667; }
   .statusToggleBtn:hover { filter: brightness(1.2); transform: scale(1.03); transition: all .15s; }
   .sumAddBtn:hover { filter: brightness(1.3); transform: scale(1.1); transition: all .15s; }
   .arrowBtn:hover { border-color: #1a3a6e !important; color: #8ab4f8 !important; }
@@ -2106,6 +2106,9 @@ const CSS=`
   .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
   .light-mode input[type=date]::-webkit-calendar-picker-indicator { filter: none !important; }
   .light-mode select option { background: #ffffff; color: #111827; }
+  /* Override select dropdown arrow to use dark color in light mode */
+  .light-mode select[style*="background-image"], .light-mode [style*="backgroundImage"][style*="889"] {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important; }
 
   /* ── Text color overrides ── */
   /* Primary text (#dde / #ccd → dark) */
@@ -2265,9 +2268,13 @@ const CSS=`
 
   /* SVG text/lines in charts (fill/stroke attrs don't support CSS vars, override via CSS) */
   .light-mode .chartBox text[fill="#445"] { fill: #6b7280 !important; }
+  .light-mode .chartBox text[fill="#889"] { fill: #6b7280 !important; }
   .light-mode .chartBox line[stroke="#111820"] { stroke: #e5e7eb !important; }
+  .light-mode .chartBox line[stroke="#667"] { stroke: #d1d5db !important; }
   .light-mode .scoreCard circle[stroke="#111820"] { stroke: #e5e7eb !important; }
   .light-mode .scoreCard text[fill="#445"] { fill: #6b7280 !important; }
+  .light-mode .scoreCard text[fill="#889"] { fill: #6b7280 !important; }
+  .light-mode .donutSvg text[fill="#889"] { fill: #6b7280 !important; }
 
   /* ── Specific element fixes in light mode ── */
 
@@ -2362,8 +2369,10 @@ const CSS=`
   [data-theme="light"] [fill="#0d1118"] { fill: #ffffff !important; }
   [data-theme="light"] [fill="#1a2840"] { fill: #e5e7eb !important; }
   [data-theme="light"] [fill="#445"] { fill: #6b7280 !important; }
+  [data-theme="light"] [fill="#889"] { fill: #6b7280 !important; }
   [data-theme="light"] [fill="#8ab4f8"] { fill: #2563eb !important; }
   [data-theme="light"] [stroke="#111820"] { stroke: #e5e7eb !important; }
+  [data-theme="light"] [stroke="#667"] { stroke: #d1d5db !important; }
 
   /* SVG chart legend text */
   [data-theme="light"] .chartBox [style*="color:#445"] { color: #6b7280 !important; }
@@ -2427,6 +2436,8 @@ const CSS=`
   .light-mode [stroke="#111820"] { stroke: #e5e7eb !important; }
   .light-mode [fill="#111820"] { fill: #f3f4f6 !important; }
   .light-mode [fill="#445"] { fill: #6b7280 !important; }
+  .light-mode [fill="#889"] { fill: #6b7280 !important; }
+  .light-mode [stroke="#667"] { stroke: #d1d5db !important; }
 
   /* ── Scrollbar ── */
   .light-mode ::-webkit-scrollbar-thumb { background: #d1d5db !important; }
@@ -2580,7 +2591,7 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
                 transform="rotate(-90 55 55)"
                 style={{transition:"stroke-dasharray .8s ease"}}/>
               <text x="55" y="52" textAnchor="middle" fill={scoreColor} fontSize="26" fontWeight="800">{score}</text>
-              <text x="55" y="68" textAnchor="middle" fill="#445" fontSize="10">pontos</text>
+              <text x="55" y="68" textAnchor="middle" fill="#889" fontSize="10">pontos</text>
             </svg>
           </div>
           <div style={{fontSize:16,fontWeight:700,color:scoreColor}}>{scoreLabel}</div>
@@ -2704,7 +2715,7 @@ function AdminScreen({ fbUser }) {
     <div style={{paddingBottom:90,paddingTop:4}}>
       <div style={{padding:'20px 16px 12px',borderBottom:'1px solid #0f1825'}}>
         <div style={{fontSize:16,fontWeight:800,color:'var(--text1)'}}>🛡️ Painel Admin</div>
-        <div style={{fontSize:11,color:'#445',marginTop:2}}>{profiles.length} conta{profiles.length!==1?'s':''} cadastrada{profiles.length!==1?'s':''}</div>
+        <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{profiles.length} conta{profiles.length!==1?'s':''} cadastrada{profiles.length!==1?'s':''}</div>
       </div>
       <div style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:10}}>
         {profiles.map(p=>(
@@ -2719,11 +2730,11 @@ function AdminScreen({ fbUser }) {
               </div>
               <div style={{fontSize:11,color:'#8ab4f8',marginBottom:4}}>{p.email}</div>
               <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                <span style={{fontSize:10,color:'#445'}}>{providerIcon(p.provider)} {p.provider==='google.com'?'Google':'E-mail'}</span>
-                <span style={{fontSize:10,color:'#334'}}>Cadastro: {fmtDt(p.createdAt)}</span>
+                <span style={{fontSize:10,color:'var(--text3)'}}>{providerIcon(p.provider)} {p.provider==='google.com'?'Google':'E-mail'}</span>
+                <span style={{fontSize:10,color:'var(--text3)'}}>Cadastro: {fmtDt(p.createdAt)}</span>
               </div>
-              <div style={{fontSize:10,color:'#334',marginTop:2}}>Último acesso: {fmtDt(p.lastLogin)}</div>
-              <div style={{fontSize:9,color:'#222',marginTop:3,fontFamily:'monospace'}}>{p.uid}</div>
+              <div style={{fontSize:10,color:'var(--text3)',marginTop:2}}>Último acesso: {fmtDt(p.lastLogin)}</div>
+              <div style={{fontSize:9,color:'var(--text4)',marginTop:3,fontFamily:'monospace'}}>{p.uid}</div>
             </div>
           </div>
         ))}
