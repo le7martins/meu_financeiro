@@ -171,12 +171,11 @@ function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,cardFatura
     for(const bm of allBillings){
       const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm);
       if(fat.total<=0) continue;
-      if(fat.open) continue;
       const dueMk=fat.dueDate.substring(0,7);
       if(dueMk!==monthKey) continue;
       res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
-        date:fat.dueDate,type:"despesa",status:fat.paid?"pago":"a_pagar",statusForMonth:fat.paid?"pago":"a_pagar",
-        category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,faturaKey:fat.key,cardId:card.id,
+        date:fat.dueDate,type:"despesa",status:fat.paid?"pago":fat.open?"preview":"a_pagar",statusForMonth:fat.paid?"pago":fat.open?"preview":"a_pagar",
+        category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:fat.open,closeDate:fat.closeDate,faturaKey:fat.key,cardId:card.id,
         cardColor:card.color,cardName:card.name});
     }
   }
@@ -465,6 +464,7 @@ function MainApp({ fbUser, onLogout }){
 
   const handleToggle=(entry)=>{
     if(entry.isFatura){
+      if(entry.isOpenFatura) return;
       setFatPayTarget(entry); return;
     }
     if(entry.isDivida){
@@ -606,8 +606,9 @@ function MainApp({ fbUser, onLogout }){
     const paidDt=entry.isRecurring?entry.paidDateByMonth?.[selMonth]:entry.paidDate;
     const borderColor=entry.type==="receita"?"#4ade8055":entry.isDivida?"#f8717155":entry.isFatura?`${entry.cardColor}55`:"var(--border)";
     const amtColor=entry.type==="receita"?"#4ade80":entry.isDivida?"#f87171":entry.isFatura?entry.cardColor:"var(--text1)";
+    const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
     return(
-      <div key={`${entry.id}-${selMonth}`} className="eCard" style={{...S.card,borderLeft:`3px solid ${borderColor}`}}>
+      <div key={`${entry.id}-${selMonth}`} className="eCard" style={{...S.card,borderLeft:`3px solid ${borderColor}`,...openStyle}}>
         <div style={S.cardL}>
           <div style={{width:8,height:8,borderRadius:"50%",background:entry.isFatura?entry.cardColor:catColor(entry.category),flexShrink:0,marginTop:3}}/>
           <div style={{minWidth:0,flex:1}}>
@@ -619,6 +620,7 @@ function MainApp({ fbUser, onLogout }){
             </div>
             {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,background:badge.bg,color:badge.color}}>{badge.text}</div>}
             {entry.notes&&<div style={{fontSize:10,color:"var(--text3)",marginTop:3,fontStyle:"italic"}}>💬 {entry.notes}</div>}
+            {entry.isOpenFatura&&<div style={{fontSize:10,color:entry.cardColor,marginTop:3,opacity:0.8}}>🔄 Fecha em {fmtDate(entry.closeDate)}</div>}
             {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:10,color:"#4ade8066",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
           </div>
         </div>
@@ -638,8 +640,8 @@ function MainApp({ fbUser, onLogout }){
             )}
           </div>
           <button onClick={()=>handleToggle(entry)} className="statusToggleBtn"
-            style={{...S.badge,background:entry.statusForMonth==="pago"?"rgba(74,222,128,.15)":"rgba(251,146,60,.15)",color:entry.statusForMonth==="pago"?"#4ade80":"#fb923c",border:`1px solid ${entry.statusForMonth==="pago"?"#4ade8033":"#fb923c33"}`,cursor:"pointer",padding:"4px 8px"}}>
-            {entry.statusForMonth==="pago"?(entry.type==="receita"?"✓ recebido":"✓ pago"):(entry.type==="receita"?"⏳ a receber":"⏳ a pagar")}
+            style={{...S.badge,background:entry.isOpenFatura?"rgba(138,180,248,.1)":entry.statusForMonth==="pago"?"rgba(74,222,128,.15)":"rgba(251,146,60,.15)",color:entry.isOpenFatura?"#8ab4f8":entry.statusForMonth==="pago"?"#4ade80":"#fb923c",border:`1px solid ${entry.isOpenFatura?"#8ab4f833":entry.statusForMonth==="pago"?"#4ade8033":"#fb923c33"}`,cursor:entry.isOpenFatura?"default":"pointer",padding:"4px 8px"}}>
+            {entry.isOpenFatura?"🔄 em aberto":entry.statusForMonth==="pago"?(entry.type==="receita"?"✓ recebido":"✓ pago"):(entry.type==="receita"?"⏳ a receber":"⏳ a pagar")}
           </button>
         </div>
       </div>
