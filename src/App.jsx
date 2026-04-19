@@ -349,11 +349,33 @@ function MainApp({ fbUser, onLogout }){
   };
   const saveCategories   =(c)=>{ setCategories(c);    saveLS(k("cats"),c);           _saveSettings({categories:c});    };
   const saveNotifSettings=(s)=>{ setNotifSettings(s); saveLS(k("notif_settings"),s); _saveSettings({notifSettings:s}); };
-  const saveTheme        =(t)=>{ setTheme(t);         saveLS(k("theme"),t);           _saveSettings({theme:t});         };
+  const saveTheme        =(t)=>{ setTheme(t);         saveLS(k("theme"),t);           _saveSettings({theme:t});         applyTheme(t); };
+
+  // Apply CSS vars directly on <html> — guarantees cascade regardless of <style> tag position
+  function applyTheme(t){
+    const root=document.documentElement;
+    const dark=t!=='light';
+    const vars=dark?{
+      '--text1':'#e2e8f0','--text2':'#cbd5e1','--text3':'#94a3b8','--text4':'#64748b',
+      '--bg':'#080c12','--card-bg':'#0d1118','--card-bg2':'#111820',
+      '--border':'#1e293b','--border2':'#0f172a','--border3':'#1e293b',
+      '--inp-bg':'#080c12','--nav-bg':'#080c12',
+    }:{
+      '--text1':'#0f172a','--text2':'#1e293b','--text3':'#64748b','--text4':'#94a3b8',
+      '--bg':'#f8fafc','--card-bg':'#ffffff','--card-bg2':'#f1f5f9',
+      '--border':'#e2e8f0','--border2':'#e2e8f0','--border3':'#f1f5f9',
+      '--inp-bg':'#ffffff','--nav-bg':'#ffffff',
+    };
+    Object.entries(vars).forEach(([k,v])=>root.style.setProperty(k,v));
+    root.classList.toggle('light-mode',!dark);
+  }
   const saveGoals        =(g)=>{ setGoals(g);         saveLS(k("goals"),g);           _saveSettings({goals:g});         };
   const saveBudgets      =(b)=>{ setBudgets(b);       saveLS(k("budgets"),b);         _saveSettings({budgets:b});       };
 
   const NOW=getNow();
+
+  // Apply theme on mount and whenever theme changes
+  useEffect(()=>{ applyTheme(theme); },[theme]);
 
   useEffect(()=>{
     if(!dbReady) return;
