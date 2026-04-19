@@ -2211,7 +2211,7 @@ function GradCard({label,value,color,bg,icon,onAdd}){
       {onAdd&&<button onClick={onAdd} className="sumAddBtn" style={{width:26,height:26,borderRadius:7,background:`${color}22`,border:`1px solid ${color}44`,color,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,lineHeight:1}}>+</button>}
     </div>
     <div className="gradCardLabel" style={{fontSize:11,color:`${color}99`,fontWeight:600,marginBottom:3,textTransform:"uppercase",letterSpacing:"0.06em"}}>{label}</div>
-    <div className="gradCardValue" style={{fontSize:18,fontWeight:800,color:"#fff",letterSpacing:"-0.5px"}}>{value}</div>
+    <div className="gradCardValue" style={{fontSize:18,fontWeight:800,color:"var(--text1)",letterSpacing:"-0.5px"}}>{value}</div>
   </div>);
 }
 function SumCard({label,value,color,icon,wide,onAdd}){return(<div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,padding:"11px 12px",gridColumn:wide?"span 2":"span 1",display:"flex",alignItems:"center",gap:10}}><div style={{width:30,height:30,borderRadius:9,background:color+"18",display:"flex",alignItems:"center",justifyContent:"center",color,fontSize:14,fontWeight:700,flexShrink:0}}>{icon}</div><div style={{flex:1}}><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>{label}</div><div style={{fontSize:15,fontWeight:700,color,letterSpacing:"-0.4px"}}>{value}</div></div>{onAdd&&<button onClick={onAdd} className="sumAddBtn" style={{width:28,height:28,borderRadius:8,background:color+"22",border:`1px solid ${color}44`,color,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,flexShrink:0,lineHeight:1}}>+</button>}</div>);}
@@ -2261,7 +2261,7 @@ const S={
   chipActive: {background:"var(--tab-active-bg, #0d1a2e)",border:"1px solid var(--tab-active-border, #1a3a6e)",color:"var(--tab-active-color, #8ab4f8)"},
   submitBtn:  {width:"100%",padding:"12px",background:"var(--submit-bg, linear-gradient(135deg,#1a3a6e,#0d2247))",border:"1px solid var(--submit-border, #2a4a8e44)",color:"var(--submit-color, #8ab4f8)",borderRadius:11,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4,fontFamily:"inherit"},
   scopeBtn:   {display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:"1px solid",borderRadius:11,cursor:"pointer",background:"transparent",fontFamily:"inherit",width:"100%",textAlign:"left"},
-  selInput:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"var(--text2, #ccd)",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
+  selInput:   {backgroundColor:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"var(--text2, #ccd)",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
 };
 
 const CSS=`
@@ -2489,7 +2489,17 @@ const CSS=`
     box-shadow: 0 1px 4px rgba(0,0,0,.07) !important;
   }
   .light-mode .gradCardValue { color: #111827 !important; }
-  .light-mode .gradCardLabel { opacity: 0.8; }
+  .light-mode .gradCardLabel { opacity: 1 !important; font-weight: 700 !important; }
+  .light-mode .gradCardLabel[style*="#4ade80"] { color: #15803d !important; }
+  .light-mode .gradCardLabel[style*="#fb923c"] { color: #c2410c !important; }
+  .light-mode .gradCardLabel[style*="#8ab4f8"] { color: #1d4ed8 !important; }
+  .light-mode .gradCardLabel[style*="#facc15"] { color: #a16207 !important; }
+
+  /* Sidebar add buttons in light mode */
+  .light-mode .navAddReceita { background: #f0fdf4 !important; border-color: #22c55e !important; color: #15803d !important; }
+  .light-mode .navAddReceita:hover { background: #dcfce7 !important; }
+  .light-mode .navAddDespesa { background: #fff7ed !important; border-color: #fb923c !important; color: #c2410c !important; }
+  .light-mode .navAddDespesa:hover { background: #ffedd5 !important; }
 
   /* Navigation tabs */
   .light-mode .fTab { border-color: #e5e7eb !important; color: #374151 !important; background: #ffffff !important; }
