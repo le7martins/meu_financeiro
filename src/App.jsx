@@ -649,7 +649,7 @@ function MainApp({ fbUser, onLogout }){
   };
 
   return(
-    <div style={S.root} className={theme === "light" ? "light-mode" : ""} data-theme={theme}>
+    <div style={S.root} className={`appRoot ${theme === "light" ? "light-mode" : ""}`} data-theme={theme}>
       <style>{CSS}</style>
 
       {/* Toast container — posicionado acima da bottom nav */}
@@ -716,7 +716,7 @@ function MainApp({ fbUser, onLogout }){
         </div>
 
         {/* 4 grad cards */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 14px 10px"}}>
+        <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 14px 10px"}}>
           <GradCard label="Receitas" value={fmt(totRec)} color="#4ade80" bg="rgba(74,222,128,.08)"
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
             onAdd={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);}}/>
@@ -881,7 +881,7 @@ function MainApp({ fbUser, onLogout }){
       )}
 
       {/* Bottom nav — 4 abas principais + "Mais" */}
-      <nav style={S.bottomNav}>
+      <nav className="appBottomNav" style={S.bottomNav}>
         {[
           ["lancamentos","Contas",<svg key="l" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
           ["graficos","Análise",<svg key="g" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
@@ -963,7 +963,7 @@ function FaturaPayModal({entry,onPay,onRevert,onClose}){
   const [partialAmt,setPartialAmt]=useState(String(entry.amount));
   const isPartial=payType==="partial";
   if(alreadyPaid) return(
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
         <div style={S.mHeader}><div><div style={S.mTitle}>Fatura paga</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <div style={{background:"rgba(74,222,128,.06)",border:"1px solid #4ade8033",borderRadius:11,padding:"14px",marginBottom:16,textAlign:"center"}}>
@@ -979,7 +979,7 @@ function FaturaPayModal({entry,onPay,onRevert,onClose}){
     </div>
   );
   return(
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
         <div style={S.mHeader}><div><div style={S.mTitle}>Pagar Fatura</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:11,padding:"12px 14px",marginBottom:16,textAlign:"center"}}>
@@ -1478,7 +1478,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
       </div>
 
       {delCardId&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelCardId(null)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelCardId(null)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Excluir cartão</div><button style={S.xBtn} onClick={()=>setDelCardId(null)}>✕</button></div>
             <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
@@ -1494,7 +1494,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
       )}
 
       {showCardForm&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowCardForm(false)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowCardForm(false)}>
           <div style={S.modal} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Novo Cartão</div><button style={S.xBtn} onClick={()=>setShowCardForm(false)}>✕</button></div>
             <Field label="Nome do cartão"><input style={S.inp} placeholder="Ex: Nubank, Inter..." value={cardForm.name} onChange={e=>setCardForm(p=>({...p,name:e.target.value}))}/></Field>
@@ -1519,7 +1519,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
       )}
 
       {showPurchaseForm&&activeCard&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowPurchaseForm(false)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowPurchaseForm(false)}>
           <div style={S.modal} className="modal-in">
             <div style={S.mHeader}>
               <div><div style={S.mTitle}>Nova Compra</div><div style={{fontSize:11,color:activeCard.color,marginTop:2}}>💳 {activeCard.name}</div></div>
@@ -1558,7 +1558,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
 
       {/* Delete purchase confirmation */}
       {delPurchId&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelPurchId(null)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelPurchId(null)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Excluir compra</div><button style={S.xBtn} onClick={()=>setDelPurchId(null)}>✕</button></div>
             <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
@@ -1575,7 +1575,7 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
 
       {/* Edit purchase modal */}
       {editPurch&&(()=>{const ec=cards.find(c=>c.id===editPurch.cardId);const ec2=ec?.color||"#8ab4f8";return(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPurch(null)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPurch(null)}>
           <div style={S.modal} className="modal-in">
             <div style={S.mHeader}><div><div style={S.mTitle}>Editar Compra</div>{ec&&<div style={{fontSize:11,color:ec2,marginTop:2}}>💳 {ec.name}</div>}</div><button style={S.xBtn} onClick={()=>setEditPurch(null)}>✕</button></div>
             <Field label="Descrição"><input style={S.inp} value={editPurch.description} onChange={e=>setEditPurch(p=>({...p,description:e.target.value}))}/></Field>
@@ -1745,7 +1745,7 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
       </div>
 
       {delId&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelId(null)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelId(null)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Excluir dívida</div><button style={S.xBtn} onClick={()=>setDelId(null)}>✕</button></div>
             <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
@@ -1761,7 +1761,7 @@ function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toa
       )}
 
       {showForm&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&(setShowForm(false),setEditId(null))}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&(setShowForm(false),setEditId(null))}>
           <div style={S.modal} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>{editId?"Editar Dívida":"Nova Dívida"}</div><button style={S.xBtn} onClick={()=>{setShowForm(false);setEditId(null);}}>✕</button></div>
             <Field label="Nome da dívida"><input style={S.inp} placeholder="Ex: Cartão Nubank, Empréstimo..." value={dform.name} onChange={e=>setDform(p=>({...p,name:e.target.value}))}/></Field>
@@ -1935,7 +1935,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
 
       {/* Modal: alterar nome */}
       {editName&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditName(false)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditName(false)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Alterar nome</div><button style={S.xBtn} onClick={()=>setEditName(false)}>✕</button></div>
             <input style={{...S.inp,marginBottom:16}} placeholder="Seu nome" value={newName} onChange={e=>setNewName(e.target.value)} autoFocus/>
@@ -1951,7 +1951,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
 
       {/* Modal: alterar senha */}
       {editPass&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPass(false)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPass(false)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Alterar senha</div><button style={S.xBtn} onClick={()=>setEditPass(false)}>✕</button></div>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
@@ -1971,7 +1971,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
 
       {/* Modal: confirmar reset */}
       {confirmReset&&(
-        <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmReset(false)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmReset(false)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Zerar dados</div><button style={S.xBtn} onClick={()=>setConfirmReset(false)}>✕</button></div>
             <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"14px",marginBottom:20,textAlign:"center"}}>
@@ -2019,7 +2019,7 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
   const removeCat=(catId)=>{if(usedIds.has(catId))return;onUpdateCats(categories.filter(c=>c.id!==catId));if(form.category===catId){const r=filteredCats.filter(c=>c.id!==catId);if(r.length>0)set("category",r[0].id);}};
   const typeColor=type==="receita"?"#4ade80":"#fb923c";
   return(
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={S.modal} className="modal-in">
         <div style={S.mHeader}><div><div style={S.mTitle}>Novo Lançamento</div><div style={{fontSize:11,color:typeColor,fontWeight:600,marginTop:3}}>{type==="receita"?"🟢 Receita":"🔴 Despesa"}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label={<>Descrição <span style={{color:"#f87171"}}>*</span></>}>
@@ -2078,7 +2078,7 @@ function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClos
   const removeCat=(catId)=>{if(usedIds.has(catId))return;onUpdateCats(categories.filter(c=>c.id!==catId));if(category===catId){const r=filteredCats.filter(c=>c.id!==catId);if(r.length>0)setCategory(r[0].id);}};
   const save=(scope)=>onSave(entry.id,{description:desc,amount:parseFloat(amount)||eVal(entry),category,status,notes},scope);
   return(
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={S.modal} className="modal-in">
         <div style={S.mHeader}><div><div style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"#8ab4f8",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label="Descrição"><input style={S.inp} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
@@ -2249,6 +2249,62 @@ const CSS=`
   .modal-in { animation: slideUp .28s cubic-bezier(0.32,0.72,0,1); }
   @keyframes toastIn { from { opacity:0; transform: translateY(-12px) scale(0.9); } to { opacity:1; transform: translateY(0) scale(1); } }
   @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+  /* ── Responsive: tablet (≥720px) ── */
+  @media (min-width: 720px) {
+    .appRoot { max-width: 720px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; }
+    .appBottomNav { max-width: 720px !important; }
+    .sumGrid { grid-template-columns: repeat(4, 1fr) !important; }
+  }
+
+  /* ── Responsive: desktop (≥1024px) ── */
+  @media (min-width: 1024px) {
+    body { background: var(--bg) !important; }
+    .appRoot { max-width: 1100px; padding-bottom: 0 !important; box-shadow: 0 0 40px rgba(0,0,0,.3); }
+    /* Bottom nav becomes top horizontal nav */
+    .appBottomNav {
+      position: sticky !important;
+      top: 0 !important;
+      bottom: auto !important;
+      left: auto !important;
+      transform: none !important;
+      max-width: none !important;
+      width: 100% !important;
+      border-top: none !important;
+      border-bottom: 1px solid var(--border) !important;
+      background: var(--bg) !important;
+      backdrop-filter: blur(8px);
+      z-index: 40 !important;
+    }
+    .appBottomNav button { flex-direction: row !important; gap: 8px !important; padding: 14px 18px !important; justify-content: center !important; }
+    .appBottomNav button span:last-child { font-size: 13px !important; margin-top: 0 !important; }
+    /* Modals: centered card instead of bottom sheet */
+    .appOverlay { align-items: center !important; padding: 20px; }
+    .modal-in {
+      max-width: 560px !important;
+      border-radius: 16px !important;
+      max-height: 88vh !important;
+      animation: fadeIn .22s ease-out !important;
+    }
+    /* Toast moves to top-right on desktop */
+    .appRoot > div[style*="position: fixed"][style*="bottom: 82"] {
+      bottom: auto !important;
+      top: 24px !important;
+      right: 24px !important;
+      left: auto !important;
+      transform: none !important;
+    }
+    /* Wider grids */
+    .sumGrid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
+    /* Hero card has more breathing room */
+    .heroCard { padding: 28px 28px !important; }
+  }
+
+  /* ── Responsive: large desktop (≥1280px) ── */
+  @media (min-width: 1280px) {
+    .appRoot { max-width: 1200px; }
+  }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
   -webkit-tap-highlight-color: transparent;
 
@@ -2668,7 +2724,7 @@ function PartialFatModal({ fat, card, onClose, onPay }) {
   const val = parseFloat(amount)||0;
   const remaining = parseFloat((fat.total - val).toFixed(2));
   return(
-    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
         <div style={S.mHeader}>
           <div><div style={S.mTitle}>Pagar Fatura</div>
