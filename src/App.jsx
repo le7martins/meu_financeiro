@@ -904,7 +904,7 @@ function MainApp({ fbUser, onLogout }){
 
       {/* Menu "Mais" expandido */}
       {showMoreNav&&(
-        <div style={{position:"fixed",bottom:68,right:8,background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:6,zIndex:51,boxShadow:"0 8px 32px rgba(0,0,0,.7)",minWidth:150}}>
+        <div className="appMoreMenu" style={{position:"fixed",bottom:68,right:8,background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:6,zIndex:51,boxShadow:"0 8px 32px rgba(0,0,0,.7)",minWidth:150}}>
           {[
             ["saude","💊 Saúde"],
             ["perfil","👤 Perfil"],
@@ -2258,27 +2258,69 @@ const CSS=`
     .sumGrid { grid-template-columns: repeat(4, 1fr) !important; }
   }
 
-  /* ── Responsive: desktop (≥1024px) ── */
+  /* ── Responsive: desktop (≥1024px) ── sidebar layout ── */
   @media (min-width: 1024px) {
     body { background: var(--bg) !important; }
-    .appRoot { max-width: 1100px; padding-bottom: 0 !important; box-shadow: 0 0 40px rgba(0,0,0,.3); }
-    /* Bottom nav becomes top horizontal nav */
+    .appRoot {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding-left: 210px !important;
+      padding-bottom: 0 !important;
+      min-height: 100vh;
+      position: relative;
+      box-shadow: 0 0 40px rgba(0,0,0,.3);
+    }
+    /* Bottom nav → Left sidebar */
     .appBottomNav {
-      position: sticky !important;
+      position: fixed !important;
       top: 0 !important;
-      bottom: auto !important;
-      left: auto !important;
+      bottom: 0 !important;
+      left: max(0px, calc(50% - 600px)) !important;
+      width: 210px !important;
+      max-width: 210px !important;
+      height: 100vh !important;
+      flex-direction: column !important;
+      justify-content: flex-start !important;
+      align-items: stretch !important;
+      padding: 24px 10px !important;
+      gap: 4px !important;
       transform: none !important;
-      max-width: none !important;
-      width: 100% !important;
       border-top: none !important;
-      border-bottom: 1px solid var(--border) !important;
+      border-right: 1px solid var(--border) !important;
       background: var(--bg) !important;
-      backdrop-filter: blur(8px);
+      overflow-y: auto;
       z-index: 40 !important;
     }
-    .appBottomNav button { flex-direction: row !important; gap: 8px !important; padding: 14px 18px !important; justify-content: center !important; }
-    .appBottomNav button span:last-child { font-size: 13px !important; margin-top: 0 !important; }
+    .appBottomNav button {
+      flex: 0 0 auto !important;
+      width: 100% !important;
+      flex-direction: row !important;
+      justify-content: flex-start !important;
+      align-items: center !important;
+      padding: 12px 16px !important;
+      gap: 12px !important;
+      border-top: none !important;
+      border-left: 3px solid transparent !important;
+      border-radius: 10px !important;
+      margin-bottom: 2px;
+    }
+    .appBottomNav button[style*="#8ab4f8"] {
+      border-left-color: #8ab4f8 !important;
+      background: var(--card-bg) !important;
+    }
+    .appBottomNav button span:last-child {
+      font-size: 13px !important;
+      font-weight: 600 !important;
+      margin-top: 0 !important;
+    }
+    /* "Mais" dropdown → aparece ao lado do sidebar */
+    .appMoreMenu {
+      top: auto !important;
+      right: auto !important;
+      bottom: 24px !important;
+      left: max(220px, calc(50% - 380px)) !important;
+      min-width: 180px !important;
+    }
     /* Modals: centered card instead of bottom sheet */
     .appOverlay { align-items: center !important; padding: 20px; }
     .modal-in {
@@ -2287,7 +2329,7 @@ const CSS=`
       max-height: 88vh !important;
       animation: fadeIn .22s ease-out !important;
     }
-    /* Toast moves to top-right on desktop */
+    /* Toast moves to top-right */
     .appRoot > div[style*="position: fixed"][style*="bottom: 82"] {
       bottom: auto !important;
       top: 24px !important;
@@ -2295,15 +2337,15 @@ const CSS=`
       left: auto !important;
       transform: none !important;
     }
-    /* Wider grids */
+    /* Wider grids & more spacing */
     .sumGrid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
-    /* Hero card has more breathing room */
     .heroCard { padding: 28px 28px !important; }
   }
 
   /* ── Responsive: large desktop (≥1280px) ── */
   @media (min-width: 1280px) {
-    .appRoot { max-width: 1200px; }
+    .appRoot { padding-left: 230px !important; }
+    .appBottomNav { width: 230px !important; max-width: 230px !important; }
   }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
   -webkit-tap-highlight-color: transparent;
