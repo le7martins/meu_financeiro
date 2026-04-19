@@ -23,44 +23,58 @@ jobs:
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          python3 << 'PYEOF'
-          import os, json
-          raw = os.environ['SA_JSON']
-          # Tenta direto primeiro
-          try:
-              json.loads(raw)
-              with open('/tmp/sa.json', 'w') as f: f.write(raw)
-              print('JSON OK')
-          except Exception as e:
-              print(f'Fixing JSON: {e}')
-              # Abordagem char-a-char: escapa controles literais dentro de strings
-              fixed = []
-              in_string = False
-              i = 0
-              while i < len(raw):
-                  c = raw[i]
-                  if c == '\\' and i + 1 < len(raw):
-                      fixed.append(c)
-                      fixed.append(raw[i+1])
-                      i += 2
-                      continue
-                  if c == '"':
-                      in_string = not in_string
-                      fixed.append(c)
-                  elif in_string and c == '\n':
-                      fixed.append('\\n')
-                  elif in_string and c == '\r':
-                      fixed.append('\\r')
-                  elif in_string and c == '\t':
-                      fixed.append('\\t')
-                  else:
-                      fixed.append(c)
-                  i += 1
-              result = ''.join(fixed)
-              json.loads(result)
-              with open('/tmp/sa.json', 'w') as f: f.write(result)
-              print('JSON corrigido e salvo')
-          PYEOF
+          # Escreve o valor bruto em arquivo (printf não interpreta escapes)
+          printf '%s' "$SA_JSON" > /tmp/sa_raw.json
+
+          # Script Node.js para ler, corrigir e re-serializar o JSON
+          cat > /tmp/fix_sa.js << 'JSEOF'
+const fs = require('fs');
+const raw = fs.readFileSync('/tmp/sa_raw.json', 'utf8');
+
+// Tenta direto
+try {
+  JSON.parse(raw);
+  fs.writeFileSync('/tmp/sa.json', raw);
+  console.log('JSON OK');
+  process.exit(0);
+} catch(e) {
+  console.error('Corrigindo JSON:', e.message);
+}
+
+// Corrige caracteres de controle literais dentro de strings JSON
+let out = '', inStr = false;
+for (let i = 0; i < raw.length; i++) {
+  const c = raw[i];
+  // Preserva sequências de escape já existentes (ex: \\n)
+  if (c === '\\' && i + 1 < raw.length) {
+    out += c + raw[i + 1];
+    i++;
+    continue;
+  }
+  if (c === '"') inStr = !inStr;
+  if (inStr && c === '\n')      { out += '\\n'; continue; }
+  if (inStr && c === '\r')      { out += '\\r'; continue; }
+  if (inStr && c === '\t')      { out += '\\t'; continue; }
+  if (inStr && c.charCodeAt(0) < 32) { out += '\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'); continue; }
+  out += c;
+}
+
+try {
+  const obj = JSON.parse(out);
+  fs.writeFileSync('/tmp/sa.json', JSON.stringify(obj));
+  console.log('JSON corrigido e salvo');
+} catch(e2) {
+  console.error('Falha ao corrigir JSON:', e2.message);
+  // Debug: mostra trecho ao redor do erro
+  const m = e2.message.match(/position (\d+)/);
+  if (m) {
+    const pos = parseInt(m[1]);
+    console.error('Contexto:', JSON.stringify(out.slice(Math.max(0,pos-40), pos+40)));
+  }
+  process.exit(1);
+}
+JSEOF
+          node /tmp/fix_sa.js
 
       - name: Executar script de notificação
         env:
