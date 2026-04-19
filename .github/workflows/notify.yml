@@ -43,7 +43,7 @@ jobs:
               print('JSON corrigido e salvo')
           PYEOF
 
-      - name: Run notification script
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
-        run: node scripts/notify.mjs
+       - name: Executar script de notificação
+  env:
+    GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+  run: node scripts/notify.mjs
