@@ -24,22 +24,41 @@ jobs:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           python3 << 'PYEOF'
-          import os, json, re
+          import os, json
           raw = os.environ['SA_JSON']
+          # Tenta direto primeiro
           try:
               json.loads(raw)
               with open('/tmp/sa.json', 'w') as f: f.write(raw)
               print('JSON OK')
           except Exception as e:
               print(f'Fixing JSON: {e}')
-              # Corrige newlines literais dentro do valor private_key
-              fixed = re.sub(
-                  r'"private_key"\s*:\s*"([\s\S]*?)"(\s*[,}])',
-                  lambda m: '"private_key": "' + m.group(1).replace('\n', '\\n') + '"' + m.group(2),
-                  raw
-              )
-              json.loads(fixed)
-              with open('/tmp/sa.json', 'w') as f: f.write(fixed)
+              # Abordagem char-a-char: escapa controles literais dentro de strings
+              fixed = []
+              in_string = False
+              i = 0
+              while i < len(raw):
+                  c = raw[i]
+                  if c == '\\' and i + 1 < len(raw):
+                      fixed.append(c)
+                      fixed.append(raw[i+1])
+                      i += 2
+                      continue
+                  if c == '"':
+                      in_string = not in_string
+                      fixed.append(c)
+                  elif in_string and c == '\n':
+                      fixed.append('\\n')
+                  elif in_string and c == '\r':
+                      fixed.append('\\r')
+                  elif in_string and c == '\t':
+                      fixed.append('\\t')
+                  else:
+                      fixed.append(c)
+                  i += 1
+              result = ''.join(fixed)
+              json.loads(result)
+              with open('/tmp/sa.json', 'w') as f: f.write(result)
               print('JSON corrigido e salvo')
           PYEOF
 
