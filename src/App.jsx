@@ -1937,8 +1937,8 @@ function BarSVG({data,type,faded}){
     <div style={{position:"relative",width:"100%"}} onMouseLeave={()=>setTip(null)} onTouchEnd={()=>setTimeout(()=>setTip(null),2000)}>
       <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
         <defs>{series.filter(s=>s.line).map(s=>(<linearGradient key={s.key} id={`g_${s.key}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={s.color} stopOpacity="0.2"/><stop offset="100%" stopColor={s.color} stopOpacity="0"/></linearGradient>))}</defs>
-        {yTicks.map((v,i)=>(<g key={i}><line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} stroke="#111820" strokeDasharray="3 3"/><text x={PL-4} y={toY(v)+4} textAnchor="end" fill="#889" fontSize="9">{fmtShort(v)}</text></g>))}
-        {minVal<0&&<line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} stroke="#667" strokeWidth="1"/>}
+        {yTicks.map((v,i)=>(<g key={i}><line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} stroke="#111820" strokeDasharray="3 3"/><text x={PL-4} y={toY(v)+4} textAnchor="end" fill="#94a3b8" fontSize="9">{fmtShort(v)}</text></g>))}
+        {minVal<0&&<line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} stroke="#64748b" strokeWidth="1"/>}
         {type==="evolucao"&&series.filter(s=>!s.line).map(s=>(<path key={s.key+"_a"} d={areaFor(s.key)} fill={s.color} opacity="0.12"/>))}
         {type==="evolucao"&&series.filter(s=>s.line).map(s=>(<path key={s.key+"_a"} d={areaFor(s.key)} fill={`url(#g_${s.key})`}/>))}
         {type==="evolucao"&&series.map(s=>(<path key={s.key} d={pathFor(s.key)} fill="none" stroke={s.color} strokeWidth={s.line?"1.5":"2"} strokeDasharray={s.line?"4 2":"none"}/>))}
@@ -1950,7 +1950,7 @@ function BarSVG({data,type,faded}){
           });
         })}
         {type==="evolucao"&&series.filter(s=>s.line).map(s=>data.map((d,i)=>(<circle key={i} cx={toX(i)} cy={toY(d[s.key]||0)} r="3" fill={s.color} onMouseEnter={()=>setTip({di:i,d,x:toX(i)})} onTouchStart={()=>setTip({di:i,d,x:toX(i)})}/>)))}
-        {data.map((d,i)=>(<text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6} textAnchor="middle" fill="#889" fontSize="9">{d.month}</text>))}
+        {data.map((d,i)=>(<text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6} textAnchor="middle" fill="#94a3b8" fontSize="9">{d.month}</text>))}
         {tip&&(()=>{const tx=Math.min(Math.max(tip.x-44,PL),W-92),ty=PT+8,d=tip.d;return(<g><rect x={tx} y={ty} width={90} height={type==="evolucao"?56:42} rx="6" fill="#0d1118" stroke="#1a2840" strokeWidth="1"/><text x={tx+45} y={ty+14} textAnchor="middle" fill="#8ab4f8" fontSize="9" fontWeight="bold">{d.month}</text><text x={tx+4} y={ty+27} fill="#4ade80" fontSize="9">↑ {fmtShort(d.receitas)}</text><text x={tx+4} y={ty+40} fill="#fb923c" fontSize="9">↓ {fmtShort(d.despesas)}</text>{type==="evolucao"&&<text x={tx+4} y={ty+53} fill="#8ab4f8" fontSize="9">≈ {fmtShort(d.saldo)}</text>}</g>);})()}
       </svg>
     </div>
@@ -1971,7 +1971,7 @@ function DonutSVG({data,total}){
   return(
     <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:"auto",display:"block"}}>
       {slices.map((s,i)=>(<path key={i} d={s.path} fill={s.color} opacity={hover===null||hover===i?1:0.4} onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)} onTouchStart={()=>setHover(i)} style={{cursor:"pointer",transition:"opacity .2s"}}/>))}
-      {hover!==null&&slices[hover]?(<><text x={CX} y={CY-8} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">{(slices[hover].pct*100).toFixed(1)}%</text><text x={CX} y={CY+10} textAnchor="middle" fill={slices[hover].color} fontSize="9">{slices[hover].name}</text></>):(<text x={CX} y={CY+5} textAnchor="middle" fill="#889" fontSize="10">Total</text>)}
+      {hover!==null&&slices[hover]?(<><text x={CX} y={CY-8} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">{(slices[hover].pct*100).toFixed(1)}%</text><text x={CX} y={CY+10} textAnchor="middle" fill={slices[hover].color} fontSize="9">{slices[hover].name}</text></>):(<text x={CX} y={CY+5} textAnchor="middle" fill="#94a3b8" fontSize="10">Total</text>)}
     </svg>
   );
 }
@@ -2067,8 +2067,8 @@ const CSS=`
   /* ── CSS Variables: dark (default) ── */
   :root {
     --bg:#080c12; --card-bg:#0d1118; --card-bg2:#111820;
-    --border:#111820; --border2:#0d1520; --border3:#0f1825;
-    --text1:#dde; --text2:#ccd; --text3:#889; --text4:#667;
+    --border:#1e293b; --border2:#0f172a; --border3:#1e293b;
+    --text1:#e2e8f0; --text2:#cbd5e1; --text3:#94a3b8; --text4:#64748b;
     --inp-bg:#080c12; --nav-bg:#080c12;
     --hero-bg: linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%);
     --panel-bg:#0d1118; --panel-bg2:#080c12;
@@ -2080,9 +2080,9 @@ const CSS=`
 
   /* ── Light mode CSS variables ── */
   .light-mode {
-    --bg:#f8f9fa; --card-bg:#ffffff; --card-bg2:#f1f3f5;
-    --border:#e5e7eb; --border2:#d1d5db; --border3:#f3f4f6;
-    --text1:#111827; --text2:#374151; --text3:#6b7280; --text4:#9ca3af;
+    --bg:#f8fafc; --card-bg:#ffffff; --card-bg2:#f1f5f9;
+    --border:#e2e8f0; --border2:#e2e8f0; --border3:#f1f5f9;
+    --text1:#0f172a; --text2:#1e293b; --text3:#64748b; --text4:#94a3b8;
     --inp-bg:#ffffff; --nav-bg:#ffffff;
     --hero-bg: linear-gradient(135deg,#f0fdf4 0%,#dcfce7 60%,#f0fdf4 100%);
     --panel-bg:#ffffff; --panel-bg2:#f9fafb;
@@ -2267,14 +2267,14 @@ const CSS=`
   .light-mode .emptyState .emptySub { color: #6b7280 !important; }
 
   /* SVG text/lines in charts (fill/stroke attrs don't support CSS vars, override via CSS) */
-  .light-mode .chartBox text[fill="#445"] { fill: #6b7280 !important; }
-  .light-mode .chartBox text[fill="#889"] { fill: #6b7280 !important; }
+  .light-mode .chartBox text[fill="#94a3b8"] { fill: #6b7280 !important; }
+  .light-mode .chartBox text[fill="#94a3b8"] { fill: #6b7280 !important; }
   .light-mode .chartBox line[stroke="#111820"] { stroke: #e5e7eb !important; }
-  .light-mode .chartBox line[stroke="#667"] { stroke: #d1d5db !important; }
+  .light-mode .chartBox line[stroke="#64748b"] { stroke: #d1d5db !important; }
   .light-mode .scoreCard circle[stroke="#111820"] { stroke: #e5e7eb !important; }
-  .light-mode .scoreCard text[fill="#445"] { fill: #6b7280 !important; }
-  .light-mode .scoreCard text[fill="#889"] { fill: #6b7280 !important; }
-  .light-mode .donutSvg text[fill="#889"] { fill: #6b7280 !important; }
+  .light-mode .scoreCard text[fill="#94a3b8"] { fill: #6b7280 !important; }
+  .light-mode .scoreCard text[fill="#94a3b8"] { fill: #6b7280 !important; }
+  .light-mode .donutSvg text[fill="#94a3b8"] { fill: #6b7280 !important; }
 
   /* ── Specific element fixes in light mode ── */
 
@@ -2368,11 +2368,11 @@ const CSS=`
   /* Month in SVG chart tooltip */
   [data-theme="light"] [fill="#0d1118"] { fill: #ffffff !important; }
   [data-theme="light"] [fill="#1a2840"] { fill: #e5e7eb !important; }
-  [data-theme="light"] [fill="#445"] { fill: #6b7280 !important; }
-  [data-theme="light"] [fill="#889"] { fill: #6b7280 !important; }
+  [data-theme="light"] [fill="#94a3b8"] { fill: #6b7280 !important; }
+  [data-theme="light"] [fill="#94a3b8"] { fill: #6b7280 !important; }
   [data-theme="light"] [fill="#8ab4f8"] { fill: #2563eb !important; }
   [data-theme="light"] [stroke="#111820"] { stroke: #e5e7eb !important; }
-  [data-theme="light"] [stroke="#667"] { stroke: #d1d5db !important; }
+  [data-theme="light"] [stroke="#64748b"] { stroke: #d1d5db !important; }
 
   /* SVG chart legend text */
   [data-theme="light"] .chartBox [style*="color:#445"] { color: #6b7280 !important; }
@@ -2435,9 +2435,9 @@ const CSS=`
   /* ── Health score circle track ── */
   .light-mode [stroke="#111820"] { stroke: #e5e7eb !important; }
   .light-mode [fill="#111820"] { fill: #f3f4f6 !important; }
-  .light-mode [fill="#445"] { fill: #6b7280 !important; }
-  .light-mode [fill="#889"] { fill: #6b7280 !important; }
-  .light-mode [stroke="#667"] { stroke: #d1d5db !important; }
+  .light-mode [fill="#94a3b8"] { fill: #6b7280 !important; }
+  .light-mode [fill="#94a3b8"] { fill: #6b7280 !important; }
+  .light-mode [stroke="#64748b"] { stroke: #d1d5db !important; }
 
   /* ── Scrollbar ── */
   .light-mode ::-webkit-scrollbar-thumb { background: #d1d5db !important; }
@@ -2591,7 +2591,7 @@ function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, cate
                 transform="rotate(-90 55 55)"
                 style={{transition:"stroke-dasharray .8s ease"}}/>
               <text x="55" y="52" textAnchor="middle" fill={scoreColor} fontSize="26" fontWeight="800">{score}</text>
-              <text x="55" y="68" textAnchor="middle" fill="#889" fontSize="10">pontos</text>
+              <text x="55" y="68" textAnchor="middle" fill="#94a3b8" fontSize="10">pontos</text>
             </svg>
           </div>
           <div style={{fontSize:16,fontWeight:700,color:scoreColor}}>{scoreLabel}</div>
