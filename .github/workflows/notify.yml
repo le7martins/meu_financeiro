@@ -19,62 +19,38 @@ jobs:
       - name: Install Firebase Admin
         run: npm install firebase-admin --no-save
 
-      - name: Write and fix service account key
+      - name: Write service account key
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          # Escreve o valor bruto em arquivo (printf não interpreta escapes)
-          printf '%s' "$SA_JSON" > /tmp/sa_raw.json
-
-          # Script Node.js para ler, corrigir e re-serializar o JSON
-          cat > /tmp/fix_sa.js << 'JSEOF'
-const fs = require('fs');
-const raw = fs.readFileSync('/tmp/sa_raw.json', 'utf8');
-
-// Tenta direto
-try {
-  JSON.parse(raw);
-  fs.writeFileSync('/tmp/sa.json', raw);
-  console.log('JSON OK');
-  process.exit(0);
-} catch(e) {
-  console.error('Corrigindo JSON:', e.message);
-}
-
-// Corrige caracteres de controle literais dentro de strings JSON
-let out = '', inStr = false;
-for (let i = 0; i < raw.length; i++) {
-  const c = raw[i];
-  // Preserva sequências de escape já existentes (ex: \\n)
-  if (c === '\\' && i + 1 < raw.length) {
-    out += c + raw[i + 1];
-    i++;
-    continue;
-  }
-  if (c === '"') inStr = !inStr;
-  if (inStr && c === '\n')      { out += '\\n'; continue; }
-  if (inStr && c === '\r')      { out += '\\r'; continue; }
-  if (inStr && c === '\t')      { out += '\\t'; continue; }
-  if (inStr && c.charCodeAt(0) < 32) { out += '\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'); continue; }
-  out += c;
-}
-
-try {
-  const obj = JSON.parse(out);
-  fs.writeFileSync('/tmp/sa.json', JSON.stringify(obj));
-  console.log('JSON corrigido e salvo');
-} catch(e2) {
-  console.error('Falha ao corrigir JSON:', e2.message);
-  // Debug: mostra trecho ao redor do erro
-  const m = e2.message.match(/position (\d+)/);
-  if (m) {
-    const pos = parseInt(m[1]);
-    console.error('Contexto:', JSON.stringify(out.slice(Math.max(0,pos-40), pos+40)));
-  }
-  process.exit(1);
-}
-JSEOF
-          node /tmp/fix_sa.js
+          # Tenta base64 decode primeiro (formato recomendado)
+          if echo "$SA_JSON" | base64 -d 2>/dev/null | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
+            echo "$SA_JSON" | base64 -d > /tmp/sa.json
+            echo "Decoded from base64"
+          else
+            # Fallback: trata como JSON direto, escapa newlines literais via node
+            printf '%s' "$SA_JSON" > /tmp/sa_raw.json
+            node -e "
+              const fs = require('fs');
+              const raw = fs.readFileSync('/tmp/sa_raw.json','utf8');
+              try { JSON.parse(raw); fs.writeFileSync('/tmp/sa.json',raw); console.log('JSON OK'); }
+              catch(e) {
+                let o='',s=false;
+                for(let i=0;i<raw.length;i++){
+                  const c=raw[i];
+                  if(c==='\\\\' && i+1<raw.length){o+=c+raw[++i];continue;}
+                  if(c==='\"')s=!s;
+                  if(s&&c==='\n'){o+='\\\\n';continue;}
+                  if(s&&c==='\r'){o+='\\\\r';continue;}
+                  if(s&&c.charCodeAt(0)<32){o+='\\\\u'+c.charCodeAt(0).toString(16).padStart(4,'0');continue;}
+                  o+=c;
+                }
+                const obj=JSON.parse(o);
+                fs.writeFileSync('/tmp/sa.json',JSON.stringify(obj));
+                console.log('JSON fixed');
+              }
+            "
+          fi
 
       - name: Executar script de notificação
         env:
