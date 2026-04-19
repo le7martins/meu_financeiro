@@ -674,13 +674,25 @@ function MainApp({ fbUser, onLogout }){
           <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:32,height:32,borderRadius:8,objectFit:"cover"}}/>
           <div><div style={S.appName}>CashUp</div><div style={S.appSub}>Controle seus lançamentos</div></div>
         </div>
-        {/* Health indicator in header — clicável */}
-        {healthScore&&activeTab==="lancamentos"&&(
-          <button onClick={()=>setShowHealth(true)} style={{display:"flex",alignItems:"center",gap:5,background:"var(--card-bg)",border:`1px solid ${healthScore.color}44`,borderRadius:8,padding:"5px 10px",cursor:"pointer",fontFamily:"inherit"}}>
-            <div style={{width:7,height:7,borderRadius:"50%",background:healthScore.color,boxShadow:`0 0 6px ${healthScore.color}`}}/>
-            <span style={{fontSize:10,color:healthScore.color,fontWeight:700}}>{healthScore.level}</span>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {/* Health indicator in header — clicável */}
+          {healthScore&&activeTab==="lancamentos"&&(
+            <button onClick={()=>setShowHealth(true)} style={{display:"flex",alignItems:"center",gap:5,background:"var(--card-bg)",border:`1px solid ${healthScore.color}44`,borderRadius:8,padding:"5px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+              <div style={{width:7,height:7,borderRadius:"50%",background:healthScore.color,boxShadow:`0 0 6px ${healthScore.color}`}}/>
+              <span style={{fontSize:10,color:healthScore.color,fontWeight:700}}>{healthScore.level}</span>
+            </button>
+          )}
+          {/* Theme toggle */}
+          <button onClick={()=>saveTheme(theme==="dark"?"light":"dark")}
+            title={theme==="dark"?"Mudar para tema claro":"Mudar para tema escuro"}
+            style={{display:"flex",alignItems:"center",justifyContent:"center",width:34,height:34,background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:9,cursor:"pointer",fontFamily:"inherit",color:"var(--text2)"}}>
+            {theme==="dark"?(
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            ):(
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+            )}
           </button>
-        )}
+        </div>
       </header>
 
       {activeTab==="lancamentos"&&(<>
