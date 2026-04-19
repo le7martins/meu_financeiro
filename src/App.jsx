@@ -261,6 +261,7 @@ function MainApp({ fbUser, onLogout }){
   const [dbReady,      setDbReady]      = useState(false);
   const [showMoreNav,  setShowMoreNav]  = useState(false);
   const [showFabMenu,  setShowFabMenu]  = useState(false);
+  const [showHealth,   setShowHealth]   = useState(false);
   const {toasts,toast} = useToast();
 
   // ─── Firestore: carregar + migrar dados na nuvem ──────────────
@@ -662,12 +663,12 @@ function MainApp({ fbUser, onLogout }){
           <span style={{fontSize:22}}>💰</span>
           <div><div style={S.appName}>Minhas Finanças</div><div style={S.appSub}>Controle seus lançamentos</div></div>
         </div>
-        {/* Health indicator in header */}
+        {/* Health indicator in header — clicável */}
         {healthScore&&activeTab==="lancamentos"&&(
-          <div style={{display:"flex",alignItems:"center",gap:5,background:"var(--card-bg)",border:`1px solid ${healthScore.color}33`,borderRadius:8,padding:"5px 10px"}}>
+          <button onClick={()=>setShowHealth(true)} style={{display:"flex",alignItems:"center",gap:5,background:"var(--card-bg)",border:`1px solid ${healthScore.color}44`,borderRadius:8,padding:"5px 10px",cursor:"pointer",fontFamily:"inherit"}}>
             <div style={{width:7,height:7,borderRadius:"50%",background:healthScore.color,boxShadow:`0 0 6px ${healthScore.color}`}}/>
             <span style={{fontSize:10,color:healthScore.color,fontWeight:700}}>{healthScore.level}</span>
-          </div>
+          </button>
         )}
       </header>
 
@@ -697,13 +698,9 @@ function MainApp({ fbUser, onLogout }){
               <span className="heroSubtext" style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
             </div>
             <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
-            <div className="heroCardFooter" style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-              {accumSaldo!==null&&<div><span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>Saldo acumulado </span><span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span></div>}
-              {healthScore&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-                <div style={{width:6,height:6,borderRadius:"50%",background:healthScore.color}}/>
-                <span style={{fontSize:10,color:healthScore.color,fontWeight:600}}>{healthScore.level} · {healthScore.score}pts</span>
-              </div>}
-            </div>
+            {accumSaldo!==null&&<div className="heroCardFooter" style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)"}}>
+              <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>Saldo acumulado </span><span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span>
+            </div>}
           </div>
         </div>
 
@@ -721,30 +718,6 @@ function MainApp({ fbUser, onLogout }){
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}/>
         </div>
 
-        {/* Health detail panel */}
-        {healthScore&&selMonth===NOW&&(
-          <div style={{padding:"0 14px 10px"}}>
-            <div style={{background:"var(--card-bg)",border:`1px solid ${healthScore.color}22`,borderRadius:14,padding:"12px 14px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <div style={{fontSize:11,fontWeight:700,color:healthScore.color}}>💊 Saúde Financeira — {healthScore.level}</div>
-                <div style={{fontSize:16,fontWeight:800,color:healthScore.color}}>{healthScore.score}<span style={{fontSize:10,fontWeight:400,color:"var(--text3)"}}>/100</span></div>
-              </div>
-              <div style={{height:5,background:"var(--bg)",borderRadius:3,marginBottom:10,overflow:"hidden"}}>
-                <div style={{height:"100%",width:`${healthScore.score}%`,background:`linear-gradient(90deg,${healthScore.color}88,${healthScore.color})`,borderRadius:3,transition:"width .6s"}}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                <div style={{background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                  <div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Gastos fixos / Renda</div>
-                  <div style={{fontSize:13,fontWeight:700,color:healthScore.fixedPct>70?"#f87171":healthScore.fixedPct>50?"#facc15":"#4ade80"}}>{healthScore.fixedPct.toFixed(0)}%</div>
-                </div>
-                <div style={{background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                  <div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Taxa de economia</div>
-                  <div style={{fontSize:13,fontWeight:700,color:healthScore.savingPct<10?"#f87171":healthScore.savingPct<20?"#facc15":"#4ade80"}}>{healthScore.savingPct.toFixed(0)}%</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Próximos vencimentos */}
         {upcomingDue.length>0&&(
@@ -843,6 +816,58 @@ function MainApp({ fbUser, onLogout }){
       {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
       {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout}/>}
       {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
+
+      {/* Modal — Saúde Financeira */}
+      {showHealth&&healthScore&&(
+        <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={()=>setShowHealth(false)}>
+          <div className="modal-in" onClick={e=>e.stopPropagation()}
+            style={{background:"var(--card-bg)",borderTopLeftRadius:22,borderTopRightRadius:22,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",padding:"20px 18px 40px",border:"1px solid var(--border)"}}>
+            {/* Handle */}
+            <div style={{width:36,height:4,borderRadius:2,background:"var(--border)",margin:"0 auto 18px"}}/>
+            {/* Score circle */}
+            <div style={{textAlign:"center",marginBottom:18}}>
+              <div style={{fontSize:11,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Saúde Financeira — {mLabel(selMonth)}</div>
+              <div style={{position:"relative",width:100,height:100,margin:"0 auto 10px"}}>
+                <svg viewBox="0 0 110 110" style={{width:"100%",height:"100%"}}>
+                  <circle cx="55" cy="55" r="46" fill="none" stroke="var(--card-bg2)" strokeWidth="10"/>
+                  <circle cx="55" cy="55" r="46" fill="none" stroke={healthScore.color} strokeWidth="10"
+                    strokeDasharray={`${(healthScore.score/100)*289} 289`} strokeLinecap="round"
+                    transform="rotate(-90 55 55)" style={{transition:"stroke-dasharray .8s ease"}}/>
+                  <text x="55" y="52" textAnchor="middle" fill={healthScore.color} fontSize="26" fontWeight="800">{healthScore.score}</text>
+                  <text x="55" y="68" textAnchor="middle" fill="#94a3b8" fontSize="10">pontos</text>
+                </svg>
+              </div>
+              <div style={{fontSize:17,fontWeight:700,color:healthScore.color}}>{healthScore.level==="Saudável"?"Saudável 💚":healthScore.level==="Atenção"?"Atenção ⚠️":"Crítico 🚨"}</div>
+            </div>
+            {/* Barra progresso */}
+            <div style={{height:6,background:"var(--bg)",borderRadius:3,marginBottom:16,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${healthScore.score}%`,background:`linear-gradient(90deg,${healthScore.color}88,${healthScore.color})`,borderRadius:3,transition:"width .8s"}}/>
+            </div>
+            {/* Indicadores */}
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+              {[
+                {label:"Gastos fixos / Renda",value:`${healthScore.fixedPct.toFixed(0)}%`,color:healthScore.fixedPct>70?"#f87171":healthScore.fixedPct>50?"#facc15":"#4ade80",detail:healthScore.fixedPct>70?"Acima do ideal (máx 70%)":healthScore.fixedPct>50?"Atenção (ideal < 50%)":"Ótimo"},
+                {label:"Taxa de economia",value:`${healthScore.savingPct.toFixed(0)}%`,color:healthScore.savingPct<10?"#f87171":healthScore.savingPct<20?"#facc15":"#4ade80",detail:healthScore.savingPct<10?"Abaixo do mínimo (10%)":healthScore.savingPct<20?"Pode melhorar (ideal 20%+)":"Excelente"},
+              ].map(({label,value,color,detail})=>(
+                <div key={label} style={{background:"var(--bg)",borderRadius:11,padding:"11px 13px",border:"1px solid var(--border)"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                    <span style={{fontSize:12,color:"var(--text2)",fontWeight:500}}>{label}</span>
+                    <span style={{fontSize:14,fontWeight:800,color}}>{value}</span>
+                  </div>
+                  <div style={{height:4,background:"var(--card-bg2)",borderRadius:2,overflow:"hidden",marginBottom:5}}>
+                    <div style={{height:"100%",width:value,background:color,borderRadius:2,transition:"width .6s"}}/>
+                  </div>
+                  <div style={{fontSize:10,color:"var(--text3)"}}>{detail}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>setShowHealth(false)}
+              style={{width:"100%",padding:"12px",background:"var(--card-bg2)",border:"1px solid var(--border)",borderRadius:12,color:"var(--text2)",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom nav — 4 abas principais + "Mais" */}
       <nav style={S.bottomNav}>
