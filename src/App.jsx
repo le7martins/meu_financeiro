@@ -200,7 +200,7 @@ const DEFAULT_CATS=[
   {id:"cartao",name:"Cartão",color:"#a78bfa",type:"despesa"},
   {id:"outro",name:"Outro",color:"#9E9E9E",type:"both"},
 ];
-const BLANK=(type="despesa")=>({description:"",amount:"",date:TODAY,type,status:"a_pagar",category:type==="receita"?"salario":"outro",recurrence:"none",installments:2,notes:"",endMonth:""});
+const BLANK=(type="despesa")=>({description:"",amount:"",date:TODAY,type,status:"a_pagar",category:type==="receita"?"salario":"outro",recurrence:"none",installments:2,notes:"",endMonth:"",payWith:"saldo"});
 const PRESET_COLORS=["#6C8EEF","#EF8C6C","#6CEF9A","#EF6CA8","#C46CEF","#EFCE6C","#6CCEEF","#4ade80","#f87171","#facc15","#34d399","#a3e635"];
 const CARD_COLORS=["#a78bfa","#60a5fa","#34d399","#f472b6","#fb923c","#facc15","#f87171","#38bdf8"];
 
@@ -492,6 +492,15 @@ function MainApp({ fbUser, onLogout }){
 
   const handleAdd=()=>{
     if(!form.description.trim()||!form.amount||!form.date) return;
+    if(form.type==="despesa"&&form.payWith&&form.payWith!=="saldo"){
+      const card=cards.find(c=>c.id===form.payWith);
+      if(card){
+        const purchase={id:Date.now().toString(),cardId:card.id,description:form.description.trim(),amount:parseFloat(form.amount)||0,purchaseDate:form.date,category:form.category,installments:1,notes:form.notes||""};
+        saveCardPurchases([purchase,...cardPurchases]);setForm(BLANK());setShowForm(false);
+        toast(`✓ Lançado na fatura de ${card.name}`);
+        return;
+      }
+    }
     const dup=entries.find(e=>e.description.toLowerCase()===form.description.trim().toLowerCase()&&Math.abs(parseFloat(e.amount)-parseFloat(form.amount))<0.01&&e.date===form.date&&e.type===form.type);
     if(dup&&!window.confirm(`Lançamento similar já existe:\n"${dup.description}" em ${fmtDate(dup.date)} (${fmt(parseFloat(dup.amount))})\nDeseja adicionar mesmo assim?`)) return;
     const entry={id:Date.now().toString(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),...(form.endMonth?{endMonth:form.endMonth}:{}),statusByMonth:{},overrides:{}};
@@ -937,7 +946,7 @@ function MainApp({ fbUser, onLogout }){
         </>
       )}
 
-      {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}}/>}
+      {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}} cards={cards}/>}
       {editTarget&&<EditModal entry={editTarget.entry} monthKey={editTarget.monthKey} categories={categories} entries={entries} onUpdateCats={saveCategories} onSave={handleSaveEdit} onClose={()=>setEditTarget(null)}/>}
       {delTarget&&<DeleteModal entry={delTarget} onDelete={handleDelete} onClose={()=>setDelTarget(null)}/>}
       {fatPayTarget&&<FaturaPayModal entry={fatPayTarget} onPay={handlePayFatura} onRevert={handleRevertFatura} onClose={()=>setFatPayTarget(null)}/>}
@@ -1854,7 +1863,7 @@ function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return
 function Toggle({checked,onChange,disabled}){return(<button onClick={()=>!disabled&&onChange(!checked)} style={{width:44,height:24,borderRadius:12,background:checked?"#1a3a6e":"#111820",border:`1.5px solid ${checked?"#8ab4f8":"#1a2840"}`,cursor:disabled?"default":"pointer",position:"relative",transition:"all .2s",flexShrink:0}}><div style={{width:18,height:18,borderRadius:"50%",background:checked?"#8ab4f8":"var(--text4)",position:"absolute",top:"50%",transform:`translateY(-50%) translateX(${checked?20:2}px)`,transition:"all .2s"}}/></button>);}
 
 // ─── Form Modal ───────────────────────────────────────────────
-function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose}){
+function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose,cards=[]}){
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const [editCats,setEditCats]=useState(false);
   const [addingCat,setAddingCat]=useState(false);
@@ -1908,7 +1917,8 @@ function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAd
         </Field>
         <CatSelector cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
         <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
-        <Field label="Status"><div style={{display:"flex",gap:8}}>{(type==="receita"?[["a_pagar","⏳ A Receber","#fb923c"],["pago","✓ Recebido","#4ade80"]]:[["a_pagar","⏳ A Pagar","#fb923c"],["pago","✓ Pago","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>
+        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>💰 Saldo</button>{cards.map(c=>(<button key={c.id} onClick={()=>set("payWith",c.id)} style={{...S.chipBtn,...(form.payWith===c.id?{background:c.color+"33",border:`1px solid ${c.color}88`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:11,color:"var(--text3)",background:"var(--bg)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão</div>}</Field>}
+        {(type!=="despesa"||!cards.length||form.payWith==="saldo")&&<Field label="Status"><div style={{display:"flex",gap:8}}>{(type==="receita"?[["a_pagar","⏳ A Receber","#fb923c"],["pago","✓ Recebido","#4ade80"]]:[["a_pagar","⏳ A Pagar","#fb923c"],["pago","✓ Pago","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>}
         <button onClick={()=>{setTouched({description:true,amount:true});if(isValid)onAdd();}} className="submitBtn"
           style={{...S.submitBtn,opacity:isValid?1:0.45,cursor:isValid?"pointer":"not-allowed",background:type==="receita"?"linear-gradient(135deg,#1a4a2e,#0d2a1a)":"linear-gradient(135deg,#1a3a6e,#0d2247)",borderColor:type==="receita"?"#4ade8033":"#2a4a8e44",color:typeColor}}>
           Adicionar {type==="receita"?"Receita":"Despesa"}
