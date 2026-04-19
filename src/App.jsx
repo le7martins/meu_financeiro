@@ -1075,6 +1075,27 @@ function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,ca
     return{maxDepM,maxDep,topCat:catData[0]||null};
   },[entries,dividas,cards,cardPurchases,cardFaturas,range,catData]);
 
+  const cardCatData=useMemo(()=>{
+    const map={};
+    cardPurchases.forEach(p=>{const id=p.category||"outro";map[id]=(map[id]||0)+parseFloat(p.amount);});
+    const total=Object.values(map).reduce((s,v)=>s+v,0);
+    return{cats:Object.entries(map).map(([id,value])=>({id,name:catName(id),value:+value.toFixed(2),color:catColor(id)})).sort((a,b)=>b.value-a.value),total:+total.toFixed(2)};
+  },[cardPurchases,categories]);
+
+  const cardMonthlyData=useMemo(()=>range.map(m=>{
+    const entry={month:range.length===1?mLabel(m):mShort(m)};
+    let tot=0;
+    cards.forEach(card=>{
+      const allBm=getCardBillingMonths(card,cardPurchases);
+      allBm.forEach(bm=>{
+        const fat=buildFatura(card,cardPurchases,cardFaturas,bm);
+        if(fat.dueDate.substring(0,7)===m&&fat.total>0){entry[card.id]=(entry[card.id]||0)+fat.total;tot+=fat.total;}
+      });
+    });
+    entry.total=+tot.toFixed(2);
+    return entry;
+  }),[cards,cardPurchases,cardFaturas,range]);
+
   return(
     <div style={{paddingBottom:80,paddingTop:4}}>
       <div style={{padding:"12px 14px 0"}}>
@@ -1123,9 +1144,9 @@ function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,ca
         </div>}
       </div>)}
 
-      <div style={{display:"flex",gap:6,padding:"0 14px 12px"}}>
-        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"]].map(([t,l])=>(
-          <button key={t} onClick={()=>setChartType(t)} className="fTab" style={{...S.fTab,flex:1,justifyContent:"center",...(chartType===t?S.fTabActive:{})}}>{l}</button>
+      <div style={{display:"flex",gap:6,padding:"0 14px 12px",flexWrap:"wrap"}}>
+        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"],["cartoes","💳 Cartões"]].map(([t,l])=>(
+          <button key={t} onClick={()=>setChartType(t)} className="fTab" style={{...S.fTab,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
         ))}
       </div>
 
@@ -1184,6 +1205,87 @@ function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,ca
             ))}
           </div>
         </div>)}
+
+        {chartType==="cartoes"&&(<div>
+          {cards.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Nenhum cartão cadastrado</div>}
+          {cards.length>0&&cardPurchases.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Nenhuma compra lançada nos cartões</div>}
+          {cards.length>0&&cardPurchases.length>0&&(<>
+            {/* Resumo por cartão */}
+            <div style={{...S.chartBox,marginBottom:10}}>
+              <div style={S.chartTitle}>Faturas por mês</div>
+              <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:8}}>
+                {cardMonthlyData.filter(d=>d.total>0).length===0&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--text4)",fontSize:12}}>Sem faturas no período</div>}
+                {cardMonthlyData.map((d,i)=>{
+                  if(d.total===0) return null;
+                  return(
+                    <div key={i} style={{background:"var(--bg)",borderRadius:9,padding:"8px 12px",border:"1px solid var(--border2)"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                        <span style={{fontSize:12,fontWeight:600,color:"var(--text1)"}}>{d.month}</span>
+                        <span style={{fontSize:13,fontWeight:800,color:"#fb923c"}}>{fmt(d.total)}</span>
+                      </div>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                        {cards.map(card=>d[card.id]>0&&(
+                          <span key={card.id} style={{fontSize:10,padding:"2px 7px",borderRadius:5,background:card.color+"22",color:card.color,border:`1px solid ${card.color}44`}}>
+                            {card.name}: {fmt(d[card.id])}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Donut por categoria */}
+            <div style={S.chartBox}>
+              <div style={S.chartTitle}>Gastos por categoria</div>
+              <div style={{fontSize:10,color:"var(--text3)",marginBottom:10}}>Total gasto nos cartões: <strong style={{color:"#fb923c"}}>{fmt(cardCatData.total)}</strong></div>
+              {cardCatData.cats.length===0
+                ?<div style={{textAlign:"center",padding:"24px 0",color:"var(--text4)",fontSize:12}}>Sem dados</div>
+                :(<>
+                  <DonutSVG data={cardCatData.cats} total={cardCatData.total}/>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
+                    {cardCatData.cats.map((c,i)=>{
+                      const pct=cardCatData.total>0?((c.value/cardCatData.total)*100).toFixed(1):0;
+                      return(<div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                        <div style={{flex:1,fontSize:12,color:"var(--text2)",fontWeight:500}}>{c.name}</div>
+                        <div style={{fontSize:11,color:"var(--text3)"}}>{pct}%</div>
+                        <div style={{fontSize:12,color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
+                      </div>);
+                    })}
+                  </div>
+                </>)
+              }
+            </div>
+
+            {/* Por cartão */}
+            <div style={{...S.chartBox,marginTop:10}}>
+              <div style={S.chartTitle}>Total por cartão</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8}}>
+                {cards.map(card=>{
+                  const total=cardPurchases.filter(p=>p.cardId===card.id).reduce((s,p)=>s+parseFloat(p.amount),0);
+                  if(total===0) return null;
+                  const pct=cardCatData.total>0?((total/cardCatData.total)*100).toFixed(0):0;
+                  return(
+                    <div key={card.id} style={{display:"flex",alignItems:"center",gap:10}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:card.color,flexShrink:0}}/>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                          <span style={{fontSize:12,color:"var(--text1)",fontWeight:600}}>{card.name}</span>
+                          <span style={{fontSize:12,color:card.color,fontWeight:700}}>{fmt(total)}</span>
+                        </div>
+                        <div style={{height:4,background:"rgba(255,255,255,.07)",borderRadius:2,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pct}%`,background:card.color,borderRadius:2}}/>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>)}
+        </div>)}
       </div>
     </div>
   );
@@ -1197,12 +1299,14 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
   const [delCardId,setDelCardId]=useState(null);
   const [delPurchId,setDelPurchId]=useState(null);
   const [editPurch,setEditPurch]=useState(null);
+  const [expandedM,setExpandedM]=useState({});
   const [cardForm,setCardForm]=useState({name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]});
   const [purchForm,setPurchForm]=useState({description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""});
   const BLANK_CARD={name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]};
   const BLANK_PURCH={description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""};
   const despCats=categories.filter(c=>c.type==="both"||c.type==="despesa");
   const activeCard=cards.find(c=>c.id===activeCardId)||null;
+  const toggleM=(key)=>setExpandedM(p=>({...p,[key]:!p[key]}));
 
   const handleSaveCard=()=>{
     if(!cardForm.name.trim()) return;
@@ -1241,7 +1345,13 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
 
         {cards.map(card=>{
           const allBillings=getCardBillingMonths(card,cardPurchases);
-          const openFat=buildFatura(card,cardPurchases,cardFaturas,nowMonth);
+          const futureMths=Array.from({length:6},(_,i)=>addM(nowMonth,i));
+          const allMonths=[...new Set([...allBillings,...futureMths])].sort().reverse();
+          const displayMonths=allMonths.filter(bm=>{
+            if(bm===nowMonth) return true;
+            const f=buildFatura(card,cardPurchases,cardFaturas,bm);
+            return f.total>0;
+          });
           const usedLimit=cardPurchases.filter(p=>p.cardId===card.id).reduce((s,p)=>{
             const base=getBillingMonth(p.purchaseDate,card.closeDay);
             const inst=parseInt(p.installments)||1;
@@ -1249,12 +1359,10 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
             return s;
           },0);
           const limitPct=card.limit>0?Math.min(100,(usedLimit/card.limit)*100):0;
-          const closeDateThisMonth=getFaturaCloseDate(nowMonth,card.closeDay);
-          const daysToClose=daysUntil(closeDateThisMonth);
-          const pastFaturas=allBillings.filter(bm=>!isFaturaOpen(bm,card.closeDay)&&bm!==nowMonth).slice(-3).reverse();
 
           return(
             <div key={card.id} style={{background:"var(--card-bg)",borderRadius:18,overflow:"hidden",border:`1px solid ${card.color}22`}}>
+              {/* Card header */}
               <div style={{background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,padding:"16px 16px 14px",borderBottom:`1px solid ${card.color}22`}}>
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
                   <div>
@@ -1284,65 +1392,86 @@ function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas
                 </div>)}
               </div>
 
-              <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                  <div>
-                    <div style={{fontSize:11,fontWeight:700,color:"var(--text1)"}}>Fatura em aberto — {mLabel(nowMonth)}</div>
-                    <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
-                      {daysToClose!==null&&daysToClose>=0
-                        ?<span style={{color:"#facc15"}}>⏱ Fecha em {daysToClose}d ({fmtDate(closeDateThisMonth)})</span>
-                        :<span style={{color:"#f87171"}}>🔒 Fatura fechada</span>}
-                    </div>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:18,fontWeight:800,color:card.color}}>{fmt(openFat.total)}</div>
-                    <div style={{fontSize:9,color:"var(--text3)"}}>{openFat.items.length} compra{openFat.items.length!==1?"s":""}</div>
-                  </div>
-                </div>
-                {openFat.items.length>0&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                    {openFat.items.map(item=>(
-                      <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,color:"var(--text2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
-                          {item.total>1&&<div style={{fontSize:9,color:"var(--text3)"}}>{item.installmentNum}/{item.total}x</div>}
+              {/* Mini timeline — próximos meses */}
+              <div style={{overflowX:"auto",padding:"10px 14px 6px",borderBottom:`1px solid ${card.color}11`}}>
+                <div style={{display:"flex",gap:8,minWidth:"max-content"}}>
+                  {futureMths.map(bm=>{
+                    const f=buildFatura(card,cardPurchases,cardFaturas,bm);
+                    const isNow=bm===nowMonth;
+                    return(
+                      <div key={bm} style={{textAlign:"center",minWidth:58,background:isNow?`${card.color}18`:"var(--bg)",borderRadius:9,padding:"6px 4px",border:`1px solid ${isNow?card.color+"44":"var(--border2)"}`}}>
+                        <div style={{fontSize:9,color:isNow?card.color:"var(--text4)",fontWeight:isNow?700:400,marginBottom:3}}>{mShort(bm)}{isNow?" ●":""}</div>
+                        <div style={{fontSize:12,fontWeight:700,color:f.total>0?card.color:"var(--text4)"}}>{f.total>0?fmt(f.total):"—"}</div>
+                        <div style={{fontSize:8,marginTop:2,color:f.paid?"#4ade80":f.open?"#facc15":f.total>0?"#fb923c":"transparent"}}>
+                          {f.paid?"✓ pago":f.open?"em aberto":f.total>0?"a pagar":""}
                         </div>
-                        <div style={{fontSize:12,fontWeight:700,color:card.color}}>{fmt(item.amount)}</div>
-                        <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(item.amount),installments:String(item.installments||1)})}
-                          style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:20,height:20,borderRadius:5,fontSize:10}}>✏</button>
-                        <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
-                          style={{...S.iconBtn,background:"rgba(239,68,68,.08)",color:"#f8717188",width:20,height:20,borderRadius:5,fontSize:10}}>✕</button>
                       </div>
-                    ))}
-                  </div>
-                )}
-                {openFat.items.length===0&&<div style={{textAlign:"center",padding:"10px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra nesta fatura</div>}
+                    );
+                  })}
+                </div>
               </div>
 
-              {pastFaturas.length>0&&(
-                <div style={{padding:"10px 14px"}}>
-                  <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:7}}>Faturas anteriores</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {pastFaturas.map(bm=>{
-                      const fat=buildFatura(card,cardPurchases,cardFaturas,bm);
-                      if(fat.total<=0) return null;
-                      return(
-                        <div key={bm} style={{display:"flex",alignItems:"center",gap:10,background:"var(--bg)",borderRadius:9,padding:"8px 12px",border:"1px solid var(--border2)"}}>
-                          <div style={{flex:1}}>
-                            <div style={{fontSize:12,color:"var(--text2)",fontWeight:600}}>{mLabel(bm)}</div>
-                            <div style={{fontSize:10,color:"var(--text3)"}}>Venceu {fmtDate(fat.dueDate)}{fat.partial?` · Parcial: ${fmt(fat.paidAmount)}`:""}</div>
+              {/* Accordion de faturas */}
+              <div style={{display:"flex",flexDirection:"column"}}>
+                {displayMonths.length===0&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra neste cartão</div>}
+                {displayMonths.map((bm,idx)=>{
+                  const fat=buildFatura(card,cardPurchases,cardFaturas,bm);
+                  const key=`${card.id}_${bm}`;
+                  const isExp=expandedM[key]!=null?expandedM[key]:bm===nowMonth;
+                  const isFuture=bm>nowMonth;
+                  const statusColor=fat.paid?"#4ade80":fat.open?"#facc15":fat.total>0?"#fb923c":"var(--text4)";
+                  const statusLabel=fat.paid?"✓ pago":fat.open?"🔄 aberta":fat.total>0?"⏳ a pagar":"—";
+                  return(
+                    <div key={bm} style={{borderBottom:idx<displayMonths.length-1?"1px solid var(--border2)":"none"}}>
+                      <button onClick={()=>toggleM(key)}
+                        style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:12,fontWeight:700,color:"var(--text1)"}}>{mLabel(bm)}{isFuture&&<span style={{marginLeft:6,fontSize:9,color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
+                          <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
+                            {fat.open?`Fecha em ${fmtDate(fat.closeDate)}`:fat.total>0?`Vence ${fmtDate(fat.dueDate)}`:"Sem compras"}
                           </div>
-                          <div style={{fontSize:13,fontWeight:700,color:fat.paid?"#4ade80":fat.partial?"#facc15":card.color}}>{fmt(fat.total)}</div>
-                          <div style={{...S.badge,background:fat.paid?"rgba(74,222,128,.15)":fat.partial?"rgba(250,204,21,.12)":"rgba(251,146,60,.12)",color:fat.paid?"#4ade80":fat.partial?"#facc15":"#fb923c",padding:"4px 8px",fontSize:9}}>
-                            {fat.paid?"✓ pago":fat.partial?"parcial":"pendente"}
-                          </div>
-                          {fat.paid&&<button onClick={()=>onRevertFatura(fat.key)} style={{...S.iconBtn,background:"rgba(248,113,113,.1)",color:"#f87171",fontSize:9,padding:"2px 6px",height:"auto",borderRadius:5}}>↩</button>}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                        <div style={{textAlign:"right",marginRight:6}}>
+                          <div style={{fontSize:13,fontWeight:800,color:fat.total>0?card.color:"var(--text4)"}}>{fat.total>0?fmt(fat.total):"—"}</div>
+                          <div style={{fontSize:9,color:statusColor,marginTop:1}}>{statusLabel}</div>
+                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text4)" strokeWidth="2.5" strokeLinecap="round" style={{transform:isExp?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>
+                          <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                      </button>
+                      {isExp&&(
+                        <div style={{padding:"0 14px 12px",display:"flex",flexDirection:"column",gap:4}}>
+                          {fat.items.length===0&&<div style={{textAlign:"center",padding:"8px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra nesta fatura</div>}
+                          {fat.items.map(item=>(
+                            <div key={item.id+item.installmentNum} style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
+                              <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontSize:12,color:"var(--text2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
+                                <div style={{fontSize:9,color:"var(--text3)",marginTop:1,display:"flex",gap:6}}>
+                                  {item.total>1&&<span style={{color:card.color,fontWeight:600}}>📋 {item.installmentNum}/{item.total}x</span>}
+                                  {item.total>1&&<span>Total: {fmt(item.originalAmount||item.amount*item.total)}</span>}
+                                </div>
+                              </div>
+                              <div style={{fontSize:12,fontWeight:700,color:card.color}}>{fmt(item.amount)}</div>
+                              {bm===nowMonth&&(<>
+                                <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
+                                  style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:20,height:20,borderRadius:5,fontSize:10}}>✏</button>
+                                <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
+                                  style={{...S.iconBtn,background:"rgba(239,68,68,.08)",color:"#f8717188",width:20,height:20,borderRadius:5,fontSize:10}}>✕</button>
+                              </>)}
+                            </div>
+                          ))}
+                          {!fat.open&&fat.total>0&&!fat.paid&&(
+                            <button onClick={()=>{/* handled via main screen */}} style={{marginTop:4,padding:"8px",background:`${card.color}18`,border:`1px solid ${card.color}44`,borderRadius:8,color:card.color,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                              Pagar fatura — {fmt(fat.total)}
+                            </button>
+                          )}
+                          {fat.paid&&<button onClick={()=>onRevertFatura(fat.key)} style={{marginTop:4,padding:"7px",background:"rgba(248,113,113,.08)",border:"1px solid #f8717133",borderRadius:8,color:"#f87171",fontSize:11,fontWeight:600,cursor:"pointer"}}>↩ Estornar pagamento</button>}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
