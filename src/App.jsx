@@ -882,6 +882,18 @@ function MainApp({ fbUser, onLogout }){
 
       {/* Bottom nav — 4 abas principais + "Mais" */}
       <nav className="appBottomNav" style={S.bottomNav}>
+        {/* Desktop-only: botões "+ Receita" e "+ Despesa" no topo */}
+        <button className="navDesktopOnly navAddReceita"
+          onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);}}
+          style={{display:"none",alignItems:"center",gap:10,padding:"10px 14px",background:"#0d2a1a",border:"1.5px solid #4ade8066",borderRadius:10,color:"#4ade80",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:2}}>
+          <span style={{fontSize:15}}>📈</span><span>+ Receita</span>
+        </button>
+        <button className="navDesktopOnly navAddDespesa"
+          onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);}}
+          style={{display:"none",alignItems:"center",gap:10,padding:"10px 14px",background:"#1a1208",border:"1.5px solid #fb923c66",borderRadius:10,color:"#fb923c",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>
+          <span style={{fontSize:15}}>📉</span><span>+ Despesa</span>
+        </button>
+
         {[
           ["lancamentos","Contas",<svg key="l" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
           ["graficos","Análise",<svg key="g" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
@@ -894,8 +906,22 @@ function MainApp({ fbUser, onLogout }){
             <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
           </button>
         ))}
-        {/* Botão "Mais" */}
-        <button className="navBtn" onClick={()=>setShowMoreNav(p=>!p)}
+
+        {/* Desktop-only: Saúde, Perfil, Admin direto no sidebar */}
+        {[
+          ["saude","Saúde",<svg key="s" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>],
+          ["perfil","Perfil",<svg key="p" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
+          ...(fbUser.email===ADMIN_EMAIL?[["admin","Admin",<svg key="a" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>]]:[]),
+        ].map(([tab,label,icon])=>(
+          <button key={tab} onClick={()=>setActiveTab(tab)} className="navDesktopOnly navBtn"
+            style={{...S.navBtn,display:"none",borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
+            <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
+            <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
+          </button>
+        ))}
+
+        {/* Mobile-only: Botão "Mais" */}
+        <button className="navMobileOnly navBtn" onClick={()=>setShowMoreNav(p=>!p)}
           style={{...S.navBtn,borderTop:["saude","perfil","admin"].includes(activeTab)?"2px solid #8ab4f8":"2px solid transparent",...(["saude","perfil","admin"].includes(activeTab)?S.navBtnActive:{})}}>
           <span style={{color:showMoreNav||["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",fontSize:20,lineHeight:1,opacity:showMoreNav||["saude","perfil","admin"].includes(activeTab)?1:0.75}}>⋯</span>
           <span style={{fontSize:9,fontWeight:["saude","perfil","admin"].includes(activeTab)?700:500,color:["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",marginTop:2}}>Mais</span>
@@ -918,9 +944,9 @@ function MainApp({ fbUser, onLogout }){
         </div>
       )}
 
-      {/* FAB — novo lançamento (visível na aba Contas) */}
+      {/* FAB — novo lançamento (visível na aba Contas, apenas mobile) */}
       {activeTab==="lancamentos"&&!showForm&&!editTarget&&!delTarget&&(
-        <>
+        <div className="appFabWrap">
           {/* Backdrop para fechar o menu */}
           {showFabMenu&&<div style={{position:"fixed",inset:0,zIndex:48}} onClick={()=>setShowFabMenu(false)}/>}
 
@@ -945,7 +971,7 @@ function MainApp({ fbUser, onLogout }){
             onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,.6)";}}>
             +
           </button>
-        </>
+        </div>
       )}
 
       {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}} cards={cards}/>}
@@ -2291,7 +2317,7 @@ const CSS=`
       overflow-y: auto;
       z-index: 40 !important;
     }
-    .appBottomNav button {
+    .appBottomNav .navBtn {
       flex: 0 0 auto !important;
       width: 100% !important;
       flex-direction: row !important;
@@ -2304,23 +2330,25 @@ const CSS=`
       border-radius: 10px !important;
       margin-bottom: 2px;
     }
-    .appBottomNav button[style*="#8ab4f8"] {
+    .appBottomNav .navBtn[style*="#8ab4f8"] {
       border-left-color: #8ab4f8 !important;
       background: var(--card-bg) !important;
     }
-    .appBottomNav button span:last-child {
+    .appBottomNav .navBtn span:last-child {
       font-size: 13px !important;
       font-weight: 600 !important;
       margin-top: 0 !important;
     }
-    /* "Mais" dropdown → aparece ao lado do sidebar */
-    .appMoreMenu {
-      top: auto !important;
-      right: auto !important;
-      bottom: 24px !important;
-      left: max(220px, calc(50% - 380px)) !important;
-      min-width: 180px !important;
+    .appBottomNav .navAddReceita, .appBottomNav .navAddDespesa {
+      width: 100% !important;
     }
+    .appBottomNav .navAddReceita:hover { filter: brightness(1.15); }
+    .appBottomNav .navAddDespesa:hover { filter: brightness(1.15); }
+    /* Desktop-only items visíveis, mobile-only escondidos */
+    .appBottomNav .navDesktopOnly { display: flex !important; }
+    .navMobileOnly { display: none !important; }
+    .appMoreMenu { display: none !important; }
+    .appFabWrap { display: none !important; }
     /* Modals: centered card instead of bottom sheet */
     .appOverlay { align-items: center !important; padding: 20px; }
     .modal-in {
