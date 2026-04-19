@@ -1,71 +1,92 @@
 import sharp from 'sharp';
-import { readFileSync, writeFileSync } from 'fs';
 
-// SVG icon: dark bg + green gradient coin with upward arrow
+// CashUp logo: green gradient bg, white $ sign, gold arrow, glass bars, CASHUP badge
 const svg = (size) => `
 <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="#0d2a1a"/>
-      <stop offset="100%" stop-color="#080c12"/>
-    </radialGradient>
-    <linearGradient id="coinGrad" x1="20%" y1="0%" x2="80%" y2="100%">
-      <stop offset="0%" stop-color="#4ade80"/>
-      <stop offset="100%" stop-color="#16a34a"/>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/>
+      <stop offset="50%" stop-color="#16a34a"/>
+      <stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="bgInner" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#4ade80" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#15803d" stop-opacity="0"/>
     </linearGradient>
     <linearGradient id="arrowGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#4ade80"/>
-      <stop offset="100%" stop-color="#86efac"/>
+      <stop offset="0%" stop-color="#f59e0b"/>
+      <stop offset="60%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#fde68a"/>
+    </linearGradient>
+    <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.15"/>
+    </linearGradient>
+    <linearGradient id="swirl" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#4ade80" stop-opacity="0"/>
+      <stop offset="40%" stop-color="#4ade80" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#4ade80" stop-opacity="0"/>
     </linearGradient>
     <filter id="glow">
-      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="arrowGlow">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
       <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
     </filter>
     <filter id="shadow">
-      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#4ade80" flood-opacity="0.25"/>
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#000" flood-opacity="0.3"/>
     </filter>
+    <clipPath id="rounded">
+      <rect width="512" height="512" rx="115"/>
+    </clipPath>
   </defs>
 
-  <!-- Background -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g clip-path="url(#rounded)">
+    <!-- Green background -->
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <rect width="512" height="512" fill="url(#bgInner)"/>
 
-  <!-- Subtle grid lines -->
-  <line x1="0" y1="340" x2="512" y2="340" stroke="#4ade8008" stroke-width="1"/>
-  <line x1="0" y1="400" x2="512" y2="400" stroke="#4ade8008" stroke-width="1"/>
-  <line x1="170" y1="0" x2="170" y2="512" stroke="#4ade8008" stroke-width="1"/>
-  <line x1="340" y1="0" x2="340" y2="512" stroke="#4ade8008" stroke-width="1"/>
+    <!-- Swirl/glow effect behind $ -->
+    <ellipse cx="256" cy="230" rx="180" ry="80" fill="url(#swirl)" opacity="0.5" transform="rotate(-30 256 230)"/>
+    <ellipse cx="256" cy="230" rx="160" ry="60" fill="url(#swirl)" opacity="0.4" transform="rotate(20 256 230)"/>
 
-  <!-- Glow circle behind coin -->
-  <circle cx="256" cy="230" r="130" fill="#4ade80" opacity="0.06"/>
+    <!-- Glass bar charts — bottom right -->
+    <rect x="288" y="310" width="38" height="110" rx="7" fill="url(#barGrad)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+    <rect x="340" y="270" width="38" height="150" rx="7" fill="url(#barGrad)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+    <rect x="392" y="240" width="38" height="180" rx="7" fill="url(#barGrad)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+    <!-- Bar top highlights -->
+    <rect x="290" y="312" width="34" height="10" rx="5" fill="rgba(255,255,255,0.4)"/>
+    <rect x="342" y="272" width="34" height="10" rx="5" fill="rgba(255,255,255,0.4)"/>
+    <rect x="394" y="242" width="34" height="10" rx="5" fill="rgba(255,255,255,0.4)"/>
 
-  <!-- Coin circle -->
-  <circle cx="256" cy="230" r="110" fill="url(#coinGrad)" filter="url(#shadow)"/>
-  <circle cx="256" cy="230" r="96" fill="none" stroke="#86efac" stroke-width="3" opacity="0.4"/>
+    <!-- Gold arrow (diagonal up-right) -->
+    <g filter="url(#arrowGlow)">
+      <path d="M 155 360 L 370 130" stroke="url(#arrowGrad)" stroke-width="28" stroke-linecap="round"/>
+      <!-- Arrowhead -->
+      <polygon points="370,130 310,148 352,192" fill="url(#arrowGrad)"/>
+    </g>
 
-  <!-- R$ symbol -->
-  <text x="256" y="272"
-    font-family="'Georgia', serif"
-    font-size="108"
-    font-weight="bold"
-    fill="#080c12"
-    text-anchor="middle"
-    opacity="0.92">R$</text>
+    <!-- Dollar sign — large white with shadow -->
+    <text x="218" y="298"
+      font-family="Arial Black, Helvetica, sans-serif"
+      font-size="240"
+      font-weight="900"
+      fill="white"
+      filter="url(#shadow)"
+      opacity="0.95">$</text>
 
-  <!-- Upward trend line at bottom -->
-  <polyline
-    points="72,410 152,380 232,395 312,348 392,315 440,290"
-    fill="none"
-    stroke="url(#arrowGrad)"
-    stroke-width="8"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    filter="url(#glow)"
-    opacity="0.9"/>
-
-  <!-- Dots on trend -->
-  <circle cx="152" cy="380" r="6" fill="#4ade80" opacity="0.8"/>
-  <circle cx="312" cy="348" r="6" fill="#4ade80" opacity="0.8"/>
-  <circle cx="440" cy="290" r="8" fill="#86efac"/>
+    <!-- Bottom white pill badge with CASHUP -->
+    <rect x="96" y="418" width="320" height="64" rx="32" fill="white" opacity="0.95"/>
+    <text x="256" y="462"
+      font-family="Arial Black, Helvetica, sans-serif"
+      font-size="42"
+      font-weight="900"
+      fill="#15803d"
+      text-anchor="middle"
+      letter-spacing="3">CASHUP</text>
+  </g>
 </svg>
 `;
 

@@ -220,7 +220,7 @@ function App(){
   useEffect(()=>onAuthStateChanged(auth, u=>{ setFbUser(u??null); if(u) saveUserProfile(u); }),[]);
   if(fbUser===undefined) return(
     <div style={{position:'fixed',inset:0,background:'#080c12',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div style={{fontSize:40,animation:'lp 1.4s ease-in-out infinite'}}>💰</div>
+      <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:64,height:64,borderRadius:16,animation:'lp 1.4s ease-in-out infinite',objectFit:"cover"}}/>
     </div>
   );
   if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
@@ -671,8 +671,8 @@ function MainApp({ fbUser, onLogout }){
 
       <header style={S.header}>
         <div style={S.headerLeft}>
-          <span style={{fontSize:22}}>💰</span>
-          <div><div style={S.appName}>Minhas Finanças</div><div style={S.appSub}>Controle seus lançamentos</div></div>
+          <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:32,height:32,borderRadius:8,objectFit:"cover"}}/>
+          <div><div style={S.appName}>CashUp</div><div style={S.appSub}>Controle seus lançamentos</div></div>
         </div>
         {/* Health indicator in header — clicável */}
         {healthScore&&activeTab==="lancamentos"&&(

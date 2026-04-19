@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-  <meta name="apple-mobile-web-app-title" content="Meu Financeiro"/>
+  <meta name="apple-mobile-web-app-title" content="CashUp"/>
   <meta name="theme-color" content="#080c12"/>
   <link rel="manifest" href="/meu_financeiro/manifest.json"/>
   <link rel="apple-touch-icon" href="/meu_financeiro/icon-192.png"/>
-  <title>Meu Financeiro 💰</title>
+  <title>CashUp</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
     html,body{height:100%;background:#080c12}
     #root{min-height:100%}
     body{overscroll-behavior-y:contain}
     #ld{position:fixed;inset:0;background:#080c12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:9999}
-    #ld .ic{font-size:46px;animation:lp 1.4s ease-in-out infinite}
+    #ld .ic{width:64px;height:64px;border-radius:16px;animation:lp 1.4s ease-in-out infinite;object-fit:cover}
     #ld .br{width:44px;height:3px;background:#111820;border-radius:2px;overflow:hidden}
     #ld .bf{height:100%;background:#4ade80;border-radius:2px;animation:lb 1.2s ease-in-out infinite}
     #ld .tx{color:#445;font:13px/1 system-ui,sans-serif}
@@ -26,7 +26,7 @@
 </head>
 <body>
   <div id="ld">
-    <div class="ic">💰</div>
+    <img class="ic" src="/meu_financeiro/icon-192.png" alt="CashUp"/>
     <div class="br"><div class="bf"></div></div>
     <div class="tx">Carregando...</div>
   </div>
