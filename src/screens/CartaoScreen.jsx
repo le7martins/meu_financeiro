@@ -13,7 +13,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const [delCardId,setDelCardId]=useState(null);
   const [delPurchId,setDelPurchId]=useState(null);
   const [editPurch,setEditPurch]=useState(null);
-  const [expandedM,setExpandedM]=useState({});
+  const [selectedBM,setSelectedBM]=useState({});
   const [cardForm,setCardForm]=useState({name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]});
   const [purchForm,setPurchForm]=useState({description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""});
   const BLANK_CARD={name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]};
@@ -66,13 +66,10 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
 
         {cards.map(card=>{
           const allBillings=getCardBillingMonths(card,cardPurchases);
-          const futureMths=Array.from({length:6},(_,i)=>addM(nowMonth,i));
-          const allMonths=[...new Set([...allBillings,...futureMths])].sort().reverse();
-          const displayMonths=allMonths.filter(bm=>{
-            if(bm===nowMonth) return true;
-            const f=buildFatura(card,cardPurchases,cardFaturas,bm);
-            return f.total>0;
-          });
+          const futureMths=Array.from({length:4},(_,i)=>addM(nowMonth,i));
+          const stripMonths=[...new Set([...allBillings,...futureMths])].sort();
+          const selBM=selectedBM[card.id]||nowMonth;
+          const selFat=buildFatura(card,cardPurchases,cardFaturas,selBM);
           const usedLimit=cardPurchases.filter(p=>p.cardId===card.id).reduce((s,p)=>{
             const base=getBillingMonth(p.purchaseDate,card.closeDay);
             const inst=parseInt(p.installments)||1;
@@ -83,6 +80,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
 
           return(
             <div key={card.id} style={{background:"var(--card-bg)",borderRadius:18,overflow:"hidden",border:`1px solid ${card.color}22`}}>
+
+              {/* Cabeçalho do cartão */}
               <div style={{background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,padding:"16px 16px 14px",borderBottom:`1px solid ${card.color}22`}}>
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
                   <div>
@@ -114,83 +113,87 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                 </div>)}
               </div>
 
-              <div style={{overflowX:"auto",padding:"10px 14px 6px",borderBottom:`1px solid ${card.color}11`}}>
-                <div style={{display:"flex",gap:8,minWidth:"max-content"}}>
-                  {futureMths.map(bm=>{
+              {/* Seletor de mês — chips clicáveis */}
+              <div style={{overflowX:"auto",padding:"10px 14px 8px",borderBottom:`1px solid ${card.color}11`}}>
+                <div style={{display:"flex",gap:7,minWidth:"max-content"}}>
+                  {stripMonths.map(bm=>{
                     const f=buildFatura(card,cardPurchases,cardFaturas,bm);
+                    const isSel=bm===selBM;
                     const isNow=bm===nowMonth;
                     return(
-                      <div key={bm} style={{textAlign:"center",minWidth:58,background:isNow?`${card.color}18`:"var(--bg)",borderRadius:9,padding:"6px 4px",border:`1px solid ${isNow?card.color+"44":"var(--border2)"}`}}>
-                        <div style={{fontSize:9,color:isNow?card.color:"var(--text4)",fontWeight:isNow?700:400,marginBottom:3}}>{mShort(bm)}{isNow?" ●":""}</div>
-                        <div style={{fontSize:12,fontWeight:700,color:f.total>0?card.color:"var(--text4)"}}>{f.total>0?fmt(f.total):"—"}</div>
-                        <div style={{fontSize:8,marginTop:2,color:f.paid?"#4ade80":f.open?"#facc15":f.total>0?"#fb923c":"transparent"}}>
-                          {f.paid?"✓ pago":f.open?"em aberto":f.total>0?"a pagar":""}
+                      <button key={bm} onClick={()=>setSelectedBM(p=>({...p,[card.id]:bm}))}
+                        style={{textAlign:"center",minWidth:62,background:isSel?`${card.color}22`:"var(--bg)",borderRadius:10,padding:"7px 5px",
+                          border:`1.5px solid ${isSel?card.color+"99":"var(--border2)"}`,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                        <div style={{fontSize:9,color:isSel?card.color:isNow?"var(--text2)":"var(--text4)",fontWeight:isSel||isNow?700:400,marginBottom:3}}>
+                          {mShort(bm)}{isNow?" ●":""}
                         </div>
-                      </div>
+                        <div style={{fontSize:12,fontWeight:700,color:f.total>0?(isSel?card.color:"var(--text2)"):"var(--text4)"}}>
+                          {f.total>0?fmt(f.total):"—"}
+                        </div>
+                        <div style={{fontSize:8,marginTop:2,color:f.paid?"#4ade80":f.open?"#facc15":f.total>0?"#fb923c":"transparent"}}>
+                          {f.paid?"✓ pago":f.open?"aberto":f.total>0?"a pagar":""}
+                        </div>
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div style={{display:"flex",flexDirection:"column"}}>
-                {displayMonths.length===0&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra neste cartão</div>}
-                {displayMonths.map((bm,idx)=>{
-                  const fat=buildFatura(card,cardPurchases,cardFaturas,bm);
-                  const key=`${card.id}_${bm}`;
-                  const isExp=expandedM[key]!=null?expandedM[key]:bm===nowMonth;
-                  const isFuture=bm>nowMonth;
-                  const statusColor=fat.paid?"#4ade80":fat.open?"#facc15":fat.total>0?"#fb923c":"var(--text4)";
-                  const statusLabel=fat.paid?"✓ pago":fat.open?"🔄 aberta":fat.total>0?"⏳ a pagar":"—";
-                  return(
-                    <div key={bm} style={{borderBottom:idx<displayMonths.length-1?"1px solid var(--border2)":"none"}}>
-                      <button onClick={()=>toggleM(key)}
-                        style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"11px 14px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit"}}>
-                        <div style={{flex:1}}>
-                          <div style={{fontSize:12,fontWeight:700,color:"var(--text1)"}}>{mLabel(bm)}{isFuture&&<span style={{marginLeft:6,fontSize:9,color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
-                          <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
-                            {fat.open?`Fecha em ${fmtDate(fat.closeDate)}`:fat.total>0?`Vence ${fmtDate(fat.dueDate)}`:"Sem compras"}
-                          </div>
-                        </div>
-                        <div style={{textAlign:"right",marginRight:6}}>
-                          <div style={{fontSize:13,fontWeight:800,color:fat.total>0?card.color:"var(--text4)"}}>{fat.total>0?fmt(fat.total):"—"}</div>
-                          <div style={{fontSize:9,color:statusColor,marginTop:1}}>{statusLabel}</div>
-                        </div>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--text4)" strokeWidth="2.5" strokeLinecap="round" style={{transform:isExp?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>
-                          <polyline points="6 9 12 15 18 9"/>
-                        </svg>
-                      </button>
-                      {isExp&&(
-                        <div style={{padding:"0 14px 12px",display:"flex",flexDirection:"column",gap:4}}>
-                          {fat.items.length===0&&<div style={{textAlign:"center",padding:"8px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra nesta fatura</div>}
-                          {fat.items.map(item=>(
-                            <div key={item.id+item.installmentNum} style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                              <div style={{flex:1,minWidth:0}}>
-                                <div style={{fontSize:12,color:"var(--text2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
-                                <div style={{fontSize:9,color:"var(--text3)",marginTop:1,display:"flex",gap:6}}>
-                                  {item.total>1&&<span style={{color:card.color,fontWeight:600}}>📋 {item.installmentNum}/{item.total}x</span>}
-                                  {item.total>1&&<span>Total: {fmt(item.originalAmount||item.amount*item.total)}</span>}
-                                </div>
-                              </div>
-                              <div style={{fontSize:12,fontWeight:700,color:card.color}}>{fmt(item.amount)}</div>
-                              {!fat.paid&&(<>
-                                <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
-                                  style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:20,height:20,borderRadius:5,fontSize:10}}>✏</button>
-                                <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
-                                  style={{...S.iconBtn,background:"rgba(239,68,68,.08)",color:"#f8717188",width:20,height:20,borderRadius:5,fontSize:10}}>✕</button>
-                              </>)}
-                            </div>
-                          ))}
-                          {!fat.open&&fat.total>0&&!fat.paid&&(
-                            <button onClick={()=>{}} style={{marginTop:4,padding:"8px",background:`${card.color}18`,border:`1px solid ${card.color}44`,borderRadius:8,color:card.color,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                              Pagar fatura — {fmt(fat.total)}
-                            </button>
-                          )}
-                          {fat.paid&&<button onClick={()=>onRevertFatura(fat.key)} style={{marginTop:4,padding:"7px",background:"rgba(248,113,113,.08)",border:"1px solid #f8717133",borderRadius:8,color:"#f87171",fontSize:11,fontWeight:600,cursor:"pointer"}}>↩ Estornar pagamento</button>}
-                        </div>
-                      )}
+              {/* Detalhe da fatura selecionada */}
+              <div style={{padding:"12px 14px 14px"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:9,color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
+                    <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
+                      {selFat.open?`Fecha em ${fmtDate(selFat.closeDate)}`:selFat.total>0?`Vence ${fmtDate(selFat.dueDate)}`:"Sem compras"}
                     </div>
-                  );
-                })}
+                  </div>
+                  {selFat.total>0&&(
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontSize:16,fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
+                      <div style={{fontSize:9,marginTop:1,color:selFat.paid?"#4ade80":selFat.open?"#facc15":"#fb923c",fontWeight:600}}>
+                        {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":"⏳ a pagar"}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {selFat.items.length===0&&(
+                  <div style={{textAlign:"center",padding:"12px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra nesta fatura</div>
+                )}
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {selFat.items.map(item=>(
+                    <div key={item.id+item.installmentNum} style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:9,padding:"8px 10px",border:"1px solid var(--border2)"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,color:"var(--text2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
+                        <div style={{fontSize:9,color:"var(--text3)",marginTop:1,display:"flex",gap:6}}>
+                          {item.total>1&&<span style={{color:card.color,fontWeight:600}}>📋 {item.installmentNum}/{item.total}x</span>}
+                          {item.total>1&&<span>Total: {fmt(item.amount*item.total)}</span>}
+                        </div>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:700,color:card.color,flexShrink:0}}>{fmt(item.amount)}</div>
+                      {!selFat.paid&&(<>
+                        <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
+                          style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:22,height:22,borderRadius:6,fontSize:11}}>✏</button>
+                        <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
+                          style={{...S.iconBtn,background:"rgba(239,68,68,.08)",color:"#f8717188",width:22,height:22,borderRadius:6,fontSize:11}}>✕</button>
+                      </>)}
+                    </div>
+                  ))}
+                </div>
+
+                {!selFat.open&&selFat.total>0&&!selFat.paid&&(
+                  <button onClick={()=>setCardFaturas({...cardFaturas,[selFat.key]:{paid:true,paidAmount:selFat.total,paidDate:TODAY}})}
+                    style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,border:`1px solid ${card.color}44`,borderRadius:10,color:card.color,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                    Pagar fatura — {fmt(selFat.total)}
+                  </button>
+                )}
+                {selFat.paid&&(
+                  <button onClick={()=>onRevertFatura(selFat.key)}
+                    style={{marginTop:10,width:"100%",padding:"8px",background:"rgba(248,113,113,.08)",border:"1px solid #f8717133",borderRadius:9,color:"#f87171",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                    ↩ Estornar pagamento
+                  </button>
+                )}
               </div>
             </div>
           );
