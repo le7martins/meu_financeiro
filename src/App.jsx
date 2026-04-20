@@ -94,6 +94,7 @@ function MainApp({ fbUser, onLogout }){
   const [showMoreNav,  setShowMoreNav]  = useState(false);
   const [showFabMenu,  setShowFabMenu]  = useState(false);
   const [showHealth,   setShowHealth]   = useState(false);
+  const [showUpcoming, setShowUpcoming] = useState(false);
   const {toasts,toast} = useToast();
 
   // ─── Firestore: carregar + migrar dados na nuvem ──────────────
@@ -615,30 +616,39 @@ function MainApp({ fbUser, onLogout }){
         {/* Próximos vencimentos */}
         {upcomingDue.length>0&&(
           <div style={{padding:"0 14px 10px"}}>
-            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-              <div style={{fontSize:10,color:"#facc15",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}>⏰ Próximos Vencimentos</div>
-              <span style={{fontSize:9,background:"#facc15",color:"#0d1118",padding:"2px 7px",borderRadius:4,fontWeight:800}}>{upcomingDue.length}</span>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {upcomingDue.map((e,i)=>{
-                const dayColor=e._days<0?"#f87171":e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
-                const dayLabel=e._days<0?`${Math.abs(e._days)}d atraso`:e._days===0?"Hoje":`${e._days}d`;
-                return(
-                  <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
-                    style={{display:"flex",alignItems:"center",gap:8,background:e._days<0?"rgba(248,113,113,.07)":e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
-                    onMouseEnter={ev=>ev.currentTarget.style.borderColor=dayColor+"88"}
-                    onMouseLeave={ev=>ev.currentTarget.style.borderColor=dayColor+"33"}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
-                      <div style={{fontSize:9,color:"var(--text3)",marginTop:1}}>{fmtDate(e._due)}</div>
-                    </div>
-                    <div style={{fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":"#fb923c",flexShrink:0}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
-                    <div style={{fontSize:9,fontWeight:700,color:dayColor,background:dayColor+"18",border:`1px solid ${dayColor}33`,borderRadius:4,padding:"2px 7px",flexShrink:0}}>{dayLabel}</div>
-                  </button>
-                );
-              })}
-            </div>
+            <button onClick={()=>setShowUpcoming(p=>!p)}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px",fontFamily:"inherit"}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                <span style={{fontSize:10,color:"#facc15",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}>⏰ Próximos Vencimentos</span>
+                <span style={{fontSize:9,background:"#facc15",color:"#0d1118",padding:"2px 7px",borderRadius:4,fontWeight:800}}>{upcomingDue.length}</span>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2.5" strokeLinecap="round"
+                style={{transform:showUpcoming?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {showUpcoming&&(
+              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {upcomingDue.map((e,i)=>{
+                  const dayColor=e._days<0?"#f87171":e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
+                  const dayLabel=e._days<0?`${Math.abs(e._days)}d atraso`:e._days===0?"Hoje":`${e._days}d`;
+                  return(
+                    <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
+                      style={{display:"flex",alignItems:"center",gap:8,background:e._days<0?"rgba(248,113,113,.07)":e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
+                      onMouseEnter={ev=>ev.currentTarget.style.borderColor=dayColor+"88"}
+                      onMouseLeave={ev=>ev.currentTarget.style.borderColor=dayColor+"33"}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
+                        <div style={{fontSize:9,color:"var(--text3)",marginTop:1}}>{fmtDate(e._due)}</div>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":"#fb923c",flexShrink:0}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
+                      <div style={{fontSize:9,fontWeight:700,color:dayColor,background:dayColor+"18",border:`1px solid ${dayColor}33`,borderRadius:4,padding:"2px 7px",flexShrink:0}}>{dayLabel}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
