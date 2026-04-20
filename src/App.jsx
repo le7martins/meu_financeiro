@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { loadUserData, saveData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
@@ -8,12 +8,12 @@ import { fmt, fmtShort, fmtDate, TODAY, MNAMES, mLabel, mShort, getNow, mDiff, a
 import { DEFAULT_CATS, BLANK, PRESET_COLORS, CARD_COLORS, NOTIF_KEY, NOTIF_LAST_KEY, defaultNotifSettings } from './constants.js';
 import { getBillingMonth, getFaturaDueDate, getFaturaCloseDate, isFaturaOpen, getPurchaseInstallmentsForBilling, buildFatura, getCardBillingMonths, getMonthEntries, requestNotifPermission, fireNotification, checkAndNotify } from './logic.js';
 import S from './styles.js';
-import ChartScreen from './screens/ChartScreen.jsx';
-import CartaoScreen from './screens/CartaoScreen.jsx';
-import DividasScreen from './screens/DividasScreen.jsx';
-import ProfileScreen from './screens/ProfileScreen.jsx';
-import SaudeScreen from './screens/SaudeScreen.jsx';
-import AdminScreen from './screens/AdminScreen.jsx';
+const ChartScreen   = lazy(() => import('./screens/ChartScreen.jsx'));
+const CartaoScreen  = lazy(() => import('./screens/CartaoScreen.jsx'));
+const DividasScreen = lazy(() => import('./screens/DividasScreen.jsx'));
+const ProfileScreen = lazy(() => import('./screens/ProfileScreen.jsx'));
+const SaudeScreen   = lazy(() => import('./screens/SaudeScreen.jsx'));
+const AdminScreen   = lazy(() => import('./screens/AdminScreen.jsx'));
 import FaturaPayModal from './modals/FaturaPayModal.jsx';
 import FormModal from './modals/FormModal.jsx';
 import EditModal from './modals/EditModal.jsx';
@@ -163,29 +163,26 @@ function MainApp({ fbUser, onLogout }){
   },[]);
 
   // ─── Funções de salvamento: localStorage + Firestore ─────────
-  const saveEntries   =(e)=>{ setEntries(e);        saveLS(k("entries"),e);    saveData(uid,'entries',e);   };
-  const saveDividas   =(d)=>{ setDividas(d);        saveLS(k("dividas"),d);    saveData(uid,'dividas',d);   };
-  const saveCards     =(c)=>{ setCards(c);          saveLS(k("cards"),c);      saveData(uid,'cards',c);     };
-  const saveCardPurchases=(p)=>{ setCardPurchases(p); saveLS(k("cpurchases"),p); saveData(uid,'purchases',p); };
-  const saveCardFaturas  =(f)=>{ setCardFaturas(f);   saveLS(k("cfaturas"),f);   saveData(uid,'faturas',f);   };
+  const saveEntries      = useCallback((e)=>{ setEntries(e);        saveLS(k("entries"),e);         saveData(uid,'entries',e);   },[uid,k]);
+  const saveDividas      = useCallback((d)=>{ setDividas(d);        saveLS(k("dividas"),d);         saveData(uid,'dividas',d);   },[uid,k]);
+  const saveCards        = useCallback((c)=>{ setCards(c);          saveLS(k("cards"),c);           saveData(uid,'cards',c);     },[uid,k]);
+  const saveCardPurchases= useCallback((p)=>{ setCardPurchases(p);  saveLS(k("cpurchases"),p);      saveData(uid,'purchases',p); },[uid,k]);
+  const saveCardFaturas  = useCallback((f)=>{ setCardFaturas(f);    saveLS(k("cfaturas"),f);        saveData(uid,'faturas',f);   },[uid,k]);
 
-  const _saveSettings=(patch)=>{
+  const _saveSettings = useCallback((patch)=>{
     const cur = {
-      categories: loadLS(k("cats"),DEFAULT_CATS),
+      categories:    loadLS(k("cats"),DEFAULT_CATS),
       notifSettings: loadLS(k("notif_settings"),defaultNotifSettings),
-      theme: loadLS(k("theme"),"dark"),
-      goals: loadLS(k("goals"),{monthly:0,savingsPct:20}),
-      budgets: loadLS(k("budgets"),{}),
+      theme:         loadLS(k("theme"),"dark"),
+      goals:         loadLS(k("goals"),{monthly:0,savingsPct:20}),
+      budgets:       loadLS(k("budgets"),{}),
       ...patch,
     };
     saveData(uid,'settings',cur);
-  };
-  const saveCategories   =(c)=>{ setCategories(c);    saveLS(k("cats"),c);           _saveSettings({categories:c});    };
-  const saveNotifSettings=(s)=>{ setNotifSettings(s); saveLS(k("notif_settings"),s); _saveSettings({notifSettings:s}); };
-  const saveTheme        =(t)=>{ setTheme(t);         saveLS(k("theme"),t);           _saveSettings({theme:t});         applyTheme(t); };
+  },[uid,k]);
 
   // Apply CSS vars directly on <html> — guarantees cascade regardless of <style> tag position
-  function applyTheme(t){
+  const applyTheme = useCallback((t)=>{
     const root=document.documentElement;
     const dark=t!=='light';
     const vars=dark?{
@@ -201,9 +198,13 @@ function MainApp({ fbUser, onLogout }){
     };
     Object.entries(vars).forEach(([k,v])=>root.style.setProperty(k,v));
     root.classList.toggle('light-mode',!dark);
-  }
-  const saveGoals        =(g)=>{ setGoals(g);         saveLS(k("goals"),g);           _saveSettings({goals:g});         };
-  const saveBudgets      =(b)=>{ setBudgets(b);       saveLS(k("budgets"),b);         _saveSettings({budgets:b});       };
+  },[]);
+
+  const saveCategories   = useCallback((c)=>{ setCategories(c);    saveLS(k("cats"),c);            _saveSettings({categories:c});    },[k,_saveSettings]);
+  const saveNotifSettings= useCallback((s)=>{ setNotifSettings(s); saveLS(k("notif_settings"),s);  _saveSettings({notifSettings:s}); },[k,_saveSettings]);
+  const saveTheme        = useCallback((t)=>{ setTheme(t);         saveLS(k("theme"),t);            _saveSettings({theme:t});         applyTheme(t); },[k,_saveSettings,applyTheme]);
+  const saveGoals        = useCallback((g)=>{ setGoals(g);         saveLS(k("goals"),g);            _saveSettings({goals:g});         },[k,_saveSettings]);
+  const saveBudgets      = useCallback((b)=>{ setBudgets(b);       saveLS(k("budgets"),b);          _saveSettings({budgets:b});       },[k,_saveSettings]);
 
   const NOW=getNow();
 
@@ -225,7 +226,8 @@ function MainApp({ fbUser, onLogout }){
     if(!allDates.length) return null;
     const earliest=allDates.reduce((mn,m)=>m<mn?m:mn,selMonth);
     if(earliest>=selMonth) return null;
-    let total=0,cur=earliest;
+    const cap=addM(selMonth,-36);
+    let total=0,cur=earliest<cap?cap:earliest;
     while(cur<selMonth){
       const me=getMonthEntries(entries,dividas,cur,cards,cardPurchases,cardFaturas);
       total+=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0)-me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
@@ -295,7 +297,7 @@ function MainApp({ fbUser, onLogout }){
   const catColor=(id)=>getCat(id).color;
   const catName =(id)=>getCat(id).name;
 
-  const handleToggle=(entry)=>{
+  const handleToggle=useCallback((entry)=>{
     if(entry.isFatura){
       if(entry.isOpenFatura) return;
       setFatPayTarget(entry); return;
@@ -321,9 +323,9 @@ function MainApp({ fbUser, onLogout }){
       return {...e,statusByMonth:{...e.statusByMonth,[selMonth]:newSt},paidDateByMonth:{...e.paidDateByMonth,[selMonth]:paidDt}};
     }));
     toast(newSt==="pago"?"✓ Marcado como pago":"↩ Marcado como pendente");
-  };
+  },[saveDividas,dividas,selMonth,saveEntries,entries,toast]);
 
-  const handleAdd=()=>{
+  const handleAdd=useCallback(()=>{
     if(!form.description.trim()||!form.amount||!form.date) return;
     if(form.type==="despesa"&&form.payWith&&form.payWith!=="saldo"){
       const card=cards.find(c=>c.id===form.payWith);
@@ -339,44 +341,45 @@ function MainApp({ fbUser, onLogout }){
     const entry={id:Date.now().toString(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),...(form.endMonth?{endMonth:form.endMonth}:{}),statusByMonth:{},overrides:{}};
     saveEntries([entry,...entries]);setForm(BLANK());setShowForm(false);
     toast(`✓ ${form.type==="receita"?"Receita":"Despesa"} adicionada`);
-  };
+  },[form,cards,entries,cardPurchases,saveCardPurchases,saveEntries,toast]);
 
-  const handleSaveEdit=(entryId,changes,scope)=>{
+  const handleSaveEdit=useCallback((entryId,changes,scope)=>{
     saveEntries(entries.map(e=>{
       if(e.id!==entryId) return e;
       if(e.recurrence==="none"||scope==="future"){const baseAmt=(e.recurrence==="installment"&&changes.amount!==undefined)?parseFloat((changes.amount*e.installments).toFixed(2)):(changes.amount??e.amount);return {...e,...changes,amount:baseAmt};}
       return {...e,overrides:{...e.overrides,[selMonth]:changes}};
     }));
     setEditTarget(null);toast("✓ Lançamento atualizado");
-  };
+  },[saveEntries,entries,selMonth,toast]);
 
-  const handleDelete=(entryId,scope)=>{
+  const handleDelete=useCallback((entryId,scope)=>{
     if(scope==="all")        saveEntries(entries.filter(e=>e.id!==entryId));
     else if(scope==="this")  saveEntries(entries.map(e=>e.id!==entryId?e:{...e,deletedMonths:[...(e.deletedMonths||[]),selMonth]}));
     else                     saveEntries(entries.map(e=>e.id!==entryId?e:{...e,deletedFrom:selMonth}));
     setDelTarget(null);toast("Lançamento removido","info");
-  };
+  },[saveEntries,entries,selMonth,toast]);
 
-  const handlePayFatura=(entry,amount,partial)=>{
+  const handlePayFatura=useCallback((entry,amount,partial)=>{
     const cur=cardFaturas[entry.faturaKey]||{};
     const isFullyPaid=!partial||amount>=entry.amount;
     saveCardFaturas({...cardFaturas,[entry.faturaKey]:{...cur,paid:isFullyPaid,paidAmount:amount,paidDate:TODAY,partial:partial&&!isFullyPaid}});
     setFatPayTarget(null);
     toast(isFullyPaid?"✓ Fatura paga":"Pagamento parcial registrado");
-  };
-  const handleRevertFatura=(faturaKey)=>{
+  },[cardFaturas,saveCardFaturas,toast]);
+
+  const handleRevertFatura=useCallback((faturaKey)=>{
     const nf={...cardFaturas};delete nf[faturaKey];
     saveCardFaturas(nf);toast("↩ Pagamento estornado","info");
-  };
+  },[cardFaturas,saveCardFaturas,toast]);
 
-  const handleBackup=()=>{
+  const handleBackup=useCallback(()=>{
     const data={version:1,exportedAt:new Date().toISOString(),entries,dividas,cards,cardPurchases,cardFaturas,categories};
     const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));
     Object.assign(document.createElement("a"),{href:url,download:`meu-financeiro-backup-${TODAY}.json`}).click();
     URL.revokeObjectURL(url);toast("💾 Backup salvo");
-  };
+  },[entries,dividas,cards,cardPurchases,cardFaturas,categories,toast]);
 
-  const handleRestore=(e)=>{
+  const handleRestore=useCallback((e)=>{
     const file=e.target.files?.[0];
     if(!file) return;
     const reader=new FileReader();
@@ -395,23 +398,21 @@ function MainApp({ fbUser, onLogout }){
       } catch{ toast("Erro ao ler o arquivo","error"); }
     };
     reader.readAsText(file);e.target.value="";
-  };
+  },[saveEntries,saveDividas,saveCards,saveCardPurchases,saveCardFaturas,saveCategories,toast]);
 
-  const handleExportCSV=(mk)=>{
+  const handleExportCSV=useCallback((mk)=>{
     const hdr=["Descrição","Tipo","Valor","Vencimento","Status","Categoria","Recorrência","Notas"];
+    const getCatN=(id)=>(categories.find(c=>c.id===id)||{name:id}).name;
     let rows=[];
     if(mk){
       const list=getMonthEntries(entries,dividas,mk,cards,cardPurchases,cardFaturas);
-      rows=list.map(e=>[`"${e.description}"`,e.type,(eVal(e)).toFixed(2),fmtDate(e.date),e.statusForMonth||e.status,`"${catName(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
+      rows=list.map(e=>[`"${e.description}"`,e.type,(eVal(e)).toFixed(2),fmtDate(e.date),e.statusForMonth||e.status,`"${getCatN(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
     } else {
-      // Entries
-      rows=entries.map(e=>[`"${e.description}"`,e.type,e.amount.toFixed(2),fmtDate(e.date),e.status,`"${catName(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
-      // Dívidas
+      rows=entries.map(e=>[`"${e.description}"`,e.type,e.amount.toFixed(2),fmtDate(e.date),e.status,`"${getCatN(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
       dividas.forEach(d=>{
         const instVal=parseFloat((d.totalAmount/d.installments).toFixed(2));
-        rows.push([`"${d.name} (dívida)"`,`"despesa"`,instVal.toFixed(2),`"${d.startMonth}"`,`"parcelado"`,`"${catName(d.category||"divida")}"`,`"${d.installments}x"`,`"${d.notes||""}"`]);
+        rows.push([`"${d.name} (dívida)"`,`"despesa"`,instVal.toFixed(2),`"${d.startMonth}"`,`"parcelado"`,`"${getCatN(d.category||"divida")}"`,`"${d.installments}x"`,`"${d.notes||""}"`]);
       });
-      // Faturas
       cards.forEach(card=>{
         const bms=getCardBillingMonths(card,cardPurchases);
         bms.forEach(bm=>{
@@ -424,7 +425,7 @@ function MainApp({ fbUser, onLogout }){
     const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
     Object.assign(document.createElement("a"),{href:url,download:`financeiro_${mk||"completo"}.csv`}).click();
     URL.revokeObjectURL(url);toast("📊 CSV exportado");
-  };
+  },[entries,dividas,cards,cardPurchases,cardFaturas,categories,toast]);
 
   const FILTERS=[
     ["all","Todos",monthEntries.length],
@@ -666,12 +667,14 @@ function MainApp({ fbUser, onLogout }){
         </div>
       </>)}
 
-      {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas}/>}
-      {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
-      {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
-      {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
-      {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout}/>}
-      {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
+      <Suspense fallback={<div style={{flex:1}}/>}>
+        {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas}/>}
+        {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
+        {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
+        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
+        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout}/>}
+        {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
+      </Suspense>
 
       {/* Modal — Saúde Financeira */}
       {showHealth&&healthScore&&(
