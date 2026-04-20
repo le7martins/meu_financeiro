@@ -8,7 +8,7 @@ import { getMonthEntries, buildFatura, getCardBillingMonths } from '../logic.js'
 import { fmt, fmtShort, mLabel, mShort, addM, eVal } from '../utils.js';
 import S from '../styles.js';
 
-export default function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,cardFaturas}){
+export default function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,cardFaturas,accumSaldo}){
   const [mode,setMode]=useState("mes");
   const [specMonth,setSpecMonth]=useState(nowMonth);
   const [fromMonth,setFromMonth]=useState(addM(nowMonth,-5));
@@ -60,6 +60,16 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
     const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
     return{month:mShort(m),receitas:+rec.toFixed(2),despesas:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2)};
   }),[entries,dividas,cards,cardPurchases,cardFaturas,nowMonth]);
+
+  const projCumData=useMemo(()=>{
+    const nowMe=mData(nowMonth);
+    const nowSaldo=nowMe.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0)-nowMe.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+    let running=+((accumSaldo||0)+nowSaldo).toFixed(2);
+    return projData.map(d=>{
+      running=+(running+d.saldo).toFixed(2);
+      return{...d,cumulative:running};
+    });
+  },[projData,accumSaldo,nowMonth,entries,dividas,cards,cardPurchases,cardFaturas]);
 
   const insights=useMemo(()=>{
     if(range.length<2) return null;
@@ -258,17 +268,29 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
 
         {chartType==="projecao"&&(<div style={S.chartBox}>
           <div style={S.chartTitle}>Projeção — Próximos 6 meses</div>
-          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Inclui fixos, parcelados, dívidas e faturas de cartão</div>
-          <BarSVG data={projData} type="barras" faded/>
-          <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:14}}>
-            {projData.map((d,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#8ab4f8",width:32}}>{d.month}</div>
-                <div style={{fontSize:11,color:"#4ade80",flex:1}}>↑ {fmt(d.receitas)}</div>
-                <div style={{fontSize:11,color:"#fb923c",flex:1}}>↓ {fmt(d.despesas)}</div>
-                <div style={{fontSize:12,fontWeight:700,color:d.saldo>=0?"#4ade80":"#f87171"}}>{fmt(d.saldo)}</div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Baseado em lançamentos fixos, parcelados, dívidas e faturas</div>
+          <BarSVG data={projData} type="barras"/>
+          {projCumData.length>0&&(
+            <div style={{margin:"14px 0 10px",background:projCumData[projCumData.length-1].cumulative>=0?"rgba(74,222,128,.08)":"rgba(248,113,113,.08)",border:`1px solid ${projCumData[projCumData.length-1].cumulative>=0?"#4ade8033":"#f8717133"}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style={{fontSize:10,color:"var(--text3)"}}>Saldo acumulado em {projCumData[projCumData.length-1].month}</div><div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>baseado nos últimos dados disponíveis</div></div>
+              <div style={{fontSize:18,fontWeight:800,color:projCumData[projCumData.length-1].cumulative>=0?"#4ade80":"#f87171"}}>{fmt(projCumData[projCumData.length-1].cumulative)}</div>
+            </div>
+          )}
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {projCumData.map((d,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#8ab4f8",width:28,flexShrink:0}}>{d.month}</div>
+                <div style={{fontSize:10,color:"#4ade80",flex:1}}>↑{fmt(d.receitas)}</div>
+                <div style={{fontSize:10,color:"#fb923c",flex:1}}>↓{fmt(d.despesas)}</div>
+                <div style={{fontSize:11,fontWeight:600,color:d.saldo>=0?"#4ade80":"#f87171",width:60,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmt(d.saldo)}</div>
+                <div style={{width:1,height:14,background:"var(--border2)",flexShrink:0}}/>
+                <div style={{fontSize:11,fontWeight:700,color:d.cumulative>=0?"#4ade80":"#f87171",width:64,textAlign:"right"}}>{fmt(d.cumulative)}</div>
               </div>
             ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:12,marginTop:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#8ab4f8"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Saldo mensal</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#4ade80"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Acumulado</span></div>
           </div>
         </div>)}
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Field from '../components/Field.jsx';
+import PartialFatModal from '../modals/PartialFatModal.jsx';
 import { getBillingMonth, buildFatura, getCardBillingMonths } from '../logic.js';
 import { fmt, fmtDate, mLabel, mShort, addM, TODAY } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
@@ -8,6 +9,7 @@ import S from '../styles.js';
 export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas,setCardFaturas,categories,nowMonth,toast,onRevertFatura}){
   const [showCardForm,setShowCardForm]=useState(false);
   const [showPurchaseForm,setShowPurchaseForm]=useState(false);
+  const [partialFatTarget,setPartialFatTarget]=useState(null);
   const [activeCardId,setActiveCardId]=useState(null);
   const [editCardId,setEditCardId]=useState(null);
   const [delCardId,setDelCardId]=useState(null);
@@ -52,6 +54,12 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
     if(!editPurch||!editPurch.description.trim()||!editPurch.amount) return;
     setCardPurchases(cardPurchases.map(p=>p.id!==editPurch.id?p:{...p,...editPurch,amount:parseFloat(editPurch.amount),installments:parseInt(editPurch.installments)||1}));
     setEditPurch(null);toast("✓ Compra atualizada");
+  };
+  const handlePayFat=(fat,amount)=>{
+    const full=amount>=fat.total;
+    setCardFaturas({...cardFaturas,[fat.key]:{paid:full,paidAmount:amount,paidDate:TODAY,partial:!full}});
+    setPartialFatTarget(null);
+    toast(full?"✓ Fatura paga":"Pagamento parcial registrado");
   };
 
   return(
@@ -183,7 +191,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                 </div>
 
                 {!selFat.open&&selFat.total>0&&!selFat.paid&&(
-                  <button onClick={()=>setCardFaturas({...cardFaturas,[selFat.key]:{paid:true,paidAmount:selFat.total,paidDate:TODAY}})}
+                  <button onClick={()=>setPartialFatTarget({...selFat,card})}
                     style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,border:`1px solid ${card.color}44`,borderRadius:10,color:card.color,fontSize:13,fontWeight:700,cursor:"pointer"}}>
                     Pagar fatura — {fmt(selFat.total)}
                   </button>
@@ -293,6 +301,15 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
             </div>
           </div>
         </div>
+      )}
+
+      {partialFatTarget&&(
+        <PartialFatModal
+          fat={partialFatTarget}
+          card={partialFatTarget.card}
+          onClose={()=>setPartialFatTarget(null)}
+          onPay={handlePayFat}
+        />
       )}
 
       {editPurch&&(()=>{const ec=cards.find(c=>c.id===editPurch.cardId);const ec2=ec?.color||"#8ab4f8";return(

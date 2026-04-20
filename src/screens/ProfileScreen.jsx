@@ -7,9 +7,14 @@ import S from '../styles.js';
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
 function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
 
-export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout}){
+export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries}){
   const [confirmReset,setConfirmReset]=useState(false);
   const [confirmLogout,setConfirmLogout]=useState(false);
+  const [showImport,setShowImport]=useState(false);
+  const [importHeaders,setImportHeaders]=useState([]);
+  const [importRows,setImportRows]=useState([]);
+  const [importMap,setImportMap]=useState({date:'',desc:'',amount:'',type:''});
+  const [importRef]=useState(()=>({current:null}));
   const [editName,setEditName]=useState(false);
   const [newName,setNewName]=useState('');
   const [nameLoading,setNameLoading]=useState(false);
@@ -23,6 +28,45 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const displayName=fbUser?.displayName||fbUser?.email?.split("@")[0]||"Usuário";
   const photoURL=fbUser?.photoURL;
   const isEmailProvider=fbUser?.providerData?.some(p=>p.providerId==="password");
+
+  const parseBRDate=(s)=>{if(!s)return null;s=s.trim();if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){const[d,m,y]=s.split('/');return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;return null;};
+  const parseBRNum=(s)=>{if(!s)return null;s=String(s).replace(/[R$\s%]/g,'').trim();if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');else if(s.includes(','))s=s.replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n;};
+  const handleCSVFile=(e)=>{
+    const file=e.target.files?.[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{
+      const text=ev.target.result;
+      const firstLine=text.split('\n')[0]||'';
+      const sep=firstLine.split(';').length>firstLine.split(',').length?';':',';
+      const splitLine=(line)=>{const res=[];let cur='',inQ=false;for(const ch of line){if(ch==='"'){inQ=!inQ;}else if(ch===sep&&!inQ){res.push(cur.trim().replace(/^"|"$/g,''));cur='';}else cur+=ch;}res.push(cur.trim().replace(/^"|"$/g,''));return res;};
+      const lines=text.trim().split('\n').filter(l=>l.trim());
+      if(lines.length<2){return;}
+      const headers=splitLine(lines[0]);
+      const rows=lines.slice(1).slice(0,200).map(l=>{const vals=splitLine(l);return Object.fromEntries(headers.map((h,i)=>[h,vals[i]||'']));});
+      setImportHeaders(headers);setImportRows(rows);
+      const dCol=headers.find(h=>/data|date|dt\b/i.test(h))||'';
+      const descCol=headers.find(h=>/descri|memo|hist|lancamento|complemento/i.test(h))||'';
+      const amtCol=headers.find(h=>/valor|amount|value|vl\b|debito|credito/i.test(h))||'';
+      setImportMap({date:dCol,desc:descCol,amount:amtCol,type:''});
+      setShowImport(true);
+    };
+    reader.readAsText(file,'UTF-8');
+    e.target.value='';
+  };
+  const handleConfirmImport=()=>{
+    const {date:dCol,desc:descCol,amount:amtCol}=importMap;
+    if(!dCol||!descCol||!amtCol)return;
+    const now=Date.now();
+    const newEntries=importRows.map((row,i)=>{
+      const parsedDate=parseBRDate(row[dCol]);
+      const parsedAmt=parseBRNum(row[amtCol]);
+      if(!parsedDate||parsedAmt===null||parsedAmt===0)return null;
+      return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type:parsedAmt<0?'despesa':'receita',status:'pago',category:'outro',recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
+    }).filter(Boolean);
+    if(newEntries.length===0)return;
+    onImportEntries(newEntries);
+    setShowImport(false);setImportRows([]);setImportHeaders([]);
+  };
 
   const handleSaveName=async()=>{
     if(!newName.trim())return;
@@ -110,6 +154,11 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
           <ProfileItem icon="📦" label="Exportar tudo" sub="Todos os lançamentos em CSV" onClick={onExportAll} last/>
         </ProfileSection>
 
+        <ProfileSection title="Importar dados">
+          <input ref={el=>{importRef.current=el;}} type="file" accept=".csv,.txt" style={{display:'none'}} onChange={handleCSVFile}/>
+          <ProfileItem icon="📥" label="Importar extrato CSV" sub="Importa lançamentos de extrato bancário em CSV" onClick={()=>importRef.current?.click()} last/>
+        </ProfileSection>
+
         <ProfileSection title="Backup e Restauração">
           <ProfileItem icon="💾" label="Fazer backup" sub="Salva todos os dados em arquivo JSON" onClick={onBackup}/>
           <div style={{padding:"0 14px"}}>
@@ -184,6 +233,53 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setConfirmReset(false)} style={{flex:1,padding:"12px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
               <button onClick={()=>{onReset();setConfirmReset(false);}} style={{flex:1,padding:"12px",background:"rgba(239,68,68,.15)",border:"1px solid #f8717144",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>Sim, zerar tudo</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showImport&&(
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowImport(false)}>
+          <div style={S.modal} className="modal-in">
+            <div style={S.mHeader}><div><div style={S.mTitle}>Importar CSV</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{importRows.length} linhas detectadas</div></div><button style={S.xBtn} onClick={()=>setShowImport(false)}>✕</button></div>
+            <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Mapear colunas</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+              {[['date','📅 Data'],['desc','📝 Descrição'],['amount','💰 Valor']].map(([key,label])=>(
+                <div key={key} style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:11,color:"var(--text2)",width:80,flexShrink:0}}>{label}</span>
+                  <select value={importMap[key]} onChange={e=>setImportMap(p=>({...p,[key]:e.target.value}))}
+                    style={{...S.inp,flex:1,marginBottom:0,padding:"6px 10px",fontSize:11}}>
+                    <option value="">— selecionar —</option>
+                    {importHeaders.map(h=><option key={h} value={h}>{h}</option>)}
+                  </select>
+                </div>
+              ))}
+            </div>
+            <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Prévia (5 primeiras linhas)</div>
+            <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14,maxHeight:160,overflowY:"auto"}}>
+              {importRows.slice(0,5).map((row,i)=>{
+                const dt=importMap.date?parseBRDate(row[importMap.date]):null;
+                const amt=importMap.amount?parseBRNum(row[importMap.amount]):null;
+                const desc=importMap.desc?row[importMap.desc]:'';
+                const ok=dt&&amt!==null&&amt!==0;
+                return(
+                  <div key={i} style={{display:"flex",gap:6,background:ok?"var(--bg)":"rgba(248,113,113,.07)",borderRadius:7,padding:"6px 8px",border:`1px solid ${ok?"var(--border2)":"#f8717133"}`,fontSize:10}}>
+                    <span style={{color:"var(--text3)",width:72,flexShrink:0}}>{dt||'— data ?'}</span>
+                    <span style={{flex:1,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc||'—'}</span>
+                    <span style={{fontWeight:700,color:amt===null?'#f87171':amt<0?'#fb923c':'#4ade80',flexShrink:0}}>{amt!==null?`${amt<0?'-':'+'} R$${Math.abs(amt).toFixed(2)}`:'—'}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{marginBottom:14,background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e44",borderRadius:8,padding:"8px 12px",fontSize:10,color:"var(--text3)"}}>
+              💡 Valores negativos → Despesa · Valores positivos → Receita · Status importado = "Pago"
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setShowImport(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
+              <button onClick={handleConfirmImport} disabled={!importMap.date||!importMap.desc||!importMap.amount}
+                style={{flex:2,padding:"11px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:"pointer",opacity:(!importMap.date||!importMap.desc||!importMap.amount)?0.4:1}}>
+                Importar {importRows.filter(row=>{const dt=parseBRDate(row[importMap.date]);const amt=parseBRNum(row[importMap.amount]);return dt&&amt!==null&&amt!==0;}).length} lançamentos
+              </button>
             </div>
           </div>
         </div>
