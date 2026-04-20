@@ -9,6 +9,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const [showCardForm,setShowCardForm]=useState(false);
   const [showPurchaseForm,setShowPurchaseForm]=useState(false);
   const [activeCardId,setActiveCardId]=useState(null);
+  const [editCardId,setEditCardId]=useState(null);
   const [delCardId,setDelCardId]=useState(null);
   const [delPurchId,setDelPurchId]=useState(null);
   const [editPurch,setEditPurch]=useState(null);
@@ -19,12 +20,20 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const BLANK_PURCH={description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""};
   const activeCard=cards.find(c=>c.id===activeCardId)||null;
   const toggleM=(key)=>setExpandedM(p=>({...p,[key]:!p[key]}));
+  const openEditCard=(card)=>{setEditCardId(card.id);setCardForm({name:card.name,limit:String(card.limit||""),closeDay:String(card.closeDay),dueDay:String(card.dueDay),color:card.color});setShowCardForm(true);};
+  const closeCardForm=()=>{setShowCardForm(false);setCardForm(BLANK_CARD);setEditCardId(null);};
 
   const handleSaveCard=()=>{
     if(!cardForm.name.trim()) return;
-    const nc={id:Date.now().toString(),...cardForm,limit:parseFloat(cardForm.limit)||0,closeDay:parseInt(cardForm.closeDay)||20,dueDay:parseInt(cardForm.dueDay)||5};
-    setCards([...cards,nc]);setCardForm(BLANK_CARD);setShowCardForm(false);
-    toast("💳 Cartão adicionado");
+    const data={...cardForm,limit:parseFloat(cardForm.limit)||0,closeDay:parseInt(cardForm.closeDay)||20,dueDay:parseInt(cardForm.dueDay)||5};
+    if(editCardId){
+      setCards(cards.map(c=>c.id!==editCardId?c:{...c,...data}));
+      toast("✓ Cartão atualizado");
+    } else {
+      setCards([...cards,{id:Date.now().toString(),...data}]);
+      toast("💳 Cartão adicionado");
+    }
+    closeCardForm();
   };
   const handleSavePurchase=()=>{
     if(!purchForm.description.trim()||!purchForm.amount||!activeCardId) return;
@@ -85,6 +94,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                       style={{...S.iconBtn,background:`${card.color}22`,color:card.color,width:30,height:30,borderRadius:9}}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
+                    <button className="iconBtn" title="Editar cartão" onClick={()=>openEditCard(card)}
+                      style={{...S.iconBtn,background:`${card.color}22`,color:card.color,width:30,height:30,borderRadius:9,fontSize:13}}>✏</button>
                     <button className="iconBtn" onClick={()=>setDelCardId(card.id)} style={{...S.iconBtn,background:"rgba(239,68,68,.1)",color:"#f87171",width:30,height:30,borderRadius:9}}>✕</button>
                   </div>
                 </div>
@@ -161,7 +172,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                                 </div>
                               </div>
                               <div style={{fontSize:12,fontWeight:700,color:card.color}}>{fmt(item.amount)}</div>
-                              {bm===nowMonth&&(<>
+                              {!fat.paid&&(<>
                                 <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
                                   style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:20,height:20,borderRadius:5,fontSize:10}}>✏</button>
                                 <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
@@ -203,9 +214,9 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
       )}
 
       {showCardForm&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowCardForm(false)}>
+        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&closeCardForm()}>
           <div style={S.modal} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>Novo Cartão</div><button style={S.xBtn} onClick={()=>setShowCardForm(false)}>✕</button></div>
+            <div style={S.mHeader}><div style={S.mTitle}>{editCardId?"Editar Cartão":"Novo Cartão"}</div><button style={S.xBtn} onClick={closeCardForm}>✕</button></div>
             <Field label="Nome do cartão"><input style={S.inp} placeholder="Ex: Nubank, Inter..." value={cardForm.name} onChange={e=>setCardForm(p=>({...p,name:e.target.value}))}/></Field>
             <Field label="Limite (R$)"><input style={S.inp} type="number" placeholder="0,00" min="0" step="0.01" value={cardForm.limit} onChange={e=>setCardForm(p=>({...p,limit:e.target.value}))}/></Field>
             <div style={{display:"flex",gap:10}}>
@@ -222,7 +233,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
             </Field>
             <button onClick={handleSaveCard} className="submitBtn"
               style={{...S.submitBtn,background:`linear-gradient(135deg,${cardForm.color}33,${cardForm.color}11)`,borderColor:`${cardForm.color}44`,color:cardForm.color,opacity:!cardForm.name?0.35:1}}
-              disabled={!cardForm.name}>Adicionar Cartão</button>
+              disabled={!cardForm.name}>{editCardId?"Salvar alterações":"Adicionar Cartão"}</button>
           </div>
         </div>
       )}
