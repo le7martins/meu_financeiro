@@ -4,204 +4,10 @@ import { auth } from './firebase';
 import { loadUserData, saveData, hasCloudData, saveUserProfile, loadAllProfiles, ADMIN_EMAIL } from './db';
 import { registerFCMToken, onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
-// ─── Utils ────────────────────────────────────────────────────
-const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
-const fmtShort = (v) => Math.abs(v)>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v.toFixed(0)}`;
-const fmtDate  = (d) => { const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`; };
-const TODAY    = new Date().toISOString().split("T")[0];
-const MNAMES   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-const mLabel   = (k) => { const [y,m]=k.split("-"); return `${MNAMES[+m-1]} ${y}`; };
-const mShort   = (k) => MNAMES[+k.split("-")[1]-1];
-const getNow   = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
-const mDiff    = (a,b) => { const [ay,am]=a.split("-").map(Number),[by,bm]=b.split("-").map(Number); return (by-ay)*12+(bm-am); };
-const addM     = (k,n) => { const [y,m]=k.split("-").map(Number),d=new Date(y,m-1+n,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
-const daysUntil = (ds) => { if(!ds)return null; return Math.ceil((new Date(ds+"T12:00:00")-new Date(TODAY+"T12:00:00"))/86400000); };
-const dueBadge  = (entry,mk) => {
-  if(entry.statusForMonth!=="a_pagar") return null;
-  const due = entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura ? `${mk}-${entry.date.split("-")[2]}` : entry.date;
-  const days = daysUntil(due);
-  if(days===null) return null;
-  if(days<0)   return {text:`Vencido há ${Math.abs(days)}d`,color:"#f87171",bg:"rgba(248,113,113,.13)"};
-  if(days===0) return {text:"Vence hoje!",color:"#fb923c",bg:"rgba(251,146,60,.18)"};
-  if(days<=3)  return {text:`Vence em ${days}d`,color:"#fb923c",bg:"rgba(251,146,60,.12)"};
-  if(days<=7)  return {text:`Vence em ${days}d`,color:"#facc15",bg:"rgba(250,204,21,.1)"};
-  return null;
-};
-
-// ─── Storage ─────────────────────────────────────────────────
-const loadLS = (k,def) => { try{const d=localStorage.getItem(k);return d?JSON.parse(d):def;}catch{return def;} };
-const saveLS = (k,v)   => localStorage.setItem(k,JSON.stringify(v));
-
-
-// ─── Notifications ───────────────────────────────────────────
-const NOTIF_KEY      = "mf2_notif_settings";
-const NOTIF_LAST_KEY = "mf2_notif_last";
-const defaultNotifSettings = { enabled:true, daysBefore:3, overdueAlert:true, incomeAlert:true };
-async function requestNotifPermission() {
-  if(!("Notification" in window)) return "unsupported";
-  if(Notification.permission==="granted") return "granted";
-  if(Notification.permission==="denied")  return "denied";
-  return await Notification.requestPermission();
-}
-function fireNotification(title,body,tag) {
-  if(Notification.permission!=="granted") return;
-  // Usa service worker se disponível (funciona em PWA/Android)
-  if(navigator.serviceWorker?.controller) {
-    navigator.serviceWorker.controller.postMessage({type:'NOTIFY',title,body,tag});
-  } else {
-    try { new Notification(title,{body,tag,icon:'/meu_financeiro/icon-192.png'}); } catch{}
-  }
-}
-function checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,settings) {
-  if(!settings.enabled||Notification.permission!=="granted") return 0;
-  const NOW=getNow();
-  const NEXT=addM(NOW,1);
-  const mkDate=(e,m)=>(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
-  const meNow =getMonthEntries(entries,dividas,NOW, cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NOW}));
-  const meNext=getMonthEntries(entries,dividas,NEXT,cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NEXT}));
-  const me=[...meNow,...meNext];
-  const pendingExp=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="a_pagar");
-  const pendingInc=settings.incomeAlert!==false?me.filter(e=>e.type==="receita"&&e.statusForMonth==="a_pagar"):[];
-  const overdue=[],dueToday=[],dueSoon=[],incToday=[],incSoon=[];
-  for(const e of pendingExp){
-    const days=daysUntil(mkDate(e,e._mk));
-    if(days===null) continue;
-    if(days<0&&settings.overdueAlert) overdue.push({...e,days});
-    else if(days===0) dueToday.push(e);
-    else if(days>0&&days<=settings.daysBefore) dueSoon.push({...e,days});
-  }
-  for(const e of pendingInc){
-    const days=daysUntil(mkDate(e,e._mk));
-    if(days===null) continue;
-    if(days===0) incToday.push(e);
-    else if(days>0&&days<=settings.daysBefore) incSoon.push({...e,days});
-  }
-  let fired=0;
-  if(overdue.length>0){fireNotification(`⚠️ ${overdue.length} conta${overdue.length>1?"s":""} vencida${overdue.length>1?"s":""}`,overdue.map(e=>`${e.description} (${Math.abs(e.days)}d atraso)`).join(", "),"mf-overdue");fired++;}
-  if(dueToday.length>0){fireNotification(`🔴 ${dueToday.length} conta${dueToday.length>1?"s":""} vence${dueToday.length>1?"m":""} hoje`,dueToday.map(e=>e.description).join(", "),"mf-today");fired++;}
-  if(dueSoon.length>0){fireNotification(`⏰ ${dueSoon.length} despesa${dueSoon.length>1?"s":""} vence${dueSoon.length>1?"m":""} em breve`,dueSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-soon");fired++;}
-  if(incToday.length>0){fireNotification(`💰 ${incToday.length} recebimento${incToday.length>1?"s":""} esperado${incToday.length>1?"s":""} hoje`,incToday.map(e=>e.description).join(", "),"mf-inc-today");fired++;}
-  if(incSoon.length>0){fireNotification(`📥 ${incSoon.length} recebimento${incSoon.length>1?"s":""} em breve`,incSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-inc-soon");fired++;}
-  return fired;
-}
-
-// ─── Credit Card Utils ────────────────────────────────────────
-function getBillingMonth(purchaseDate,closeDay) {
-  const [y,m,d]=purchaseDate.split("-").map(Number);
-  if(d<=closeDay) return `${y}-${String(m).padStart(2,"0")}`;
-  const next=new Date(y,m,1);
-  return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}`;
-}
-function getFaturaDueDate(billingMonth,dueDay){ const nm=addM(billingMonth,1); return `${nm}-${String(dueDay).padStart(2,"0")}`; }
-function getFaturaCloseDate(billingMonth,closeDay){ return `${billingMonth}-${String(closeDay).padStart(2,"0")}`; }
-function isFaturaOpen(billingMonth,closeDay){ return TODAY<=getFaturaCloseDate(billingMonth,closeDay); }
-function getPurchaseInstallmentsForBilling(purchase,targetBillingMonth,closeDay) {
-  const baseBilling=getBillingMonth(purchase.purchaseDate,closeDay);
-  const diff=mDiff(baseBilling,targetBillingMonth);
-  const total=purchase.installments||1;
-  if(diff>=0&&diff<total) return {installmentNum:diff+1,total,amount:parseFloat((purchase.amount/total).toFixed(2))};
-  return null;
-}
-function buildFatura(card,purchases,cardFaturas,billingMonth) {
-  const items=[];
-  for(const p of (purchases||[])){
-    if(p.cardId!==card.id) continue;
-    const inst=getPurchaseInstallmentsForBilling(p,billingMonth,card.closeDay);
-    if(inst) items.push({...p,...inst});
-  }
-  const total=items.reduce((s,i)=>s+i.amount,0);
-  const key=`${card.id}_${billingMonth}`;
-  const payRecord=(cardFaturas||{})[key]||null;
-  const closeDate=getFaturaCloseDate(billingMonth,card.closeDay);
-  const dueDate=getFaturaDueDate(billingMonth,card.dueDay);
-  const open=TODAY<=closeDate;
-  const paid=payRecord?.paid||false;
-  const paidAmount=payRecord?.paidAmount||0;
-  const partial=payRecord?.partial||false;
-  return {card,billingMonth,items,total:parseFloat(total.toFixed(2)),closeDate,dueDate,open,paid,paidAmount,partial,key};
-}
-function getCardBillingMonths(card,purchases) {
-  const months=new Set();
-  for(const p of (purchases||[])){
-    if(p.cardId!==card.id) continue;
-    const base=getBillingMonth(p.purchaseDate,card.closeDay);
-    for(let i=0;i<(p.installments||1);i++) months.add(addM(base,i));
-  }
-  return [...months].sort();
-}
-
-// ─── Entry computation ───────────────────────────────────────
-function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,cardFaturas) {
-  const res=[];
-  for(const e of entries){
-    if(e.deletedFrom&&monthKey>=e.deletedFrom) continue;
-    const base=e.date.substring(0,7);
-    let item=null;
-    if(e.recurrence==="none"){ if(base===monthKey) item={...e,statusForMonth:e.status,isRecurring:false}; }
-    else if(e.recurrence==="fixed"){ if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo 🔄"};} }
-    else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Trimestral 📅"};} }
-    else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Anual 📅"};} }
-    else if(e.recurrence==="installment"){
-      const diff=mDiff(base,monthKey);
-      if(diff>=0&&diff<e.installments){
-        const st=e.statusByMonth?.[monthKey]||"a_pagar";
-        const displayAmount=parseFloat((e.amount/e.installments).toFixed(2));
-        item={...e,statusForMonth:st,isRecurring:true,installmentNum:diff+1,recurLabel:`${diff+1}/${e.installments} 📋`,displayAmount};
-      }
-    }
-    if(item&&!e.deletedMonths?.includes(monthKey)){
-      const ov=e.overrides?.[monthKey];
-      if(ov){const{amount:oa,status:os,...rest}=ov;item={...item,...rest,...(oa!==undefined?{displayAmount:oa}:{}),...(os!==undefined?{statusForMonth:os}:{})};}
-      res.push(item);
-    }
-  }
-  for(const d of (dividas||[])){
-    const diff=mDiff(d.startMonth,monthKey);
-    if(diff>=0&&diff<d.installments){
-      const instVal=parseFloat((d.totalAmount/d.installments).toFixed(2));
-      const isPaid=d.paidMonths?.includes(monthKey)||false;
-      res.push({id:`divida_${d.id}_${monthKey}`,description:d.name,amount:instVal,displayAmount:instVal,
-        date:`${monthKey}-${d.dueDay||"10"}`,type:"despesa",status:isPaid?"pago":"a_pagar",statusForMonth:isPaid?"pago":"a_pagar",
-        category:d.category||"outro",recurrence:"installment",isRecurring:true,isDivida:true,dividaId:d.id,
-        installmentNum:diff+1,installments:d.installments,recurLabel:`${diff+1}/${d.installments} 💳`,notes:d.notes||""});
-    }
-  }
-  for(const card of (cards||[])){
-    const allBillings=getCardBillingMonths(card,cardPurchases||[]);
-    for(const bm of allBillings){
-      const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm);
-      if(fat.total<=0) continue;
-      const dueMk=fat.dueDate.substring(0,7);
-      if(dueMk!==monthKey) continue;
-      res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
-        date:fat.dueDate,type:"despesa",status:fat.paid?"pago":fat.open?"preview":"a_pagar",statusForMonth:fat.paid?"pago":fat.open?"preview":"a_pagar",
-        category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:fat.open,closeDate:fat.closeDate,faturaKey:fat.key,cardId:card.id,
-        cardColor:card.color,cardName:card.name});
-    }
-  }
-  return res;
-}
-const eVal=(e)=>e.displayAmount??e.amount;
-
-// ─── Defaults ────────────────────────────────────────────────
-const DEFAULT_CATS=[
-  {id:"moradia",name:"Moradia",color:"#6C8EEF",type:"both"},
-  {id:"alimentacao",name:"Alimentação",color:"#EF8C6C",type:"both"},
-  {id:"transporte",name:"Transporte",color:"#6CEF9A",type:"both"},
-  {id:"saude",name:"Saúde",color:"#EF6CA8",type:"both"},
-  {id:"lazer",name:"Lazer",color:"#C46CEF",type:"both"},
-  {id:"educacao",name:"Educação",color:"#EFCE6C",type:"both"},
-  {id:"assinatura",name:"Assinatura",color:"#6CCEEF",type:"both"},
-  {id:"salario",name:"Salário",color:"#4ade80",type:"receita"},
-  {id:"freelance",name:"Freelance",color:"#a3e635",type:"receita"},
-  {id:"investimento",name:"Investimento",color:"#34d399",type:"receita"},
-  {id:"divida",name:"Dívida",color:"#f87171",type:"despesa"},
-  {id:"cartao",name:"Cartão",color:"#a78bfa",type:"despesa"},
-  {id:"outro",name:"Outro",color:"#9E9E9E",type:"both"},
-];
-const BLANK=(type="despesa")=>({description:"",amount:"",date:TODAY,type,status:"a_pagar",category:type==="receita"?"salario":"outro",recurrence:"none",installments:2,notes:"",endMonth:"",payWith:"saldo"});
-const PRESET_COLORS=["#6C8EEF","#EF8C6C","#6CEF9A","#EF6CA8","#C46CEF","#EFCE6C","#6CCEEF","#4ade80","#f87171","#facc15","#34d399","#a3e635"];
-const CARD_COLORS=["#a78bfa","#60a5fa","#34d399","#f472b6","#fb923c","#facc15","#f87171","#38bdf8"];
+import { fmt, fmtShort, fmtDate, TODAY, MNAMES, mLabel, mShort, getNow, mDiff, addM, daysUntil, dueBadge, eVal, loadLS, saveLS } from './utils.js';
+import { DEFAULT_CATS, BLANK, PRESET_COLORS, CARD_COLORS, NOTIF_KEY, NOTIF_LAST_KEY, defaultNotifSettings } from './constants.js';
+import { getBillingMonth, getFaturaDueDate, getFaturaCloseDate, isFaturaOpen, getPurchaseInstallmentsForBilling, buildFatura, getCardBillingMonths, getMonthEntries, requestNotifPermission, fireNotification, checkAndNotify } from './logic.js';
+import S from './styles.js';
 
 // ─── Toast Hook ───────────────────────────────────────────────
 function useToast() {
@@ -224,7 +30,12 @@ function App(){
     </div>
   );
   if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
-  return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={()=>signOut(auth)}/>;
+  const handleLogout = () => {
+    signOut(auth);
+    // Clear per-user localStorage cache so next user starts fresh
+    Object.keys(localStorage).filter(k=>k.startsWith("mf2_")).forEach(k=>localStorage.removeItem(k));
+  };
+  return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={handleLogout}/>;
 }
 
 // ─── MainApp ─────────────────────────────────────────────────
@@ -311,7 +122,7 @@ function MainApp({ fbUser, onLogout }){
           }
         }
       } catch(e){
-        console.warn('[Firestore] Usando dados locais (offline?):', e.message);
+        /* offline — using local data */
       } finally {
         setDbReady(true);
         registerFCMToken(uid);
@@ -912,7 +723,7 @@ function MainApp({ fbUser, onLogout }){
           ["cartoes","Cartões",<svg key="c" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
           ["dividas","Dívidas",<svg key="d" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>],
         ].map(([tab,label,icon])=>(
-          <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}} className="navBtn"
+          <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);setShowFabMenu(false);}} className="navBtn"
             style={{...S.navBtn,borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
             <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
             <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
@@ -925,7 +736,7 @@ function MainApp({ fbUser, onLogout }){
           ["perfil","Perfil",<svg key="p" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>],
           ...(fbUser.email===ADMIN_EMAIL?[["admin","Admin",<svg key="a" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>]]:[]),
         ].map(([tab,label,icon])=>(
-          <button key={tab} onClick={()=>setActiveTab(tab)} className="navDesktopOnly navBtn"
+          <button key={tab} onClick={()=>{setActiveTab(tab);setShowFabMenu(false);}} className="navDesktopOnly navBtn"
             style={{...S.navBtn,display:"none",borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
             <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
             <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
@@ -1863,7 +1674,7 @@ function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onRes
     try{
       await updateProfile(fbUser,{displayName:newName.trim()});
       setEditName(false);
-    }catch(e){console.warn(e);}
+    }catch(e){/* ignore */}
     setNameLoading(false);
   };
   const handleSavePass=async()=>{
@@ -2218,51 +2029,6 @@ function SumCard({label,value,color,icon,wide,onAdd}){return(<div style={{backgr
 function Field({label,children,style}){return <div style={{marginBottom:13,...style}}><label style={S.lbl}>{label}</label>{children}</div>;}
 function MonthPicker({value,onChange,now,nullable}){const opts=Array.from({length:24},(_,i)=>addM(now,i-12));return <select value={value||""} onChange={e=>onChange(e.target.value||"")} style={{width:"100%",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:10,padding:"9px 11px",color:"var(--text2)",fontSize:13,outline:"none",fontFamily:"inherit",appearance:"none"}}>{nullable&&<option value="">Sem encerramento</option>}{opts.map(m=><option key={m} value={m}>{mLabel(m)}{m===now?" (atual)":""}</option>)}</select>;}
 function Leg({color,label,dashed}){return <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:20,height:2,borderTop:dashed?`2px dashed ${color}`:`2px solid ${color}`}}/><span style={{fontSize:10,color:"var(--text3)"}}>{label}</span></div>;}
-
-// ─── Styles ──────────────────────────────────────────────────
-const S={
-  root:       {minHeight:"100vh",background:"var(--bg, #080c12)",color:"var(--text1, #fff)",fontFamily:"'DM Sans',sans-serif",paddingBottom:72},
-  header:     {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 8px",borderBottom:"1px solid var(--border2)"},
-  headerLeft: {display:"flex",alignItems:"center",gap:12},
-  appName:    {fontSize:20,fontWeight:800,color:"var(--text1, #fff)",letterSpacing:"-0.5px"},
-  appSub:     {fontSize:11,color:"var(--text3, #445)",marginTop:1},
-  heroCard:   {background:"var(--hero-bg, linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%))",border:"1px solid rgba(74,222,128,.2)",borderRadius:20,padding:"20px 20px",position:"relative",overflow:"hidden"},
-  arrowBtn:   {width:42,height:42,borderRadius:13,background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3, #556)",cursor:"pointer"},
-  hbtn:       {display:"flex",alignItems:"center",gap:5,background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",color:"var(--text3, #556)",padding:"7px 11px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer"},
-  addBtn:     {background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8"},
-  fTab:       {flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"6px 11px",background:"transparent",border:"1px solid var(--border3, #0f1825)",borderRadius:8,color:"var(--text4, #334)",fontSize:11,fontWeight:500,cursor:"pointer"},
-  fTabActive: {background:"var(--tab-active-bg, #0d1a2e)",border:"1px solid var(--tab-active-border, #1a3a6e)",color:"var(--tab-active-color, #8ab4f8)"},
-  fCount:     {background:"#0f1825",color:"var(--text4)",borderRadius:4,fontSize:10,padding:"1px 5px",fontWeight:700},
-  fCountActive:{background:"#1a3a6e44",color:"#8ab4f8"},
-  list:       {padding:"0 14px",display:"flex",flexDirection:"column",gap:7},
-  card:       {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:13,padding:"11px 12px",display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8},
-  cardL:      {display:"flex",alignItems:"flex-start",gap:9,flex:1,minWidth:0},
-  cardTitle:  {fontSize:13,fontWeight:600,color:"var(--text1, #dde)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"},
-  cardMeta:   {display:"flex",gap:4,marginTop:3,alignItems:"center",flexWrap:"wrap"},
-  tag:        {fontSize:9,borderRadius:4,padding:"1px 5px",border:"1px solid",fontWeight:600},
-  cardR:      {display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0},
-  iconBtn:    {width:24,height:24,borderRadius:6,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center"},
-  badge:      {fontSize:9,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",padding:"2px 6px",borderRadius:4},
-  empty:      {textAlign:"center",padding:"52px 20px"},
-  chartBox:   {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:14,padding:"14px 12px",marginBottom:12},
-  chartTitle: {fontSize:11,fontWeight:700,color:"var(--accent, #8ab4f8)",marginBottom:14,textTransform:"uppercase",letterSpacing:"0.07em"},
-  bottomNav:  {position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"var(--nav-bg, #080c12)",borderTop:"1px solid var(--border, #0f1825)",display:"flex",zIndex:50},
-  navBtn:     {flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"10px 4px 14px",background:"transparent",border:"none",cursor:"pointer",gap:3},
-  navBtnActive:{background:"var(--card-bg, #0d1118)"},
-  overlay:    {position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",backdropFilter:"blur(7px)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100},
-  modal:      {background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderTopLeftRadius:20,borderTopRightRadius:20,padding:"20px 18px 36px",width:"100%",maxWidth:480,maxHeight:"92vh",overflowY:"auto"},
-  mHeader:    {display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18},
-  mTitle:     {fontSize:15,fontWeight:700,color:"var(--text1, #dde)"},
-  xBtn:       {background:"var(--card-bg2, #111820)",border:"1px solid var(--border, transparent)",color:"var(--text3, #445)",width:28,height:28,borderRadius:7,cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"},
-  lbl:        {display:"block",fontSize:9,color:"var(--text3, #445)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6},
-  inp:        {width:"100%",background:"var(--inp-bg, #080c12)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"9px 11px",color:"var(--text2, #ccd)",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit"},
-  typeBtn:    {flex:1,padding:"9px",background:"var(--card-bg2, rgba(255,255,255,.04))",border:"1px solid var(--border, #111820)",borderRadius:9,color:"var(--text3, #556)",fontSize:12,fontWeight:600,cursor:"pointer"},
-  chipBtn:    {flex:1,padding:"7px 6px",background:"transparent",border:"1px solid var(--border, #111820)",borderRadius:8,color:"var(--text3, #445)",fontSize:11,fontWeight:500,cursor:"pointer"},
-  chipActive: {background:"var(--tab-active-bg, #0d1a2e)",border:"1px solid var(--tab-active-border, #1a3a6e)",color:"var(--tab-active-color, #8ab4f8)"},
-  submitBtn:  {width:"100%",padding:"12px",background:"var(--submit-bg, linear-gradient(135deg,#1a3a6e,#0d2247))",border:"1px solid var(--submit-border, #2a4a8e44)",color:"var(--submit-color, #8ab4f8)",borderRadius:11,fontSize:14,fontWeight:700,cursor:"pointer",marginTop:4,fontFamily:"inherit"},
-  scopeBtn:   {display:"flex",alignItems:"center",gap:12,padding:"12px 14px",border:"1px solid",borderRadius:11,cursor:"pointer",background:"transparent",fontFamily:"inherit",width:"100%",textAlign:"left"},
-  selInput:   {backgroundColor:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",borderRadius:10,padding:"8px 26px 8px 11px",color:"var(--text2, #ccd)",fontSize:12,outline:"none",fontFamily:"inherit",appearance:"none",cursor:"pointer",backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23889' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,backgroundRepeat:"no-repeat",backgroundPosition:"right 8px center"},
-};
 
 const CSS=`
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');

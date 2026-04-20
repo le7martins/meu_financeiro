@@ -86,13 +86,12 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     for(const bm of allBillings){
       const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm);
       if(fat.total<=0) continue;
-      if(fat.open) continue;
       const dueMk=fat.dueDate.substring(0,7);
       if(dueMk!==monthKey) continue;
       res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
-        date:fat.dueDate,type:"despesa",status:fat.paid?"pago":"a_pagar",statusForMonth:fat.paid?"pago":"a_pagar",
-        category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,faturaKey:fat.key,cardId:card.id,
-        cardColor:card.color,cardName:card.name});
+        date:fat.dueDate,type:"despesa",status:fat.paid?"pago":fat.open?"preview":"a_pagar",statusForMonth:fat.paid?"pago":fat.open?"preview":"a_pagar",
+        category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:fat.open,closeDate:fat.closeDate,
+        faturaKey:fat.key,cardId:card.id,cardColor:card.color,cardName:card.name});
     }
   }
   return res;
