@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { loadUserData, saveData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
@@ -296,6 +296,41 @@ function MainApp({ fbUser, onLogout }){
   const getCat  =(id)=>categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id};
   const catColor=(id)=>getCat(id).color;
   const catName =(id)=>getCat(id).name;
+
+  // ─── Keyboard shortcuts ───────────────────────────────────────
+  useEffect(()=>{
+    const onKey=(e)=>{
+      if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+      if(e.metaKey||e.ctrlKey||e.altKey) return;
+      if(showForm||editTarget||delTarget||fatPayTarget) return;
+      if(activeTab==='lancamentos'){
+        if(e.key==='ArrowLeft'){setSelMonth(p=>addM(p,-1));}
+        else if(e.key==='ArrowRight'){setSelMonth(p=>addM(p,1));}
+        else if(e.key==='n'||e.key==='N'){e.preventDefault();setFormType('despesa');setForm(BLANK('despesa'));setShowForm(true);}
+        else if(e.key==='/'){e.preventDefault();document.querySelector('input[placeholder*="Buscar"]')?.focus();}
+      }
+    };
+    window.addEventListener('keydown',onKey);
+    return ()=>window.removeEventListener('keydown',onKey);
+  },[activeTab,showForm,editTarget,delTarget,fatPayTarget]);
+
+  // ─── Budget over-limit alerts ─────────────────────────────────
+  const alertedBudgets=useRef(new Set());
+  useEffect(()=>{alertedBudgets.current=new Set();},[selMonth]);
+  useEffect(()=>{
+    if(!dbReady||!Object.keys(budgets).length) return;
+    Object.entries(budgets).forEach(([catId,limit])=>{
+      if(!limit||limit<=0) return;
+      const key=`${selMonth}_${catId}`;
+      if(alertedBudgets.current.has(key)) return;
+      const total=monthEntries.filter(e=>e.type==='despesa'&&e.category===catId).reduce((s,e)=>s+eVal(e),0);
+      if(total>limit){
+        alertedBudgets.current.add(key);
+        const cat=categories.find(c=>c.id===catId);
+        if(cat) toast(`⚠️ Orçamento de "${cat.name}" estourado (${fmt(total)} / ${fmt(limit)})`,'error');
+      }
+    });
+  },[dbReady,selMonth,monthEntries,budgets,categories,toast]);
 
   const handleToggle=useCallback((entry)=>{
     if(entry.isFatura){
