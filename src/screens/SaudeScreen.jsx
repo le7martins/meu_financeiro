@@ -133,6 +133,26 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           </div>
         </div>
 
+        <div style={{background:"rgba(74,222,128,.05)",border:"1px solid #4ade8033",borderRadius:14,padding:"14px"}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#4ade80",marginBottom:4}}>🏦 Reserva de Emergência</div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Recomendado: 3 a 6 meses de despesas fixas ({fmt(fixos*3)} – {fmt(fixos*6)})</div>
+          {goals.reservaMeta>0&&(
+            <div style={{marginBottom:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                <span style={{fontSize:11,color:"var(--text2)"}}>{fmt(goals.reservaAtual||0)} <span style={{color:"var(--text3)"}}>de {fmt(goals.reservaMeta)}</span></span>
+                <span style={{fontSize:11,fontWeight:700,color:pct(goals.reservaAtual||0,goals.reservaMeta)>=100?"#4ade80":"#8ab4f8"}}>{pct(goals.reservaAtual||0,goals.reservaMeta).toFixed(0)}%</span>
+              </div>
+              <div style={{height:8,background:"var(--bg)",borderRadius:4,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${pct(goals.reservaAtual||0,goals.reservaMeta)}%`,background:`linear-gradient(90deg,#4ade8088,#4ade80)`,borderRadius:4,transition:"width .6s"}}/>
+              </div>
+            </div>
+          )}
+          <div style={{display:"flex",gap:10}}>
+            <div style={{flex:1}}><div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta (R$)</div><input style={{width:"100%",boxSizing:"border-box",background:"var(--bg)",border:"1px solid #4ade8033",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,fontWeight:600,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="500" placeholder="Ex: 15000" value={goals.reservaMeta||""} onChange={e=>onSaveGoals({...goals,reservaMeta:parseFloat(e.target.value)||0})}/></div>
+            <div style={{flex:1}}><div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Guardado hoje (R$)</div><input style={{width:"100%",boxSizing:"border-box",background:"var(--bg)",border:"1px solid #4ade8033",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,fontWeight:600,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="100" placeholder="0" value={goals.reservaAtual||""} onChange={e=>onSaveGoals({...goals,reservaAtual:parseFloat(e.target.value)||0})}/></div>
+          </div>
+        </div>
+
         {catRank.length>0&&(
           <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
             <div style={{fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>💰 Orçamento por Categoria</div>

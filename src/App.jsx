@@ -264,7 +264,7 @@ function MainApp({ fbUser, onLogout }){
   const filtered=useMemo(()=>{
     let list=filter==="all"?monthEntries:filter==="despesa"?monthEntries.filter(e=>e.type==="despesa"):filter==="receita"?monthEntries.filter(e=>e.type==="receita"):filter==="a_pagar"?monthEntries.filter(e=>e.statusForMonth==="a_pagar"):monthEntries.filter(e=>e.statusForMonth==="pago");
     if(filterCat!=="all") list=list.filter(e=>e.category===filterCat);
-    if(search.trim()){const q=normStr(search);list=list.filter(e=>normStr(e.description).includes(q)||normStr(e.notes||"").includes(q));}
+    if(search.trim()){const q=normStr(search);list=list.filter(e=>normStr(e.description).includes(q)||normStr(e.notes||"").includes(q)||(e.tags||[]).some(t=>normStr(t).includes(q)));}
     if(sortBy==="amount") list=[...list].sort((a,b)=>eVal(b)-eVal(a));
     else if(sortBy==="name") list=[...list].sort((a,b)=>a.description.localeCompare(b.description));
     else if(sortBy==="status") list=[...list].sort((a,b)=>a.statusForMonth==="a_pagar"?-1:1);
@@ -489,6 +489,7 @@ function MainApp({ fbUser, onLogout }){
             </div>
             {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,background:badge.bg,color:badge.color}}>{badge.text}</div>}
             {entry.notes&&<div style={{fontSize:10,color:"var(--text3)",marginTop:3,fontStyle:"italic"}}>💬 {entry.notes}</div>}
+            {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{(entry.tags||[]).map(t=><span key={t} style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(138,180,248,.12)",border:"1px solid #8ab4f822",color:"#8ab4f8",fontWeight:600}}>#{t}</span>)}</div>}
             {entry.isOpenFatura&&<div style={{fontSize:10,color:entry.cardColor,marginTop:3,opacity:0.8}}>🔄 Fecha em {fmtDate(entry.closeDate)}</div>}
             {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:10,color:"#4ade8066",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
           </div>

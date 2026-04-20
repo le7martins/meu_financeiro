@@ -21,6 +21,8 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
   const descErr=touched.description&&!form.description?.trim()?"Descrição obrigatória":null;
   const amtErr=touched.amount&&(!form.amount||parseFloat(form.amount)<=0)?"Informe um valor válido":null;
   const isValid=form.description?.trim()&&form.amount&&parseFloat(form.amount)>0;
+  const [tagInput,setTagInput]=useState("");
+  const addTag=(raw)=>{const t=raw.trim().toLowerCase().replace(/\s+/g,"_");if(!t||(form.tags||[]).includes(t))return;set("tags",[...(form.tags||[]),t]);setTagInput("");};
   const [newName,setNewName]=useState("");
   const [newColor,setNewColor]=useState("#6C8EEF");
   const type=lockedType||form.type;
@@ -59,6 +61,10 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
         </Field>
         <CatSelector cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
         <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
+        <Field label="Tags (opcional)">
+          {(form.tags||[]).length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>{(form.tags||[]).map(t=><button key={t} onClick={()=>set("tags",(form.tags||[]).filter(x=>x!==t))} style={{fontSize:10,padding:"2px 7px",borderRadius:5,background:"rgba(138,180,248,.15)",border:"1px solid #8ab4f833",color:"#8ab4f8",cursor:"pointer",fontFamily:"inherit"}}>#{t} ✕</button>)}</div>}
+          <input style={S.inp} placeholder="Ex: viagem, fixo, mercado... (Enter para adicionar)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
+        </Field>
         {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>💰 Saldo</button>{cards.map(c=>(<button key={c.id} onClick={()=>set("payWith",c.id)} style={{...S.chipBtn,...(form.payWith===c.id?{background:c.color+"33",border:`1px solid ${c.color}88`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:11,color:"var(--text3)",background:"var(--bg)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão</div>}</Field>}
         {(type!=="despesa"||!cards.length||form.payWith==="saldo")&&<Field label="Status"><div style={{display:"flex",gap:8}}>{(type==="receita"?[["a_pagar","⏳ A Receber","#fb923c"],["pago","✓ Recebido","#4ade80"]]:[["a_pagar","⏳ A Pagar","#fb923c"],["pago","✓ Pago","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>}
         <button onClick={()=>{setTouched({description:true,amount:true});if(isValid)onAdd();}} className="submitBtn"

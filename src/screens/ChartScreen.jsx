@@ -16,6 +16,8 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
   const [showPicker,setShowPicker]=useState(false);
   const [chartType,setChartType]=useState("barras");
   const [catView,setCatView]=useState("despesa");
+  const [cmpA,setCmpA]=useState(nowMonth);
+  const [cmpB,setCmpB]=useState(addM(nowMonth,-1));
 
   const getCat  =(id)=>(categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id});
   const catColor=(id)=>getCat(id).color;
@@ -72,6 +74,19 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
     const total=Object.values(map).reduce((s,v)=>s+v,0);
     return{cats:Object.entries(map).map(([id,value])=>({id,name:catName(id),value:+value.toFixed(2),color:catColor(id)})).sort((a,b)=>b.value-a.value),total:+total.toFixed(2)};
   },[cardPurchases,categories]);
+
+  const cmpData=useMemo(()=>{
+    const calc=(m)=>{
+      const me=mData(m);
+      const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+      const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+      const catMap={};
+      me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
+      const cats=Object.entries(catMap).map(([id,v])=>({id,name:catName(id),color:catColor(id),value:+v.toFixed(2)})).sort((a,b)=>b.value-a.value).slice(0,5);
+      return{rec:+rec.toFixed(2),dep:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2),cats};
+    };
+    return{a:calc(cmpA),b:calc(cmpB)};
+  },[entries,dividas,cards,cardPurchases,cardFaturas,cmpA,cmpB]);
 
   const cardMonthlyData=useMemo(()=>range.map(m=>{
     const entry={month:range.length===1?mLabel(m):mShort(m)};
@@ -136,7 +151,7 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
       </div>)}
 
       <div style={{display:"flex",gap:6,padding:"0 14px 12px",flexWrap:"wrap"}}>
-        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"],["cartoes","💳 Cartões"]].map(([t,l])=>(
+        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"]].map(([t,l])=>(
           <button key={t} onClick={()=>setChartType(t)} className="fTab" style={{...S.fTab,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
         ))}
       </div>
@@ -179,6 +194,66 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
               </div>
             </>)
           }
+        </div>)}
+
+        {chartType==="comparar"&&(<div style={S.chartBox}>
+          <div style={S.chartTitle}>Comparar meses</div>
+          <div style={{display:"flex",gap:10,marginBottom:16}}>
+            {[[cmpA,setCmpA,"#8ab4f8"],[cmpB,setCmpB,"#fb923c"]].map(([m,setM,color],idx)=>(
+              <div key={idx} style={{flex:1,textAlign:"center"}}>
+                <div style={{fontSize:10,color:color,fontWeight:700,marginBottom:5}}>{idx===0?"Mês A":"Mês B"}</div>
+                <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
+                  <button onClick={()=>setM(p=>addM(p,-1))} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 6px",fontSize:12}}>‹</button>
+                  <span style={{fontSize:12,fontWeight:700,color,minWidth:70,textAlign:"center"}}>{mShort(m)}</span>
+                  <button onClick={()=>setM(p=>addM(p,1))} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 6px",fontSize:12}}>›</button>
+                </div>
+              </div>
+            ))}
+          </div>
+          {[["Receitas","rec","#4ade80"],["Despesas","dep","#fb923c"],["Saldo","saldo","#8ab4f8"]].map(([label,key,color])=>{
+            const va=cmpData.a[key],vb=cmpData.b[key];
+            const max=Math.max(Math.abs(va),Math.abs(vb),1);
+            const diff=va-vb;
+            return(
+              <div key={key} style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:11,color:"var(--text3)",fontWeight:600}}>{label}</span>
+                  <span style={{fontSize:10,color:diff>0?"#4ade80":diff<0?"#f87171":"var(--text3)",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <span style={{fontSize:10,color:"#8ab4f8",width:52,textAlign:"right"}}>{fmt(va)}</span>
+                  <div style={{flex:1,height:8,background:"var(--bg)",borderRadius:4,overflow:"hidden",position:"relative"}}>
+                    <div style={{position:"absolute",right:"50%",height:"100%",width:`${(Math.abs(va)/max)*50}%`,background:"#8ab4f8",borderRadius:"4px 0 0 4px",opacity:0.8}}/>
+                    <div style={{position:"absolute",left:"50%",height:"100%",width:`${(Math.abs(vb)/max)*50}%`,background:"#fb923c",borderRadius:"0 4px 4px 0",opacity:0.8}}/>
+                    <div style={{position:"absolute",left:"50%",top:0,width:1,height:"100%",background:"var(--border2)"}}/>
+                  </div>
+                  <span style={{fontSize:10,color:"#fb923c",width:52}}>{fmt(vb)}</span>
+                </div>
+              </div>
+            );
+          })}
+          {cmpData.a.cats.length>0&&(
+            <div style={{marginTop:8}}>
+              <div style={{fontSize:10,color:"var(--text3)",fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Top despesas</div>
+              {cmpData.a.cats.map(ca=>{
+                const cb=cmpData.b.cats.find(x=>x.id===ca.id);
+                const diff=(ca.value-(cb?.value||0));
+                return(
+                  <div key={ca.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
+                    <div style={{width:7,height:7,borderRadius:"50%",background:ca.color,flexShrink:0}}/>
+                    <span style={{flex:1,fontSize:11,color:"var(--text2)"}}>{ca.name}</span>
+                    <span style={{fontSize:10,color:"#8ab4f8",width:52,textAlign:"right"}}>{fmt(ca.value)}</span>
+                    <span style={{fontSize:10,color:diff>0?"#f87171":diff<0?"#4ade80":"var(--text4)",width:52,textAlign:"right",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
+                    <span style={{fontSize:10,color:"#fb923c",width:52}}>{fmt(cb?.value||0)}</span>
+                  </div>
+                );
+              })}
+              <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginTop:6}}>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:"#8ab4f8"}}/><span style={{fontSize:9,color:"var(--text3)"}}>{mShort(cmpA)}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:"#fb923c"}}/><span style={{fontSize:9,color:"var(--text3)"}}>{mShort(cmpB)}</span></div>
+              </div>
+            </div>
+          )}
         </div>)}
 
         {chartType==="projecao"&&(<div style={S.chartBox}>
