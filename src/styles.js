@@ -5,7 +5,7 @@ const S={
   headerLeft: {display:"flex",alignItems:"center",gap:12},
   appName:    {fontSize:20,fontWeight:800,color:"var(--text1, #fff)",letterSpacing:"-0.5px"},
   appSub:     {fontSize:11,color:"var(--text3, #445)",marginTop:1},
-  heroCard:   {background:"var(--hero-bg, linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%))",border:"1px solid rgba(74,222,128,.2)",borderRadius:20,padding:"20px 20px",position:"relative",overflow:"hidden"},
+  heroCard:   {background:"var(--hero-bg, linear-gradient(135deg,#0a2a1a 0%,#0d1f12 50%,#0a1a10 100%))",border:"1px solid rgba(74,222,128,.2)",borderRadius:20,padding:"16px 18px",position:"relative",overflow:"hidden"},
   arrowBtn:   {width:42,height:42,borderRadius:13,background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text3, #556)",cursor:"pointer"},
   hbtn:       {display:"flex",alignItems:"center",gap:5,background:"var(--card-bg, #0d1118)",border:"1px solid var(--border, #111820)",color:"var(--text3, #556)",padding:"7px 11px",borderRadius:9,fontSize:12,fontWeight:600,cursor:"pointer"},
   addBtn:     {background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8"},

@@ -727,7 +727,7 @@ function MainApp({ fbUser, onLogout }){
               </div>
               <span className="heroSubtext" style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
             </div>
-            <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
+            <div style={{fontSize:28,fontWeight:800,letterSpacing:"-0.5px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
             {/* Comparação mês anterior */}
             {prevSaldo !== 0 && (
               <div className="heroCardFooter" style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -749,24 +749,6 @@ function MainApp({ fbUser, onLogout }){
             </div>}
           </div>
         </div>
-
-        {/* Widget "Quanto posso gastar hoje" */}
-        {todayWidget && (
-          <div style={{background:"linear-gradient(135deg,rgba(138,180,248,.07),rgba(138,180,248,.03))",border:"1px solid #1a3a6e44",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,marginTop:0}}>
-            <div style={{width:36,height:36,borderRadius:10,background:"rgba(138,180,248,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:10,color:"rgba(255,255,255,.45)",marginBottom:2}}>Posso gastar hoje</div>
-              <div style={{fontSize:20,fontWeight:800,color:todayWidget.perDay>=0?"#8ab4f8":"#f87171",letterSpacing:"-0.5px"}}>{fmt(Math.max(0,todayWidget.perDay))}<span style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.35)",marginLeft:4}}>/dia</span></div>
-            </div>
-            <div style={{textAlign:"right",flexShrink:0}}>
-              <div style={{fontSize:9,color:"rgba(255,255,255,.3)"}}>Disponível</div>
-              <div style={{fontSize:12,fontWeight:700,color:todayWidget.available>=0?"#4ade80":"#f87171"}}>{fmt(Math.max(0,todayWidget.available))}</div>
-              <div style={{fontSize:9,color:"rgba(255,255,255,.3)"}}>{todayWidget.daysLeft}d restantes</div>
-            </div>
-          </div>
-        )}
 
         {/* 4 grad cards */}
         <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 14px 10px"}}>
@@ -926,7 +908,7 @@ function MainApp({ fbUser, onLogout }){
         {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} accumSaldo={accumSaldo}/>}
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
-        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
+        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets} todayWidget={todayWidget}/>}
         {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries)=>{saveEntries([...newEntries,...entries]);toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}`);}}/>}
         {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
       </Suspense>

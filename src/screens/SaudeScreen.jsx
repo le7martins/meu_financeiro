@@ -27,7 +27,7 @@ function CurrencyInput({ value, onChange, placeholder = "0,00", style = {} }) {
   );
 }
 
-export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets }) {
+export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets, todayWidget }) {
   const me = getMonthEntries(entries, dividas, nowMonth, cards, cardPurchases, cardFaturas);
   const rec = me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
   const dep = me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
@@ -121,6 +121,27 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
             <div style={{marginTop:8,fontSize:11,color:"var(--text3)"}}>Adicione receitas e despesas para calcular seu score</div>
           )}
         </div>
+
+        {/* Widget "Quanto posso gastar hoje" */}
+        {todayWidget && (
+          <div style={{background:"linear-gradient(135deg,rgba(138,180,248,.07),rgba(138,180,248,.03))",border:"1px solid #1a3a6e44",borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
+            <div style={{width:40,height:40,borderRadius:11,background:"rgba(138,180,248,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:10,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:3}}>Quanto posso gastar hoje</div>
+              <div style={{fontSize:22,fontWeight:800,color:todayWidget.perDay>=0?"#8ab4f8":"#f87171",letterSpacing:"-0.5px",lineHeight:1}}>
+                {fmt(Math.max(0,todayWidget.perDay))}
+                <span style={{fontSize:12,fontWeight:500,color:"var(--text4)",marginLeft:5}}>/dia</span>
+              </div>
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div style={{fontSize:9,color:"var(--text4)",marginBottom:2}}>Disponível</div>
+              <div style={{fontSize:13,fontWeight:700,color:todayWidget.available>=0?"#4ade80":"#f87171"}}>{fmt(Math.max(0,todayWidget.available))}</div>
+              <div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>{todayWidget.daysLeft}d restantes</div>
+            </div>
+          </div>
+        )}
 
         {/* Health bars */}
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
