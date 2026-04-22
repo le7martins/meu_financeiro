@@ -1032,29 +1032,71 @@ function MainApp({ fbUser, onLogout }){
       {/* FAB — novo lançamento (visível na aba Contas, apenas mobile) */}
       {activeTab==="lancamentos"&&!showForm&&!editTarget&&!delTarget&&(
         <div className="appFabWrap">
-          {/* Backdrop para fechar o menu */}
-          {showFabMenu&&<div style={{position:"fixed",inset:0,zIndex:48}} onClick={()=>setShowFabMenu(false)}/>}
-
-          {/* Mini-menu: Receita / Despesa */}
+          {/* Backdrop escurecido com blur */}
           {showFabMenu&&(
-            <div style={{position:"fixed",bottom:144,right:16,display:"flex",flexDirection:"column",gap:8,alignItems:"flex-end",zIndex:49}}>
-              <button onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);setShowFabMenu(false);}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#0d2a1a",border:"1.5px solid #4ade8066",borderRadius:12,color:"#4ade80",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.8)",whiteSpace:"nowrap"}}>
-                <span style={{fontSize:16}}>📈</span> Receita
-              </button>
-              <button onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);setShowFabMenu(false);}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",background:"#1a1208",border:"1.5px solid #fb923c66",borderRadius:12,color:"#fb923c",fontSize:13,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.8)",whiteSpace:"nowrap"}}>
-                <span style={{fontSize:16}}>📉</span> Despesa
-              </button>
+            <div
+              onClick={()=>setShowFabMenu(false)}
+              style={{position:"fixed",inset:0,zIndex:48,background:"rgba(0,0,0,.55)",backdropFilter:"blur(4px)",WebkitBackdropFilter:"blur(4px)",animation:"fadeIn .18s ease"}}
+            />
+          )}
+
+          {/* Bottom-sheet de escolha */}
+          {showFabMenu&&(
+            <div className="fabSheet" style={{position:"fixed",bottom:72,left:0,right:0,zIndex:49,maxWidth:480,margin:"0 auto",padding:"0 12px 12px"}}>
+              <div style={{background:"var(--card-bg,#0d1118)",border:"1px solid var(--border,#111820)",borderRadius:20,overflow:"hidden",boxShadow:"0 -2px 40px rgba(0,0,0,.7)",animation:"slideUp .22s cubic-bezier(.22,1,.36,1)"}}>
+                {/* Handle */}
+                <div style={{display:"flex",justifyContent:"center",paddingTop:10,paddingBottom:6}}>
+                  <div style={{width:36,height:4,borderRadius:2,background:"var(--border,#1e293b)",opacity:.5}}/>
+                </div>
+                {/* Label */}
+                <div style={{fontSize:11,fontWeight:700,color:"var(--text4,#334)",textTransform:"uppercase",letterSpacing:"0.09em",textAlign:"center",paddingBottom:12}}>Novo lançamento</div>
+
+                {/* Receita row */}
+                <button
+                  onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);setShowFabMenu(false);}}
+                  className="fabSheetRow"
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 18px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit",borderTop:"1px solid var(--border2,#0f1825)"}}>
+                  <div style={{width:44,height:44,borderRadius:13,background:"rgba(74,222,128,.12)",border:"1px solid rgba(74,222,128,.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:15,fontWeight:700,color:"#4ade80",marginBottom:2}}>Receita</div>
+                    <div style={{fontSize:11,color:"var(--text4,#556)"}}>Salário, freelance, transferência…</div>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text4,#556)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+
+                {/* Despesa row */}
+                <button
+                  onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);setShowFabMenu(false);}}
+                  className="fabSheetRow"
+                  style={{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 18px",background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit",borderTop:"1px solid var(--border2,#0f1825)",borderBottom:"1px solid var(--border2,#0f1825)"}}>
+                  <div style={{width:44,height:44,borderRadius:13,background:"rgba(251,146,60,.12)",border:"1px solid rgba(251,146,60,.18)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:15,fontWeight:700,color:"#fb923c",marginBottom:2}}>Despesa</div>
+                    <div style={{fontSize:11,color:"var(--text4,#556)"}}>Conta, compra, assinatura…</div>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text4,#556)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+
+                {/* Cancel */}
+                <button
+                  onClick={()=>setShowFabMenu(false)}
+                  style={{width:"100%",padding:"13px",background:"transparent",border:"none",cursor:"pointer",fontSize:13,fontWeight:600,color:"var(--text4,#556)",fontFamily:"inherit"}}>
+                  Cancelar
+                </button>
+              </div>
             </div>
           )}
 
           {/* Botão FAB principal */}
-          <button onClick={()=>setShowFabMenu(p=>!p)}
-            style={{position:"fixed",bottom:82,right:16,width:52,height:52,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e55",color:"#8ab4f8",fontSize:26,fontWeight:700,cursor:"pointer",boxShadow:"0 6px 20px rgba(0,0,0,.6)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .15s,box-shadow .15s",transform:showFabMenu?"rotate(45deg)":"rotate(0deg)"}}
-            onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 10px 28px rgba(0,0,0,.7)";}}
-            onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,.6)";}}>
-            +
+          <button
+            className="fabBtn"
+            onClick={()=>setShowFabMenu(p=>!p)}
+            style={{position:"fixed",bottom:82,right:16,width:54,height:54,borderRadius:"50%",background:"linear-gradient(135deg,#1a6e3a,#0d4727)",border:"1.5px solid rgba(74,222,128,.3)",color:"#4ade80",cursor:"pointer",boxShadow:"0 4px 20px rgba(74,222,128,.25)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s",transform:showFabMenu?"rotate(45deg) scale(1.05)":"rotate(0deg) scale(1)"}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
       )}
@@ -1091,7 +1133,7 @@ const CSS=`
   .modal-in { animation: slideUp .28s cubic-bezier(0.32,0.72,0,1); }
   @keyframes toastIn { from { opacity:0; transform: translateY(-12px) scale(0.9); } to { opacity:1; transform: translateY(0) scale(1); } }
   @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
   /* ── Responsive: tablet (≥720px) ── */
   @media (min-width: 720px) {
@@ -1364,9 +1406,13 @@ const CSS=`
   /* Toast notifications in light mode */
   .light-mode .toast-in { box-shadow: 0 4px 16px rgba(0,0,0,.15) !important; }
 
-  /* FAB button */
-  .light-mode .fabBtn { background: linear-gradient(135deg,#16a34a,#15803d) !important; border-color: #22c55e44 !important; color: #ffffff !important; box-shadow: 0 4px 14px rgba(22,163,74,.35) !important; }
-  .light-mode .fabMenu button { background: #ffffff !important; box-shadow: 0 4px 14px rgba(0,0,0,.12) !important; }
+  /* FAB button & sheet */
+  .fabSheetRow:hover { background: rgba(255,255,255,.04) !important; }
+  .fabSheetRow:active { background: rgba(255,255,255,.08) !important; }
+  .light-mode .fabBtn { background: linear-gradient(135deg,#16a34a,#15803d) !important; border-color: #22c55e55 !important; color: #ffffff !important; box-shadow: 0 4px 16px rgba(22,163,74,.35) !important; }
+  .light-mode .fabSheet > div { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 -4px 32px rgba(0,0,0,.14) !important; }
+  .light-mode .fabSheetRow:hover { background: #f9fafb !important; }
+  .light-mode .fabSheetRow:active { background: #f3f4f6 !important; }
 
   /* More-nav popup */
   .light-mode .moreNav { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 8px 24px rgba(0,0,0,.12) !important; }
