@@ -82,7 +82,11 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     }
     if(item&&!e.deletedMonths?.includes(monthKey)){
       const ov=e.overrides?.[monthKey];
-      if(ov){const{amount:oa,status:os,...rest}=ov;item={...item,...rest,...(oa!==undefined?{displayAmount:oa}:{}),...(os!==undefined?{statusForMonth:os}:{})};}
+      if(ov){const{amount:oa,status:os,...rest}=ov;
+        // statusByMonth tem prioridade sobre o status salvo no override
+        // (o toggle atualiza ambos, mas garante que statusByMonth sempre vence)
+        const finalStatus=e.statusByMonth?.[monthKey]??os;
+        item={...item,...rest,...(oa!==undefined?{displayAmount:oa}:{}),...(finalStatus!==undefined?{statusForMonth:finalStatus}:{})};}
       res.push(item);
     }
   }

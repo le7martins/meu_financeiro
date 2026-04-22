@@ -473,12 +473,13 @@ function MainApp({ fbUser, onLogout }){
     saveEntries(entries.map(e=>{
       if(e.id!==entry.id) return e;
       if(!entry.isRecurring) return {...e,status:newSt,paidDate:paidDt};
-      // Se há override para este mês, atualiza status dentro dele também
-      // (impede o override de sobrepor o statusByMonth no getMonthEntries)
+      // Sempre atualiza o status dentro do override se ele existir —
+      // caso contrário o override (salvo pela edição "só este mês") sobrescreve
+      // o statusByMonth no getMonthEntries e o botão não reflete a mudança.
       const existingOv=e.overrides?.[selMonth];
       const newOverrides=existingOv
         ?{...e.overrides,[selMonth]:{...existingOv,status:newSt}}
-        :e.overrides;
+        :{...e.overrides,[selMonth]:{status:newSt}};
       return {...e,statusByMonth:{...e.statusByMonth,[selMonth]:newSt},paidDateByMonth:{...e.paidDateByMonth,[selMonth]:paidDt},overrides:newOverrides};
     }));
     toast(newSt==="pago"?"✓ Marcado como pago":"↩ Marcado como pendente");
