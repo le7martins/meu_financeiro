@@ -54,6 +54,22 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     let item=null;
     if(e.recurrence==="none"){ if(base===monthKey) item={...e,statusForMonth:e.status,isRecurring:false}; }
     else if(e.recurrence==="fixed"){ if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo 🔄"};} }
+    else if(e.recurrence==="weekly"){
+      if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){
+        const st=e.statusByMonth?.[monthKey]||"a_pagar";
+        // Conta ocorrências semanais no mês (aprox: semanas do mês que caem no dia da semana)
+        const [y,m]=monthKey.split("-").map(Number);
+        const daysInMonth=new Date(y,m,0).getDate();
+        const occurrences=Math.floor(daysInMonth/7)+(new Date(y,m,0).getDay()>=(new Date(e.date).getDay())?1:0);
+        item={...e,amount:e.amount*Math.max(occurrences,4),statusForMonth:st,isRecurring:true,recurLabel:`Semanal 📆 (${Math.max(occurrences,4)}x)`};
+      }
+    }
+    else if(e.recurrence==="biweekly"){
+      if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){
+        const st=e.statusByMonth?.[monthKey]||"a_pagar";
+        item={...e,amount:e.amount*2,statusForMonth:st,isRecurring:true,recurLabel:"Quinzenal 📆 (2x)"};
+      }
+    }
     else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Trimestral 📅"};} }
     else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Anual 📅"};} }
     else if(e.recurrence==="installment"){

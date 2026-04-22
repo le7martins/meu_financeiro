@@ -1,16 +1,33 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Field from '../components/Field.jsx';
 import MonthPicker from '../components/MonthPicker.jsx';
 import { getNow, mLabel, mShort, addM, fmt } from '../utils.js';
 import S from '../styles.js';
+
+// ─── Masked currency input ────────────────────────────────────
+function CurrencyInput({ value, onChange, placeholder = "0,00", style = {} }) {
+  const toDisplay = (v) => v > 0 ? parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+  const [display, setDisplay] = useState(() => toDisplay(parseFloat(value) || 0));
+  const handle = useCallback((e) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    if (!digits) { setDisplay(''); onChange(''); return; }
+    const num = parseInt(digits, 10) / 100;
+    setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    onChange(String(num));
+  }, [onChange]);
+  return (
+    <input type="text" inputMode="numeric" placeholder={placeholder} value={display} onChange={handle} style={style}/>
+  );
+}
 
 export default function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toast}){
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [delId,setDelId]=useState(null);
   const [celebrate,setCelebrate]=useState(null);
-  const [dform,setDform]=useState({name:"",totalAmount:"",installments:12,startMonth:nowMonth,dueDay:"10",category:"divida",notes:""});
+  const [showQuitadas,setShowQuitadas]=useState(false);
   const BLANK_D={name:"",totalAmount:"",installments:12,startMonth:nowMonth,dueDay:"10",category:"divida",notes:""};
+  const [dform,setDform]=useState(BLANK_D);
   const despCats=categories.filter(c=>c.type==="both"||c.type==="despesa");
   const catColor=(id)=>(categories.find(c=>c.id===id)||{color:"#f87171"}).color;
   const catName =(id)=>(categories.find(c=>c.id===id)||{name:id}).name;
@@ -42,23 +59,58 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
   const active  =dividas.filter(d=>(d.paidMonths?.length||0)<d.installments);
   const quitadas=dividas.filter(d=>(d.paidMonths?.length||0)>=d.installments);
 
+  // totais
+  const totalEmAberto = active.reduce((s,d)=>s+d.totalAmount-(d.paidMonths?.length||0)*(d.totalAmount/d.installments),0);
+  const totalMensal   = active.reduce((s,d)=>s+(d.totalAmount/d.installments),0);
+
   return(
     <div style={{paddingBottom:90}}>
+      {/* Header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 14px 10px",borderBottom:"1px solid var(--border2)"}}>
-        <div><div style={{fontSize:14,fontWeight:700,color:"var(--text1)"}}>Minhas Dívidas</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{dividas.length} dívida{dividas.length!==1?"s":""} cadastrada{dividas.length!==1?"s":""}</div></div>
+        <div>
+          <div style={{fontSize:14,fontWeight:700,color:"var(--text1)"}}>Minhas Dívidas</div>
+          <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{dividas.length} dívida{dividas.length!==1?"s":""} cadastrada{dividas.length!==1?"s":""}</div>
+        </div>
         <button onClick={()=>{setDform(BLANK_D);setEditId(null);setShowForm(true);}} className="hbtn add-btn" style={{...S.hbtn,...S.addBtn,fontSize:12}}>+ Nova Dívida</button>
       </div>
 
-      <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
-        {dividas.length===0&&<div style={S.empty}><div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💳</div><div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>Nenhuma dívida cadastrada</div></div>}
+      {/* Summary cards — só mostra se há dívidas ativas */}
+      {active.length>0&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"12px 14px 4px"}}>
+          <div style={{background:"rgba(248,113,113,.07)",border:"1px solid #f8717133",borderRadius:12,padding:"11px 13px"}}>
+            <div style={{fontSize:9,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700,marginBottom:4}}>Em aberto</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#f87171",letterSpacing:"-0.5px"}}>{fmt(Math.max(0,totalEmAberto))}</div>
+          </div>
+          <div style={{background:"rgba(250,204,21,.07)",border:"1px solid #facc1533",borderRadius:12,padding:"11px 13px"}}>
+            <div style={{fontSize:9,color:"#facc15",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700,marginBottom:4}}>Total/mês</div>
+            <div style={{fontSize:16,fontWeight:800,color:"#facc15",letterSpacing:"-0.5px"}}>{fmt(totalMensal)}</div>
+          </div>
+        </div>
+      )}
 
+      <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+
+        {/* Empty state */}
+        {dividas.length===0&&(
+          <div style={{...S.empty,flexDirection:"column",padding:"40px 16px",gap:10}}>
+            <div style={{width:72,height:72,borderRadius:20,background:"rgba(248,113,113,.08)",border:"1px solid #f8717133",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32}}>💳</div>
+            <div style={{color:"var(--text2)",fontSize:15,fontWeight:700}}>Nenhuma dívida</div>
+            <div style={{color:"var(--text3)",fontSize:12,textAlign:"center",lineHeight:1.5,maxWidth:220}}>Cadastre empréstimos, financiamentos ou qualquer parcelamento de longo prazo.</div>
+            <button onClick={()=>{setDform(BLANK_D);setEditId(null);setShowForm(true);}}
+              style={{marginTop:4,padding:"10px 20px",background:"rgba(248,113,113,.1)",border:"1px solid #f8717133",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+              + Cadastrar dívida
+            </button>
+          </div>
+        )}
+
+        {/* Active debts */}
         {active.map(d=>{
           const instVal=parseFloat((d.totalAmount/d.installments).toFixed(2));
           const paid=d.paidMonths?.length||0;
           const pct=Math.round((paid/d.installments)*100);
-          const remaining=d.totalAmount-(paid*instVal);
+          const remaining=Math.max(0,d.totalAmount-(paid*instVal));
           const endMonth=addM(d.startMonth,d.installments-1);
-          const currentDiff=paid>=0?(()=>{const [ay,am]=d.startMonth.split("-").map(Number),[by,bm]=NOW.split("-").map(Number);return(by-ay)*12+(bm-am);})():0;
+          const currentDiff=(()=>{const [ay,am]=d.startMonth.split("-").map(Number),[by,bm]=NOW.split("-").map(Number);return(by-ay)*12+(bm-am);})();
           const isCurrent=currentDiff>=0&&currentDiff<d.installments;
           const isPaidThisMonth=d.paidMonths?.includes(NOW);
           const isCelebrating=celebrate===d.id;
@@ -93,17 +145,17 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                 <div style={{marginBottom:10}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
                     <span style={{fontSize:11,color:"var(--text3)"}}>Progresso de quitação</span>
-                    <span style={{fontSize:12,fontWeight:700,color:"#f87171"}}>{pct}%</span>
+                    <span style={{fontSize:12,fontWeight:700,color:pct>=80?"#4ade80":pct>=50?"#facc15":"#f87171"}}>{pct}%</span>
                   </div>
                   <div style={{height:8,background:"var(--bg)",borderRadius:4,overflow:"hidden",border:"1px solid var(--border)"}}>
-                    <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#f87171,#fb923c)",borderRadius:4,transition:"width .6s"}}/>
+                    <div style={{height:"100%",width:`${pct}%`,background:pct>=80?"linear-gradient(90deg,#4ade80,#34d399)":"linear-gradient(90deg,#f87171,#fb923c)",borderRadius:4,transition:"width .6s"}}/>
                   </div>
                 </div>
 
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
                   <div style={{background:"var(--bg)",borderRadius:8,padding:"7px 8px",border:"1px solid var(--border2)"}}><div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Total</div><div style={{fontSize:11,fontWeight:700,color:"var(--text1)"}}>{fmt(d.totalAmount)}</div></div>
                   <div style={{background:"var(--bg)",borderRadius:8,padding:"7px 8px",border:"1px solid var(--border2)"}}><div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Parcela</div><div style={{fontSize:11,fontWeight:700,color:"#f87171"}}>{fmt(instVal)}</div></div>
-                  <div style={{background:"var(--bg)",borderRadius:8,padding:"7px 8px",border:"1px solid var(--border2)"}}><div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Restante</div><div style={{fontSize:11,fontWeight:700,color:"#facc15"}}>{fmt(remaining)}</div></div>
+                  <div style={{background:"var(--bg)",borderRadius:8,padding:"7px 8px",border:"1px solid var(--border2)"}}><div style={{fontSize:9,color:"var(--text3)",marginBottom:2}}>Restante</div><div style={{fontSize:11,fontWeight:700,color:remaining<d.totalAmount*0.3?"#4ade80":"#facc15"}}>{fmt(remaining)}</div></div>
                 </div>
 
                 {isCurrent&&(
@@ -118,8 +170,11 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                     </button>
                   </div>
                 )}
+
+                {d.notes&&<div style={{marginTop:8,fontSize:10,color:"var(--text3)",fontStyle:"italic",paddingTop:6,borderTop:"1px solid var(--border2)"}}>💬 {d.notes}</div>}
               </div>
 
+              {/* Installment chips */}
               <div style={{background:"var(--bg)",borderTop:"1px solid #111820",padding:"8px 14px",display:"flex",gap:4,overflowX:"auto"}} className="hscroll">
                 {Array.from({length:d.installments},(_,i)=>{
                   const m=addM(d.startMonth,i);
@@ -138,10 +193,18 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
           );
         })}
 
+        {/* Paid-off debts */}
         {quitadas.length>0&&(
           <div>
-            <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,paddingLeft:2}}>✅ Quitadas</div>
-            {quitadas.map(d=>(
+            <button onClick={()=>setShowQuitadas(p=>!p)}
+              style={{display:"flex",alignItems:"center",gap:6,width:"100%",background:"none",border:"none",cursor:"pointer",padding:"4px 0 8px",fontFamily:"inherit"}}>
+              <span style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",fontWeight:700}}>✅ Quitadas ({quitadas.length})</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--text4)" strokeWidth="2.5" strokeLinecap="round"
+                style={{transform:showQuitadas?"rotate(180deg)":"none",transition:"transform .2s",marginLeft:"auto"}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {showQuitadas&&quitadas.map(d=>(
               <div key={d.id} style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:12,padding:"12px 14px",opacity:0.6,display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:13,fontWeight:600,color:"var(--text2)"}}>{d.name}</div>
@@ -154,9 +217,11 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
         )}
       </div>
 
+      {/* Delete modal */}
       {delId&&(
         <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelId(null)}>
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+            <div style={S.modalHandle}/>
             <div style={S.mHeader}><div style={S.mTitle}>Excluir dívida</div><button style={S.xBtn} onClick={()=>setDelId(null)}>✕</button></div>
             <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
               <div style={{fontSize:13,fontWeight:700,color:"var(--text1)",marginBottom:2}}>{dividas.find(d=>d.id===delId)?.name}</div>
@@ -170,16 +235,25 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
         </div>
       )}
 
+      {/* Form modal */}
       {showForm&&(
         <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&(setShowForm(false),setEditId(null))}>
           <div style={S.modal} className="modal-in">
+            <div style={S.modalHandle}/>
             <div style={S.mHeader}><div style={S.mTitle}>{editId?"Editar Dívida":"Nova Dívida"}</div><button style={S.xBtn} onClick={()=>{setShowForm(false);setEditId(null);}}>✕</button></div>
             <Field label="Nome da dívida"><input style={S.inp} placeholder="Ex: Cartão Nubank, Empréstimo..." value={dform.name} onChange={e=>setDform(p=>({...p,name:e.target.value}))}/></Field>
             <div style={{display:"flex",gap:10}}>
-              <Field label="Valor total (R$)" style={{flex:1}}><input style={S.inp} type="number" placeholder="0,00" min="0" step="0.01" value={dform.totalAmount} onChange={e=>setDform(p=>({...p,totalAmount:e.target.value}))}/></Field>
+              <Field label="Valor total (R$)" style={{flex:1}}>
+                <CurrencyInput
+                  value={parseFloat(dform.totalAmount)||0}
+                  onChange={v=>setDform(p=>({...p,totalAmount:v}))}
+                  placeholder="0,00"
+                  style={S.inp}
+                />
+              </Field>
               <Field label="Nº de parcelas" style={{flex:1}}><input style={S.inp} type="number" min={1} max={360} value={dform.installments} onChange={e=>setDform(p=>({...p,installments:e.target.value}))}/></Field>
             </div>
-            {dform.totalAmount&&dform.installments>0&&(
+            {dform.totalAmount&&parseInt(dform.installments)>0&&(
               <div style={{marginBottom:13,background:"var(--bg)",border:"1px solid #f8717133",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontSize:11,color:"var(--text3)"}}>{dform.installments}x de</span>
                 <span style={{fontSize:20,fontWeight:700,color:"#f87171"}}>{fmt(parseFloat(dform.totalAmount)/parseInt(dform.installments))}</span>

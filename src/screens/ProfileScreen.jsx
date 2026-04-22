@@ -7,13 +7,13 @@ import S from '../styles.js';
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
 function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
 
-export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries}){
+export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[]}){
   const [confirmReset,setConfirmReset]=useState(false);
   const [confirmLogout,setConfirmLogout]=useState(false);
   const [showImport,setShowImport]=useState(false);
   const [importHeaders,setImportHeaders]=useState([]);
   const [importRows,setImportRows]=useState([]);
-  const [importMap,setImportMap]=useState({date:'',desc:'',amount:'',type:''});
+  const [importMap,setImportMap]=useState({date:'',desc:'',amount:'',type:'',category:''});
   const [importRef]=useState(()=>({current:null}));
   const [editName,setEditName]=useState(false);
   const [newName,setNewName]=useState('');
@@ -47,21 +47,31 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       const dCol=headers.find(h=>/data|date|dt\b/i.test(h))||'';
       const descCol=headers.find(h=>/descri|memo|hist|lancamento|complemento/i.test(h))||'';
       const amtCol=headers.find(h=>/valor|amount|value|vl\b|debito|credito/i.test(h))||'';
-      setImportMap({date:dCol,desc:descCol,amount:amtCol,type:''});
+      const catCol=headers.find(h=>/categ|classif|grupo/i.test(h))||'';
+      setImportMap({date:dCol,desc:descCol,amount:amtCol,type:'',category:catCol});
       setShowImport(true);
     };
     reader.readAsText(file,'UTF-8');
     e.target.value='';
   };
   const handleConfirmImport=()=>{
-    const {date:dCol,desc:descCol,amount:amtCol}=importMap;
+    const {date:dCol,desc:descCol,amount:amtCol,category:catCol}=importMap;
     if(!dCol||!descCol||!amtCol)return;
     const now=Date.now();
+    // mapeia texto de categoria do CSV para id da categoria mais próxima
+    const guessCategory=(rawCat)=>{
+      if(!rawCat||!catCol) return 'outro';
+      const norm=(s)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const r=norm(rawCat);
+      const found=categories.find(c=>norm(c.name).includes(r)||r.includes(norm(c.name)));
+      return found?found.id:'outro';
+    };
     const newEntries=importRows.map((row,i)=>{
       const parsedDate=parseBRDate(row[dCol]);
       const parsedAmt=parseBRNum(row[amtCol]);
       if(!parsedDate||parsedAmt===null||parsedAmt===0)return null;
-      return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type:parsedAmt<0?'despesa':'receita',status:'pago',category:'outro',recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
+      const type=importMap.type||(parsedAmt<0?'despesa':'receita');
+      return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type,status:'pago',category:guessCategory(row[catCol]),recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
     }).filter(Boolean);
     if(newEntries.length===0)return;
     onImportEntries(newEntries);
@@ -183,7 +193,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ProfileSection>
 
         <ProfileSection title="Sobre">
-          <ProfileItem icon="📱" label="CashUp" sub="Versão 1.2.0" last/>
+          <ProfileItem icon="📱" label="CashUp" sub="Versão 1.3.0" last/>
         </ProfileSection>
       </div>
 
@@ -244,9 +254,9 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
             <div style={S.mHeader}><div><div style={S.mTitle}>Importar CSV</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{importRows.length} linhas detectadas</div></div><button style={S.xBtn} onClick={()=>setShowImport(false)}>✕</button></div>
             <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Mapear colunas</div>
             <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-              {[['date','📅 Data'],['desc','📝 Descrição'],['amount','💰 Valor']].map(([key,label])=>(
+              {[['date','📅 Data'],['desc','📝 Descrição'],['amount','💰 Valor'],['category','🏷️ Categoria (opcional)']].map(([key,label])=>(
                 <div key={key} style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,color:"var(--text2)",width:80,flexShrink:0}}>{label}</span>
+                  <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0}}>{label}</span>
                   <select value={importMap[key]} onChange={e=>setImportMap(p=>({...p,[key]:e.target.value}))}
                     style={{...S.inp,flex:1,marginBottom:0,padding:"6px 10px",fontSize:11}}>
                     <option value="">— selecionar —</option>
@@ -254,6 +264,16 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                   </select>
                 </div>
               ))}
+              {/* Tipo forçado */}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0}}>🔀 Tipo</span>
+                <div style={{display:"flex",gap:6,flex:1}}>
+                  {[['','Auto (por sinal)'],['despesa','Forçar Despesa'],['receita','Forçar Receita']].map(([v,l])=>(
+                    <button key={v} onClick={()=>setImportMap(p=>({...p,type:v}))}
+                      style={{flex:1,padding:"5px 0",fontSize:10,borderRadius:6,border:`1px solid ${importMap.type===v?"#8ab4f8":"#1a2840"}`,background:importMap.type===v?"#0d1a2e":"transparent",color:importMap.type===v?"#8ab4f8":"var(--text3)",cursor:"pointer"}}>{l}</button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Prévia (5 primeiras linhas)</div>
             <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14,maxHeight:160,overflowY:"auto"}}>
@@ -261,18 +281,20 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                 const dt=importMap.date?parseBRDate(row[importMap.date]):null;
                 const amt=importMap.amount?parseBRNum(row[importMap.amount]):null;
                 const desc=importMap.desc?row[importMap.desc]:'';
+                const catRaw=importMap.category?row[importMap.category]:'';
                 const ok=dt&&amt!==null&&amt!==0;
                 return(
                   <div key={i} style={{display:"flex",gap:6,background:ok?"var(--bg)":"rgba(248,113,113,.07)",borderRadius:7,padding:"6px 8px",border:`1px solid ${ok?"var(--border2)":"#f8717133"}`,fontSize:10}}>
-                    <span style={{color:"var(--text3)",width:72,flexShrink:0}}>{dt||'— data ?'}</span>
+                    <span style={{color:"var(--text3)",width:62,flexShrink:0}}>{dt||'— data ?'}</span>
                     <span style={{flex:1,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc||'—'}</span>
+                    {catRaw&&<span style={{color:"#8ab4f8",flexShrink:0,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis"}}>{catRaw}</span>}
                     <span style={{fontWeight:700,color:amt===null?'#f87171':amt<0?'#fb923c':'#4ade80',flexShrink:0}}>{amt!==null?`${amt<0?'-':'+'} R$${Math.abs(amt).toFixed(2)}`:'—'}</span>
                   </div>
                 );
               })}
             </div>
             <div style={{marginBottom:14,background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e44",borderRadius:8,padding:"8px 12px",fontSize:10,color:"var(--text3)"}}>
-              💡 Valores negativos → Despesa · Valores positivos → Receita · Status importado = "Pago"
+              💡 Valores negativos → Despesa · Positivos → Receita · Categoria: mapeada automaticamente por nome
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setShowImport(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>

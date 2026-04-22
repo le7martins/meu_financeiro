@@ -1,6 +1,31 @@
+import { useState, useCallback } from 'react';
 import HealthBar from '../components/HealthBar.jsx';
 import { getMonthEntries } from '../logic.js';
 import { eVal, mLabel, mShort, addM, fmt, fmtShort } from '../utils.js';
+
+// ─── Masked currency input ───────────────────────────────────
+function CurrencyInput({ value, onChange, placeholder = "0,00", style = {} }) {
+  const [display, setDisplay] = useState(() =>
+    value > 0 ? value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''
+  );
+  const handle = useCallback((e) => {
+    const digits = e.target.value.replace(/\D/g, '');
+    if (!digits) { setDisplay(''); onChange(0); return; }
+    const num = parseInt(digits, 10) / 100;
+    setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    onChange(num);
+  }, [onChange]);
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      placeholder={placeholder}
+      value={display}
+      onChange={handle}
+      style={style}
+    />
+  );
+}
 
 export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets }) {
   const me = getMonthEntries(entries, dividas, nowMonth, cards, cardPurchases, cardFaturas);
@@ -48,6 +73,25 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
   const pct = (v,max) => max>0?Math.min(100,(v/max)*100):0;
 
+  const inpStyle = {
+    width:"100%", boxSizing:"border-box",
+    background:"var(--bg)", border:"1px solid #1a3a6e44",
+    borderRadius:9, padding:"8px 12px",
+    color:"var(--text1)", fontSize:13, fontWeight:600,
+    outline:"none", fontFamily:"inherit",
+  };
+  const budgetInpStyle = {
+    flex:1, background:"var(--bg)",
+    border:"1px solid #1a3a6e33", borderRadius:7,
+    padding:"5px 9px", color:"#8ab4f8",
+    fontSize:11, outline:"none", fontFamily:"inherit",
+  };
+
+  // Título de sessão padrão
+  const SectionTitle = ({children, color="#8ab4f8"}) => (
+    <div style={{fontSize:11,fontWeight:700,color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>{children}</div>
+  );
+
   return(
     <div style={{paddingBottom:90,paddingTop:4}}>
       <div style={{padding:"14px 14px 10px",borderBottom:"1px solid var(--border2)"}}>
@@ -57,6 +101,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
       <div style={{padding:"14px 14px 0",display:"flex",flexDirection:"column",gap:12}}>
 
+        {/* Score circle */}
         <div className="scoreCard" style={{background:"linear-gradient(135deg,var(--card-bg),var(--card-bg2))",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px",textAlign:"center"}}>
           <div style={{fontSize:11,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Score do mês</div>
           <div style={{position:"relative",width:110,height:110,margin:"0 auto 12px"}}>
@@ -72,8 +117,12 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
             </svg>
           </div>
           <div style={{fontSize:16,fontWeight:700,color:scoreColor}}>{scoreLabel}</div>
+          {rec===0&&(
+            <div style={{marginTop:8,fontSize:11,color:"var(--text3)"}}>Adicione receitas e despesas para calcular seu score</div>
+          )}
         </div>
 
+        {/* Health bars */}
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <HealthBar label="Gastos fixos / Renda" value={fixosPct} max={100} color={fixosPct>70?"#f87171":fixosPct>50?"#facc15":"#4ade80"} suffix="%" detail={`${fmt(fixos)} de ${fmt(rec)}`}/>
           <HealthBar label="Economia do mês" value={economiaPct} max={100} color={economiaPct>=20?"#4ade80":economiaPct>=10?"#facc15":"#f87171"} suffix="%" detail={`${fmt(economizado)} poupado`}/>
@@ -81,12 +130,13 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           {metaEcon>0&&<HealthBar label="Meta de economia" value={pct(economizado,metaEcon)} max={100} color="#a78bfa" suffix="%" detail={`${fmt(economizado)} de ${fmt(metaEcon)}`}/>}
         </div>
 
+        {/* 3-month trend */}
         <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>Tendência — 3 meses</div>
+          <SectionTitle>Tendência — 3 meses</SectionTitle>
           <div style={{display:"flex",gap:6}}>
             {trend.map((t,i)=>(
-              <div key={i} style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:10,color:"var(--text3)",marginBottom:6}}>{t.month}</div>
+              <div key={i} style={{flex:1,textAlign:"center",padding:"6px 0",background:i===2?"var(--bg)":"transparent",borderRadius:8}}>
+                <div style={{fontSize:10,color:i===2?"var(--text2)":"var(--text3)",fontWeight:i===2?700:400,marginBottom:6}}>{t.month}</div>
                 <div style={{fontSize:11,color:"#4ade80"}}>↑ {fmtShort(t.rec)}</div>
                 <div style={{fontSize:11,color:"#fb923c"}}>↓ {fmtShort(t.dep)}</div>
                 <div style={{fontSize:12,fontWeight:700,color:t.saldo>=0?"#4ade80":"#f87171",marginTop:2}}>{fmtShort(t.saldo)}</div>
@@ -95,9 +145,10 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           </div>
         </div>
 
+        {/* Top categories */}
         {catRank.length>0&&(
           <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>Top Gastos por Categoria</div>
+            <SectionTitle>Top Gastos por Categoria</SectionTitle>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {catRank.map((c,i)=>(
                 <div key={i}>
@@ -120,24 +171,43 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           </div>
         )}
 
+        {/* Financial goals */}
         <div style={{background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}}>
           <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:12}}>🎯 Metas financeiras</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            <div><div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta de renda mensal (R$)</div><input style={{width:"100%",boxSizing:"border-box",background:"var(--bg)",border:"1px solid #1a3a6e44",borderRadius:9,padding:"8px 12px",color:"var(--text1)",fontSize:13,fontWeight:600,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="100" placeholder="Ex: 5000" value={goals.monthly||""} onChange={e=>onSaveGoals({...goals,monthly:parseFloat(e.target.value)||0})}/></div>
-            <div><div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta de economia (% da renda)</div>
+            <div>
+              <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta de renda mensal (R$)</div>
+              <CurrencyInput
+                value={goals.monthly||0}
+                onChange={v=>onSaveGoals({...goals,monthly:v})}
+                placeholder="Ex: 5.000,00"
+                style={inpStyle}
+              />
+            </div>
+            <div>
+              <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta de economia (% da renda)</div>
               <div style={{display:"flex",gap:6}}>
                 {[0,10,15,20,30].map(p=>(
                   <button key={p} onClick={()=>onSaveGoals({...goals,savingsPct:p})}
                     style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${goals.savingsPct===p?"#8ab4f8":"#111820"}`,background:goals.savingsPct===p?"#0d1a2e":"transparent",color:goals.savingsPct===p?"#8ab4f8":"var(--text3)",fontSize:11,fontWeight:700,cursor:"pointer"}}>{p===0?"Nenhum":`${p}%`}</button>
                 ))}
               </div>
+              {goals.savingsPct>0&&metaRenda>0&&(
+                <div style={{marginTop:6,fontSize:10,color:"var(--text3)"}}>
+                  = {fmt((goals.savingsPct/100)*metaRenda)}/mês de economia
+                </div>
+              )}
             </div>
           </div>
         </div>
 
+        {/* Emergency reserve */}
         <div style={{background:"rgba(74,222,128,.05)",border:"1px solid #4ade8033",borderRadius:14,padding:"14px"}}>
           <div style={{fontSize:12,fontWeight:700,color:"#4ade80",marginBottom:4}}>🏦 Reserva de Emergência</div>
-          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Recomendado: 3 a 6 meses de despesas fixas ({fmt(fixos*3)} – {fmt(fixos*6)})</div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>
+            Recomendado: 3–6× despesas fixas
+            {fixos>0&&<span style={{color:"#4ade8099",fontWeight:600}}> ({fmt(fixos*3)} – {fmt(fixos*6)})</span>}
+          </div>
           {goals.reservaMeta>0&&(
             <div style={{marginBottom:12}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
@@ -150,14 +220,31 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
             </div>
           )}
           <div style={{display:"flex",gap:10}}>
-            <div style={{flex:1}}><div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta (R$)</div><input style={{width:"100%",boxSizing:"border-box",background:"var(--bg)",border:"1px solid #4ade8033",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,fontWeight:600,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="500" placeholder="Ex: 15000" value={goals.reservaMeta||""} onChange={e=>onSaveGoals({...goals,reservaMeta:parseFloat(e.target.value)||0})}/></div>
-            <div style={{flex:1}}><div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Guardado hoje (R$)</div><input style={{width:"100%",boxSizing:"border-box",background:"var(--bg)",border:"1px solid #4ade8033",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,fontWeight:600,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="100" placeholder="0" value={goals.reservaAtual||""} onChange={e=>onSaveGoals({...goals,reservaAtual:parseFloat(e.target.value)||0})}/></div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta (R$)</div>
+              <CurrencyInput
+                value={goals.reservaMeta||0}
+                onChange={v=>onSaveGoals({...goals,reservaMeta:v})}
+                placeholder="Ex: 15.000,00"
+                style={{...inpStyle,border:"1px solid #4ade8033"}}
+              />
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Guardado hoje (R$)</div>
+              <CurrencyInput
+                value={goals.reservaAtual||0}
+                onChange={v=>onSaveGoals({...goals,reservaAtual:v})}
+                placeholder="0,00"
+                style={{...inpStyle,border:"1px solid #4ade8033"}}
+              />
+            </div>
           </div>
         </div>
 
+        {/* Budget per category */}
         {catRank.length>0&&(
           <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"#8ab4f8",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>💰 Orçamento por Categoria</div>
+            <SectionTitle>💰 Orçamento por Categoria</SectionTitle>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {catRank.map((c,i)=>{
                 const budget=budgets[c.id]||0;
@@ -171,13 +258,32 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                       {budget>0&&<span style={{fontSize:10,color:pctUsed>100?"#f87171":"var(--text3)"}}>/ {fmt(budget)}</span>}
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <input style={{flex:1,background:"var(--bg)",border:"1px solid #1a3a6e33",borderRadius:7,padding:"5px 9px",color:"#8ab4f8",fontSize:11,outline:"none",fontFamily:"inherit"}} type="number" min="0" step="50" placeholder="Orçamento R$" value={budget||""} onChange={e=>onSaveBudgets({...budgets,[c.id]:parseFloat(e.target.value)||0})}/>
+                      <CurrencyInput
+                        value={budget}
+                        onChange={v=>onSaveBudgets({...budgets,[c.id]:v})}
+                        placeholder="Orçamento R$"
+                        style={budgetInpStyle}
+                      />
                       {budget>0&&<div style={{flex:2,height:5,background:"var(--bg)",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pctUsed}%`,background:pctUsed>100?"#f87171":pctUsed>80?"#facc15":c.color,borderRadius:3,transition:"width .5s"}}/></div>}
                     </div>
+                    {budget>0&&pctUsed>80&&(
+                      <div style={{marginTop:4,fontSize:10,color:pctUsed>100?"#f87171":"#facc15",fontWeight:600}}>
+                        {pctUsed>100?`⚠️ Orçamento estourado em ${(pctUsed-100).toFixed(0)}%`:`⏳ ${(100-pctUsed).toFixed(0)}% restante do orçamento`}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {rec===0&&dep===0&&(
+          <div style={{textAlign:"center",padding:"24px 0",background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14}}>
+            <div style={{fontSize:36,marginBottom:8}}>📊</div>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:4}}>Sem dados este mês</div>
+            <div style={{fontSize:11,color:"var(--text3)",lineHeight:1.5}}>Adicione receitas e despesas na aba Contas para ver sua saúde financeira aqui.</div>
           </div>
         )}
       </div>

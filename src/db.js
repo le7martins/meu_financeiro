@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from './firebase';
 
 export const ADMIN_EMAIL = 'gomesmartins2302@gmail.com';
@@ -27,6 +27,23 @@ export function saveData(uid, type, value) {
 export async function hasCloudData(uid) {
   const snap = await getDoc(dataDoc(uid, 'entries'));
   return snap.exists();
+}
+
+/**
+ * Assina mudanças em tempo real de um tipo de dado.
+ * Retorna uma função de unsubscribe.
+ *
+ * @param {string} uid
+ * @param {string} type  — 'entries' | 'dividas' | 'cards' | 'purchases' | 'faturas' | 'settings'
+ * @param {function} onData — callback(value) chamado a cada mudança
+ * @param {function} [onErr] — callback de erro opcional
+ */
+export function subscribeData(uid, type, onData, onErr) {
+  return onSnapshot(
+    dataDoc(uid, type),
+    snap => { if (snap.exists()) onData(snap.data().v); },
+    err  => { if (onErr) onErr(err); else console.warn('[Firestore] onSnapshot erro', type, err); }
+  );
 }
 
 // ─── Perfis de usuário (para painel admin) ───────────────────

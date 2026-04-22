@@ -48,11 +48,13 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
         </div>
         <Field label="Recorrência">
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo 🔄"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado 📋"]].map(([r,l])=>(<button key={r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo 🔄"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado 📋"]].map(([r,l])=>(<button key={r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
           {form.recurrence==="installment"&&(<div style={{marginTop:10}}><label style={{...S.lbl,marginBottom:5}}>Nº de parcelas</label><input style={{...S.inp,width:90}} type="number" min={2} max={60} value={form.installments} onChange={e=>set("installments",e.target.value)}/>{form.amount&&form.installments>1&&(<div style={{marginTop:8,background:"var(--bg)",border:"1px solid #1a3a6e44",borderRadius:9,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,color:"var(--text3)"}}>Total</span><span style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(parseFloat(form.amount))}</span><span style={{fontSize:11,color:"var(--text4)"}}>→</span><span style={{fontSize:11,color:"var(--text3)"}}>{form.installments}x de</span><span style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>{fmt(parseFloat(form.amount)/parseInt(form.installments))}</span></div>)}</div>)}
-          {(form.recurrence==="fixed"||form.recurrence==="quarterly"||form.recurrence==="annual")&&(<div style={{marginTop:10}}>
+          {(["fixed","weekly","biweekly","quarterly","annual"].includes(form.recurrence))&&(<div style={{marginTop:10}}>
             <div style={{fontSize:11,color:"var(--text3)",background:"var(--bg)",borderRadius:8,padding:"8px 10px",border:"1px solid var(--border)",marginBottom:8}}>
               {form.recurrence==="fixed"&&"💡 Aparece todo mês a partir da data"}
+              {form.recurrence==="weekly"&&"💡 Aparece toda semana (4-5x por mês)"}
+              {form.recurrence==="biweekly"&&"💡 Aparece a cada 15 dias (2x por mês)"}
               {form.recurrence==="quarterly"&&"💡 Aparece a cada 3 meses"}
               {form.recurrence==="annual"&&"💡 Aparece uma vez por ano"}
             </div>

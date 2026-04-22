@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
-import { loadUserData, saveData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
+import { loadUserData, saveData, subscribeData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
 import { registerFCMToken, onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
 import { fmt, fmtShort, fmtDate, TODAY, MNAMES, mLabel, mShort, getNow, mDiff, addM, daysUntil, dueBadge, eVal, loadLS, saveLS } from './utils.js';
@@ -19,6 +19,7 @@ import FormModal from './modals/FormModal.jsx';
 import EditModal from './modals/EditModal.jsx';
 import DeleteModal from './modals/DeleteModal.jsx';
 import PartialFatModal from './modals/PartialFatModal.jsx';
+import ConfirmModal from './modals/ConfirmModal.jsx';
 import GradCard from './components/GradCard.jsx';
 import SumCard from './components/SumCard.jsx';
 import Field from './components/Field.jsx';
@@ -63,7 +64,8 @@ function App(){
 // ─── MainApp ─────────────────────────────────────────────────
 function MainApp({ fbUser, onLogout }){
   const uid = fbUser.uid;
-  const k = (key) => `mf2_${uid}_${key}`;
+  // Memoiza `k` para evitar re-criação a cada render e dependências incorretas
+  const k = useCallback((key) => `mf2_${uid}_${key}`, [uid]);
 
   // Carrega do localStorage como estado inicial (cache offline)
   const [entries,      setEntries]      = useState(()=>loadLS(k("entries"),[]));
@@ -90,27 +92,37 @@ function MainApp({ fbUser, onLogout }){
   const [goals,        setGoals]        = useState(()=>loadLS(k("goals"),{monthly:0,savingsPct:20}));
   const [budgets,      setBudgets]      = useState(()=>loadLS(k("budgets"),{}));
   const [filterCat,    setFilterCat]    = useState("all");
+  const [filterTag,    setFilterTag]    = useState("all");
   const [dbReady,      setDbReady]      = useState(false);
+  const [syncStatus,   setSyncStatus]   = useState("idle"); // "idle"|"saving"|"saved"|"offline"
+  const syncTimerRef = useRef(null);
   const [showMoreNav,  setShowMoreNav]  = useState(false);
   const [showFabMenu,  setShowFabMenu]  = useState(false);
   const [showHealth,   setShowHealth]   = useState(false);
   const [showUpcoming, setShowUpcoming] = useState(true);
+  const [confirmQueue, setConfirmQueue] = useState(null); // {title,message,detail,danger,confirmLabel,onConfirm}
   const {toasts,toast} = useToast();
+  const showConfirm = useCallback((opts)=> new Promise(resolve=>{
+    setConfirmQueue({...opts, onConfirm:()=>{setConfirmQueue(null);resolve(true);}, onClose:()=>{setConfirmQueue(null);resolve(false);}});
+  }),[]);
 
-  // ─── Firestore: carregar + migrar dados na nuvem ──────────────
+  // ─── Firestore: carga inicial + listeners em tempo real ───────
+  const _remoteWriteRef = useRef(false); // evita loop: write próprio → onSnapshot → setState
   useEffect(()=>{
-    async function syncFromCloud(){
+    let unsubs = [];
+    let initialized = false;
+
+    async function bootstrap(){
       try {
         const cloud = await loadUserData(uid);
         const hasCloud = Object.keys(cloud).length > 0;
 
         if(hasCloud){
-          // Nuvem tem dados → usa como fonte de verdade
-          if(cloud.entries)   { setEntries(cloud.entries);   saveLS(k("entries"),   cloud.entries);   }
-          if(cloud.dividas)   { setDividas(cloud.dividas);   saveLS(k("dividas"),   cloud.dividas);   }
-          if(cloud.cards)     { setCards(cloud.cards);       saveLS(k("cards"),     cloud.cards);     }
-          if(cloud.purchases) { setCardPurchases(cloud.purchases); saveLS(k("cpurchases"), cloud.purchases); }
-          if(cloud.faturas)   { setCardFaturas(cloud.faturas);    saveLS(k("cfaturas"),   cloud.faturas);   }
+          if(cloud.entries)   { setEntries(cloud.entries);        saveLS(k("entries"),   cloud.entries);   }
+          if(cloud.dividas)   { setDividas(cloud.dividas);        saveLS(k("dividas"),   cloud.dividas);   }
+          if(cloud.cards)     { setCards(cloud.cards);            saveLS(k("cards"),     cloud.cards);     }
+          if(cloud.purchases) { setCardPurchases(cloud.purchases);saveLS(k("cpurchases"),cloud.purchases); }
+          if(cloud.faturas)   { setCardFaturas(cloud.faturas);    saveLS(k("cfaturas"),  cloud.faturas);   }
           if(cloud.settings){
             const s = cloud.settings;
             if(s.categories)    { setCategories(s.categories);       saveLS(k("cats"),          s.categories);    }
@@ -120,7 +132,7 @@ function MainApp({ fbUser, onLogout }){
             if(s.budgets)       { setBudgets(s.budgets);             saveLS(k("budgets"),        s.budgets);       }
           }
         } else {
-          // Sem dados na nuvem → migra o que estiver no localStorage
+          // Sem dados na nuvem → migra localStorage
           const lsEntries   = loadLS(k("entries"),[]);
           const lsDividas   = loadLS(k("dividas"),[]);
           const lsCards     = loadLS(k("cards"),[]);
@@ -144,14 +156,41 @@ function MainApp({ fbUser, onLogout }){
             ]);
           }
         }
-      } catch(e){
-        /* offline — using local data */
-      } finally {
+      } catch(e){ setSyncStatus("offline"); }
+      finally {
+        initialized = true;
         setDbReady(true);
         registerFCMToken(uid);
       }
+
+      // ── Listeners em tempo real após carga inicial ───────────
+      const applyRemote = (setter, lsKey) => (val) => {
+        if(_remoteWriteRef.current) return; // ignora echo do próprio write
+        if(!initialized) return;
+        setter(val);
+        saveLS(lsKey, val);
+      };
+
+      unsubs = [
+        subscribeData(uid,'entries',  applyRemote(setEntries,       k("entries")),   ()=>setSyncStatus("offline")),
+        subscribeData(uid,'dividas',  applyRemote(setDividas,       k("dividas")),   ()=>setSyncStatus("offline")),
+        subscribeData(uid,'cards',    applyRemote(setCards,         k("cards")),     ()=>setSyncStatus("offline")),
+        subscribeData(uid,'purchases',applyRemote(setCardPurchases, k("cpurchases")),()=>setSyncStatus("offline")),
+        subscribeData(uid,'faturas',  applyRemote(setCardFaturas,   k("cfaturas")), ()=>setSyncStatus("offline")),
+        subscribeData(uid,'settings', (s)=>{
+          if(_remoteWriteRef.current||!initialized) return;
+          if(s.categories)    { setCategories(s.categories);       saveLS(k("cats"),          s.categories);    }
+          if(s.notifSettings) { setNotifSettings(s.notifSettings); saveLS(k("notif_settings"),s.notifSettings); }
+          if(s.theme)         { setTheme(s.theme);                 saveLS(k("theme"),         s.theme);         }
+          if(s.goals)         { setGoals(s.goals);                 saveLS(k("goals"),         s.goals);         }
+          if(s.budgets)       { setBudgets(s.budgets);             saveLS(k("budgets"),        s.budgets);       }
+        }, ()=>setSyncStatus("offline")),
+      ];
     }
-    syncFromCloud();
+
+    bootstrap();
+    return () => unsubs.forEach(u => u && u());
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[uid]);
 
   // ─── FCM: mensagens em primeiro plano ────────────────────────
@@ -164,11 +203,24 @@ function MainApp({ fbUser, onLogout }){
   },[]);
 
   // ─── Funções de salvamento: localStorage + Firestore ─────────
-  const saveEntries      = useCallback((e)=>{ setEntries(e);        saveLS(k("entries"),e);         saveData(uid,'entries',e);   },[uid,k]);
-  const saveDividas      = useCallback((d)=>{ setDividas(d);        saveLS(k("dividas"),d);         saveData(uid,'dividas',d);   },[uid,k]);
-  const saveCards        = useCallback((c)=>{ setCards(c);          saveLS(k("cards"),c);           saveData(uid,'cards',c);     },[uid,k]);
-  const saveCardPurchases= useCallback((p)=>{ setCardPurchases(p);  saveLS(k("cpurchases"),p);      saveData(uid,'purchases',p); },[uid,k]);
-  const saveCardFaturas  = useCallback((f)=>{ setCardFaturas(f);    saveLS(k("cfaturas"),f);        saveData(uid,'faturas',f);   },[uid,k]);
+  const _persist = useCallback((setter, lsKey, fsType, val) => {
+    setter(val);
+    saveLS(lsKey, val);
+    setSyncStatus("saving");
+    _remoteWriteRef.current = true;
+    saveData(uid, fsType, val).then(() => {
+      setSyncStatus("saved");
+      if(syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => setSyncStatus("idle"), 2500);
+    }).catch(() => setSyncStatus("offline"))
+      .finally(() => { setTimeout(() => { _remoteWriteRef.current = false; }, 500); });
+  }, [uid]);
+
+  const saveEntries      = useCallback((e)=>_persist(setEntries,      k("entries"),   'entries',  e), [_persist]);
+  const saveDividas      = useCallback((d)=>_persist(setDividas,      k("dividas"),   'dividas',  d), [_persist]);
+  const saveCards        = useCallback((c)=>_persist(setCards,        k("cards"),     'cards',    c), [_persist]);
+  const saveCardPurchases= useCallback((p)=>_persist(setCardPurchases,k("cpurchases"),'purchases',p), [_persist]);
+  const saveCardFaturas  = useCallback((f)=>_persist(setCardFaturas,  k("cfaturas"),  'faturas',  f), [_persist]);
 
   const _saveSettings = useCallback((patch)=>{
     const cur = {
@@ -179,8 +231,15 @@ function MainApp({ fbUser, onLogout }){
       budgets:       loadLS(k("budgets"),{}),
       ...patch,
     };
-    saveData(uid,'settings',cur);
-  },[uid,k]);
+    setSyncStatus("saving");
+    _remoteWriteRef.current = true;
+    saveData(uid,'settings',cur).then(()=>{
+      setSyncStatus("saved");
+      if(syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(()=>setSyncStatus("idle"),2500);
+    }).catch(()=>setSyncStatus("offline"))
+      .finally(()=>{ setTimeout(()=>{ _remoteWriteRef.current=false; },500); });
+  },[uid]);
 
   // Apply CSS vars directly on <html> — guarantees cascade regardless of <style> tag position
   const applyTheme = useCallback((t)=>{
@@ -222,26 +281,76 @@ function MainApp({ fbUser, onLogout }){
 
   const monthEntries=useMemo(()=>getMonthEntries(entries,dividas,selMonth,cards,cardPurchases,cardFaturas),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
 
-  const accumSaldo=useMemo(()=>{
+  // accumSaldo: cache por mês para evitar re-cálculo desnecessário
+  // Retorna { value, capped } — capped=true quando cortado em 36 meses
+  const accumSaldoCache = useRef({});
+  const accumSaldoResult=useMemo(()=>{
     const allDates=[...entries.map(e=>e.date.substring(0,7)),...dividas.map(d=>d.startMonth)];
     if(!allDates.length) return null;
     const earliest=allDates.reduce((mn,m)=>m<mn?m:mn,selMonth);
     if(earliest>=selMonth) return null;
     const cap=addM(selMonth,-36);
-    let total=0,cur=earliest<cap?cap:earliest;
+    const capped=earliest<cap;
+    const start=capped?cap:earliest;
+    // Se já calculamos para este selMonth com os mesmos dados, retorna cache
+    const cacheKey=`${selMonth}_${start}`;
+    if(accumSaldoCache.current[cacheKey]!==undefined) return {value:accumSaldoCache.current[cacheKey],capped};
+    let total=0,cur=start;
     while(cur<selMonth){
       const me=getMonthEntries(entries,dividas,cur,cards,cardPurchases,cardFaturas);
       total+=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0)-me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
       cur=addM(cur,1);
     }
-    return total;
+    accumSaldoCache.current={[cacheKey]:total}; // mantém só 1 entrada (mês ativo)
+    return {value:total,capped};
   },[entries,dividas,cards,cardPurchases,cardFaturas,selMonth]);
+  const accumSaldo = accumSaldoResult?.value ?? null;
+  const accumSaldoCapped = accumSaldoResult?.capped ?? false;
 
   const totRec =monthEntries.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
   const totDesp=monthEntries.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
   const saldo  =totRec-totDesp;
   const totPend=monthEntries.filter(e=>e.statusForMonth==="a_pagar"&&e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
   const totPago=monthEntries.filter(e=>e.statusForMonth==="pago"&&e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+
+  // Notificação de meta de economia atingida (após totRec/saldo definidos)
+  const prevGoalAlertRef = useRef(false);
+  useEffect(()=>{
+    if(!dbReady||!goals.savingsPct||goals.savingsPct<=0||totRec<=0) return;
+    const economiaPct = totRec>0?((Math.max(0,saldo)/totRec)*100):0;
+    const metaAtingida = economiaPct >= goals.savingsPct;
+    if(metaAtingida && !prevGoalAlertRef.current){
+      prevGoalAlertRef.current = true;
+      toast(`🎯 Meta de economia de ${goals.savingsPct}% atingida! Parabéns!`,"celebrate");
+      if(notifSettings.enabled && Notification.permission==="granted"){
+        fireNotification("🎯 Meta de economia atingida!",`Você economizou ${economiaPct.toFixed(0)}% da sua renda este mês. Continue assim!`,"mf-goal");
+      }
+    } else if(!metaAtingida){
+      prevGoalAlertRef.current = false;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[dbReady, goals.savingsPct, totRec, saldo, selMonth]);
+
+  // Comparação com mês anterior
+  const prevMonthEntries = useMemo(()=>getMonthEntries(entries,dividas,addM(selMonth,-1),cards,cardPurchases,cardFaturas),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
+  const prevSaldo = useMemo(()=>{
+    const r=prevMonthEntries.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+    const d=prevMonthEntries.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+    return r-d;
+  },[prevMonthEntries]);
+  const saldoDiff = saldo - prevSaldo;
+
+  // "Quanto posso gastar hoje" — (saldo_esperado - pendentes_fixos) / dias_restantes
+  const todayWidget = useMemo(()=>{
+    if(selMonth !== NOW) return null; // só faz sentido no mês atual
+    const today = new Date();
+    const lastDay = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
+    const daysLeft = lastDay - today.getDate() + 1; // inclui hoje
+    if(daysLeft <= 0) return null;
+    const available = totRec - totDesp - totPend; // já recebido - já pago - ainda a pagar
+    const perDay = available / daysLeft;
+    return { available, perDay, daysLeft };
+  },[selMonth, NOW, totRec, totDesp, totPend]);
 
   // Health score
   const healthScore=useMemo(()=>{
@@ -265,6 +374,7 @@ function MainApp({ fbUser, onLogout }){
   const filtered=useMemo(()=>{
     let list=filter==="all"?monthEntries:filter==="despesa"?monthEntries.filter(e=>e.type==="despesa"):filter==="receita"?monthEntries.filter(e=>e.type==="receita"):filter==="a_pagar"?monthEntries.filter(e=>e.statusForMonth==="a_pagar"):monthEntries.filter(e=>e.statusForMonth==="pago");
     if(filterCat!=="all") list=list.filter(e=>e.category===filterCat);
+    if(filterTag!=="all") list=list.filter(e=>(e.tags||[]).includes(filterTag));
     if(search.trim()){const q=normStr(search);list=list.filter(e=>normStr(e.description).includes(q)||normStr(e.notes||"").includes(q)||(e.tags||[]).some(t=>normStr(t).includes(q)));}
     if(sortBy==="amount") list=[...list].sort((a,b)=>eVal(b)-eVal(a));
     else if(sortBy==="name") list=[...list].sort((a,b)=>a.description.localeCompare(b.description));
@@ -293,6 +403,13 @@ function MainApp({ fbUser, onLogout }){
     filtered.forEach(e=>{if(!map[e.category])map[e.category]={items:[],total:0};map[e.category].items.push(e);map[e.category].total+=eVal(e);});
     return Object.entries(map).sort((a,b)=>b[1].total-a[1].total);
   },[filtered,groupBy]);
+
+  // Todas as tags únicas dos lançamentos do mês
+  const allTags = useMemo(()=>{
+    const set = new Set();
+    monthEntries.forEach(e=>(e.tags||[]).forEach(t=>set.add(t)));
+    return [...set].sort();
+  },[monthEntries]);
 
   const getCat  =(id)=>categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id};
   const catColor=(id)=>getCat(id).color;
@@ -361,7 +478,7 @@ function MainApp({ fbUser, onLogout }){
     toast(newSt==="pago"?"✓ Marcado como pago":"↩ Marcado como pendente");
   },[saveDividas,dividas,selMonth,saveEntries,entries,toast]);
 
-  const handleAdd=useCallback(()=>{
+  const handleAdd=useCallback(async()=>{
     if(!form.description.trim()||!form.amount||!form.date) return;
     if(form.type==="despesa"&&form.payWith&&form.payWith!=="saldo"){
       const card=cards.find(c=>c.id===form.payWith);
@@ -373,7 +490,10 @@ function MainApp({ fbUser, onLogout }){
       }
     }
     const dup=entries.find(e=>e.description.toLowerCase()===form.description.trim().toLowerCase()&&Math.abs(parseFloat(e.amount)-parseFloat(form.amount))<0.01&&e.date===form.date&&e.type===form.type);
-    if(dup&&!window.confirm(`Lançamento similar já existe:\n"${dup.description}" em ${fmtDate(dup.date)} (${fmt(parseFloat(dup.amount))})\nDeseja adicionar mesmo assim?`)) return;
+    if(dup){
+      const ok=await showConfirm({title:"Lançamento duplicado?",message:`"${dup.description}" já existe em ${fmtDate(dup.date)} (${fmt(parseFloat(dup.amount))}).`,detail:"Deseja adicionar mesmo assim?",confirmLabel:"Adicionar mesmo assim",danger:false});
+      if(!ok) return;
+    }
     const entry={id:Date.now().toString(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),...(form.endMonth?{endMonth:form.endMonth}:{}),statusByMonth:{},overrides:{}};
     saveEntries([entry,...entries]);setForm(BLANK());setShowForm(false);
     toast(`✓ ${form.type==="receita"?"Receita":"Despesa"} adicionada`);
@@ -419,11 +539,12 @@ function MainApp({ fbUser, onLogout }){
     const file=e.target.files?.[0];
     if(!file) return;
     const reader=new FileReader();
-    reader.onload=(ev)=>{
+    reader.onload=async(ev)=>{
       try{
         const data=JSON.parse(ev.target.result);
-        if(!data.version||!data.entries){toast("Arquivo inválido","error");return;}
-        if(!window.confirm(`Restaurar backup?\nIsso substituirá todos os dados atuais.`)) return;
+        if(!data.version||!Array.isArray(data.entries)){toast("Arquivo inválido ou corrompido","error");return;}
+        const ok=await showConfirm({title:"Restaurar backup?",message:"Todos os dados atuais serão substituídos pelos dados do backup.",detail:`Backup de ${data.exportedAt?new Date(data.exportedAt).toLocaleDateString("pt-BR"):"data desconhecida"} · ${data.entries?.length||0} lançamentos`,confirmLabel:"Restaurar",danger:true});
+        if(!ok) return;
         if(data.entries)       saveEntries(data.entries);
         if(data.dividas)       saveDividas(data.dividas);
         if(data.cards)         saveCards(data.cards);
@@ -431,7 +552,11 @@ function MainApp({ fbUser, onLogout }){
         if(data.cardFaturas)   saveCardFaturas(data.cardFaturas);
         if(data.categories)    saveCategories(data.categories);
         toast("✅ Backup restaurado!");
-      } catch{ toast("Erro ao ler o arquivo","error"); }
+      } catch(err){
+        if(err instanceof SyntaxError) toast("Arquivo JSON inválido ou corrompido","error");
+        else toast("Erro ao restaurar backup","error");
+        console.error("[Restore]",err);
+      }
     };
     reader.readAsText(file);e.target.value="";
   },[saveEntries,saveDividas,saveCards,saveCardPurchases,saveCardFaturas,saveCategories,toast]);
@@ -546,6 +671,17 @@ function MainApp({ fbUser, onLogout }){
           <div><div style={S.appName}>CashUp</div><div style={S.appSub}>Controle seus lançamentos</div></div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {/* Sync status indicator */}
+          {syncStatus!=="idle"&&(
+            <div title={syncStatus==="saving"?"Salvando...":syncStatus==="saved"?"Salvo na nuvem":"Offline — dados locais"} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:6,background:syncStatus==="offline"?"rgba(248,113,113,.1)":syncStatus==="saved"?"rgba(74,222,128,.1)":"rgba(138,180,248,.1)",border:`1px solid ${syncStatus==="offline"?"#f8717133":syncStatus==="saved"?"#4ade8033":"#8ab4f833"}`,transition:"all .3s"}}>
+              {syncStatus==="saving"&&<div style={{width:7,height:7,borderRadius:"50%",background:"#8ab4f8",animation:"pulse 1s ease-in-out infinite"}}/>}
+              {syncStatus==="saved"&&<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              {syncStatus==="offline"&&<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>}
+              <span style={{fontSize:9,fontWeight:700,color:syncStatus==="offline"?"#f87171":syncStatus==="saved"?"#4ade80":"#8ab4f8"}}>
+                {syncStatus==="saving"?"Salvando":syncStatus==="saved"?"Salvo":"Offline"}
+              </span>
+            </div>
+          )}
           {/* Health indicator in header — clicável */}
           {healthScore&&activeTab==="lancamentos"&&(
             <button onClick={()=>setShowHealth(true)} style={{display:"flex",alignItems:"center",gap:5,background:"var(--card-bg)",border:`1px solid ${healthScore.color}44`,borderRadius:8,padding:"5px 10px",cursor:"pointer",fontFamily:"inherit"}}>
@@ -592,23 +728,57 @@ function MainApp({ fbUser, onLogout }){
               <span className="heroSubtext" style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
             </div>
             <div style={{fontSize:36,fontWeight:800,letterSpacing:"-1px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
-            {accumSaldo!==null&&<div className="heroCardFooter" style={{marginTop:10,paddingTop:10,borderTop:"1px solid rgba(255,255,255,.08)"}}>
-              <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>Saldo acumulado </span><span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span>
+            {/* Comparação mês anterior */}
+            {prevSaldo !== 0 && (
+              <div className="heroCardFooter" style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>vs mês anterior</span>
+                <span style={{fontSize:12,fontWeight:700,color:saldoDiff>=0?"#4ade80":"#f87171"}}>
+                  {saldoDiff>=0?"▲":""}{saldoDiff<0?"▼":""} {fmt(Math.abs(saldoDiff))}
+                </span>
+              </div>
+            )}
+            {accumSaldo!==null&&<div className="heroCardFooter" style={{marginTop:6,paddingTop:6,borderTop:"1px solid rgba(255,255,255,.08)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)",display:"flex",alignItems:"center",gap:4}}>
+                  Saldo acumulado
+                  {accumSaldoCapped&&<span title="Calculado apenas nos últimos 36 meses (limite do histórico)" style={{cursor:"help",opacity:.6,color:"#facc15",fontSize:9}}>⚠️ 36m</span>}
+                </span>
+                <span style={{fontSize:12,fontWeight:700,color:(saldo+accumSaldo)>=0?"#4ade80":"#f87171"}}>{fmt(saldo+accumSaldo)}</span>
+              </div>
+              {accumSaldoCapped&&<div style={{fontSize:9,color:"rgba(255,255,255,.25)",marginTop:3}}>Histórico limitado a 36 meses</div>}
             </div>}
           </div>
         </div>
 
+        {/* Widget "Quanto posso gastar hoje" */}
+        {todayWidget && (
+          <div style={{background:"linear-gradient(135deg,rgba(138,180,248,.07),rgba(138,180,248,.03))",border:"1px solid #1a3a6e44",borderRadius:14,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,marginTop:0}}>
+            <div style={{width:36,height:36,borderRadius:10,background:"rgba(138,180,248,.12)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:10,color:"rgba(255,255,255,.45)",marginBottom:2}}>Posso gastar hoje</div>
+              <div style={{fontSize:20,fontWeight:800,color:todayWidget.perDay>=0?"#8ab4f8":"#f87171",letterSpacing:"-0.5px"}}>{fmt(Math.max(0,todayWidget.perDay))}<span style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.35)",marginLeft:4}}>/dia</span></div>
+            </div>
+            <div style={{textAlign:"right",flexShrink:0}}>
+              <div style={{fontSize:9,color:"rgba(255,255,255,.3)"}}>Disponível</div>
+              <div style={{fontSize:12,fontWeight:700,color:todayWidget.available>=0?"#4ade80":"#f87171"}}>{fmt(Math.max(0,todayWidget.available))}</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,.3)"}}>{todayWidget.daysLeft}d restantes</div>
+            </div>
+          </div>
+        )}
+
         {/* 4 grad cards */}
         <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 14px 10px"}}>
-          <GradCard label="Receitas" value={fmt(totRec)} color="#4ade80" bg="rgba(74,222,128,.08)"
+          <GradCard label="Receitas" value={fmt(totRec)} color="#4ade80" bg="rgba(74,222,128,.08)" empty={totRec===0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
             onAdd={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);}}/>
-          <GradCard label="Despesas" value={fmt(totDesp)} color="#fb923c" bg="rgba(251,146,60,.08)"
+          <GradCard label="Despesas" value={fmt(totDesp)} color="#fb923c" bg="rgba(251,146,60,.08)" empty={totDesp===0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2" strokeLinecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>}
             onAdd={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);}}/>
-          <GradCard label="Pago" value={fmt(totPago)} color="#8ab4f8" bg="rgba(138,180,248,.08)"
+          <GradCard label="Pago" value={fmt(totPago)} color="#8ab4f8" bg="rgba(138,180,248,.08)" empty={totPago===0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 9"/></svg>}/>
-          <GradCard label="A pagar" value={fmt(totPend)} color="#facc15" bg="rgba(250,204,21,.08)"
+          <GradCard label="A pagar" value={fmt(totPend)} color="#facc15" bg="rgba(250,204,21,.08)" empty={totPend===0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}/>
         </div>
 
@@ -687,6 +857,19 @@ function MainApp({ fbUser, onLogout }){
               </button>
             ))}
           </div>
+          {/* Tag filter chips — só aparece se houver tags no mês */}
+          {allTags.length>0&&(
+            <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:2,borderTop:"1px solid var(--border2)"}}>
+              <span style={{fontSize:9,color:"var(--text4)",alignSelf:"center",marginRight:2,textTransform:"uppercase",letterSpacing:"0.06em"}}>Tags:</span>
+              {allTags.map(t=>(
+                <button key={t} onClick={()=>setFilterTag(filterTag===t?"all":t)}
+                  style={{padding:"2px 8px",borderRadius:5,border:`1px solid ${filterTag===t?"#8ab4f8":"#1a2840"}`,background:filterTag===t?"rgba(138,180,248,.18)":"transparent",color:filterTag===t?"#8ab4f8":"var(--text3)",fontSize:10,fontWeight:600,cursor:"pointer"}}>
+                  #{t}
+                </button>
+              ))}
+              {filterTag!=="all"&&<button onClick={()=>setFilterTag("all")} style={{padding:"2px 6px",borderRadius:5,border:"none",background:"none",color:"#f87171",fontSize:10,cursor:"pointer"}}>✕ limpar</button>}
+            </div>
+          )}
         </div>
 
         {/* List */}
@@ -744,7 +927,7 @@ function MainApp({ fbUser, onLogout }){
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
         {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets}/>}
-        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} onImportEntries={(newEntries)=>{saveEntries([...newEntries,...entries]);toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}`);}}/>}
+        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries)=>{saveEntries([...newEntries,...entries]);toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}`);}}/>}
         {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
       </Suspense>
 
@@ -894,6 +1077,7 @@ function MainApp({ fbUser, onLogout }){
         </div>
       )}
 
+      {confirmQueue&&<ConfirmModal {...confirmQueue}/>}
       {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}} cards={cards}/>}
       {editTarget&&<EditModal entry={editTarget.entry} monthKey={editTarget.monthKey} categories={categories} entries={entries} onUpdateCats={saveCategories} onSave={handleSaveEdit} onClose={()=>setEditTarget(null)}/>}
       {delTarget&&<DeleteModal entry={delTarget} onDelete={handleDelete} onClose={()=>setDelTarget(null)}/>}
@@ -1026,6 +1210,7 @@ const CSS=`
     .appBottomNav { width: 230px !important; max-width: 230px !important; }
   }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
   -webkit-tap-highlight-color: transparent;
 
   /* ── CSS Variables: dark (default) ── */
