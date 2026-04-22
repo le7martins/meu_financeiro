@@ -94,7 +94,7 @@ function MainApp({ fbUser, onLogout }){
   const [showMoreNav,  setShowMoreNav]  = useState(false);
   const [showFabMenu,  setShowFabMenu]  = useState(false);
   const [showHealth,   setShowHealth]   = useState(false);
-  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [showUpcoming, setShowUpcoming] = useState(true);
   const {toasts,toast} = useToast();
 
   // ─── Firestore: carregar + migrar dados na nuvem ──────────────
@@ -656,8 +656,13 @@ function MainApp({ fbUser, onLogout }){
         <div style={{padding:"0 14px 8px",display:"flex",flexDirection:"column",gap:7}}>
           <div style={{position:"relative"}}>
             <svg style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)"}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input style={{...S.inp,paddingLeft:30,fontSize:12}} placeholder="Buscar por descrição ou observação..." value={search} onChange={e=>setSearch(e.target.value)}/>
-            {search&&<button onClick={()=>setSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:14}}>✕</button>}
+            <input style={{...S.inp,paddingLeft:30,paddingRight:search?80:12,fontSize:12}} placeholder="Buscar por descrição ou observação..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            {search&&(
+              <div style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:5}}>
+                <span style={{fontSize:10,color:"var(--text3)",background:"var(--card-bg2)",borderRadius:4,padding:"1px 5px",fontWeight:600}}>{filtered.length}</span>
+                <button onClick={()=>setSearch("")} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:14,lineHeight:1}}>✕</button>
+              </div>
+            )}
           </div>
           <div style={{display:"flex",gap:8}}>
             <select value={filter} onChange={e=>setFilter(e.target.value)} style={{...S.selInput,flex:2}}>
@@ -688,9 +693,30 @@ function MainApp({ fbUser, onLogout }){
         <div style={S.list}>
           {filtered.length===0&&(
             <div style={S.empty}>
-              <div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💸</div>
-              <div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>{search?"Nenhum resultado":filterCat!=="all"?"Nenhum lançamento nesta categoria":"Nenhum lançamento"}</div>
-              <div style={{color:"var(--text4)",fontSize:12,marginTop:3}}>{search?"Tente outro termo":filterCat!=="all"?"Mude o filtro de categoria":"Use os cards + acima para adicionar"}</div>
+              {search||filterCat!=="all"||filter!=="all"?(
+                <>
+                  <div style={{fontSize:36,opacity:0.3,marginBottom:8}}>🔍</div>
+                  <div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>{search?"Nenhum resultado para busca":filterCat!=="all"?"Sem lançamentos nesta categoria":"Nenhum lançamento neste filtro"}</div>
+                  <div style={{color:"var(--text4)",fontSize:12,marginTop:3}}>{search?"Tente outro termo":filterCat!=="all"?"Mude o filtro de categoria":"Remova o filtro para ver todos"}</div>
+                </>
+              ):(
+                /* Estado de tela vazia — primeiro uso / mês sem dados */
+                <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:8,padding:"8px 0"}}>
+                  <div style={{width:72,height:72,borderRadius:20,background:"rgba(138,180,248,.08)",border:"1px solid #1a3a6e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,marginBottom:4}}>💸</div>
+                  <div style={{color:"var(--text1)",fontSize:15,fontWeight:700}}>Nenhum lançamento</div>
+                  <div style={{color:"var(--text3)",fontSize:12,textAlign:"center",lineHeight:1.5,maxWidth:220}}>Adicione receitas e despesas para visualizar seu saldo e relatórios.</div>
+                  <div style={{display:"flex",gap:8,marginTop:8}}>
+                    <button onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);}}
+                      style={{display:"flex",alignItems:"center",gap:6,padding:"10px 14px",background:"rgba(74,222,128,.1)",border:"1px solid #4ade8033",borderRadius:10,color:"#4ade80",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                      <span>📈</span> Receita
+                    </button>
+                    <button onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);}}
+                      style={{display:"flex",alignItems:"center",gap:6,padding:"10px 14px",background:"rgba(251,146,60,.1)",border:"1px solid #fb923c33",borderRadius:10,color:"#fb923c",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                      <span>📉</span> Despesa
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {grouped

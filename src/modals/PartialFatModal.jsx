@@ -10,6 +10,7 @@ export default function PartialFatModal({ fat, card, onClose, onPay }) {
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+        <div style={S.modalHandle}/>
         <div style={S.mHeader}>
           <div><div style={S.mTitle}>Pagar Fatura</div>
             <div style={{fontSize:11,color:card.color,marginTop:2,fontWeight:600}}>💳 {card.name}</div>

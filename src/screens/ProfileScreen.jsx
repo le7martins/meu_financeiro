@@ -183,7 +183,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ProfileSection>
 
         <ProfileSection title="Sobre">
-          <ProfileItem icon="📱" label="Meu Financeiro" sub="Versão 1.2.0" last/>
+          <ProfileItem icon="📱" label="CashUp" sub="Versão 1.2.0" last/>
         </ProfileSection>
       </div>
 

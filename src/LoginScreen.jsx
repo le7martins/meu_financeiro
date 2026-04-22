@@ -115,8 +115,8 @@ export default function LoginScreen({ onLogin }) {
 
         {/* Logo */}
         <div style={S.logo}>
-          <span style={S.logoIcon}>💰</span>
-          <div style={S.logoTitle}>Meu Financeiro</div>
+          <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:72,height:72,borderRadius:18,objectFit:'cover',display:'block',margin:'0 auto 12px',boxShadow:'0 8px 32px rgba(74,222,128,.18)'}}/>
+          <div style={S.logoTitle}>CashUp</div>
           <div style={S.logoSub}>Controle suas finanças com segurança</div>
         </div>
 

@@ -26,15 +26,17 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
     return { month: mShort(m), saldo: r2-d2, rec:r2, dep:d2 };
   });
 
+  // Mesma lógica do healthScore em App.jsx (limiares unificados: 80/60)
   let score = 100;
   if (fixosPct > 70) score -= 30;
   else if (fixosPct > 50) score -= 15;
+  else if (fixosPct > 30) score -= 5;
   if (economiaPct < 10) score -= 20;
-  if (pendente > 0 && rec > 0 && (pendente/rec) > 0.3) score -= 20;
-  if (saldo < 0) score -= 30;
+  else if (economiaPct < 20) score -= 10;
+  if (pendente > 0 && rec > 0 && (pendente/rec) > 0.3) score -= 10;
   score = Math.max(0, Math.min(100, score));
-  const scoreColor = score>=70?"#4ade80":score>=40?"#facc15":"#f87171";
-  const scoreLabel = score>=70?"Ótimo 🌟":score>=40?"Atenção ⚠️":"Crítico 🚨";
+  const scoreColor = score>=80?"#4ade80":score>=60?"#facc15":"#f87171";
+  const scoreLabel = score>=80?"Saudável 💚":score>=60?"Atenção ⚠️":"Crítico 🚨";
 
   const catMap = {};
   me.filter(e=>e.type==="despesa").forEach(e=>{

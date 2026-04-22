@@ -6,7 +6,16 @@ import S from '../styles.js';
 
 export default function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClose}){
   const [desc,setDesc]=useState(entry.description);
-  const [amount,setAmount]=useState(String(eVal(entry)));
+  const initAmt=eVal(entry);
+  const [amount,setAmount]=useState(String(initAmt));
+  const [displayAmt,setDisplayAmt]=useState(initAmt?initAmt.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'');
+  const handleAmtChange=(e)=>{
+    const digits=e.target.value.replace(/\D/g,'');
+    if(!digits){setDisplayAmt('');setAmount('');return;}
+    const num=parseInt(digits,10)/100;
+    setDisplayAmt(num.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+    setAmount(String(num));
+  };
   const [category,setCategory]=useState(entry.category);
   const [status,setStatus]=useState(entry.statusForMonth);
   const [notes,setNotes]=useState(entry.notes||"");
@@ -27,9 +36,10 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={S.modal} className="modal-in">
+        <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"#8ab4f8",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label="Descrição"><input style={S.inp} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
-        <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor (R$)"}><input style={S.inp} type="number" min="0" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)}/>{entry.recurrence==="installment"&&<div style={{marginTop:5,fontSize:11,color:"var(--text3)"}}>Parcela {entry.installmentNum}/{entry.installments}</div>}</Field>
+        <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor (R$)"}><input style={S.inp} type="text" inputMode="numeric" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>{entry.recurrence==="installment"&&<div style={{marginTop:5,fontSize:11,color:"var(--text3)"}}>Parcela {entry.installmentNum}/{entry.installments}</div>}</Field>
         <CatSelector cats={filteredCats} selected={category} onSelect={setCategory} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
         <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:52}} placeholder="Alguma anotação..." value={notes} onChange={e=>setNotes(e.target.value)}/></Field>
         <Field label="Tags (opcional)">

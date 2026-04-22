@@ -10,6 +10,7 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
   if(alreadyPaid) return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+        <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div style={S.mTitle}>Fatura paga</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <div style={{background:"rgba(74,222,128,.06)",border:"1px solid #4ade8033",borderRadius:11,padding:"14px",marginBottom:16,textAlign:"center"}}>
           <div style={{fontSize:22}}>✅</div>
@@ -26,6 +27,7 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+        <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div style={S.mTitle}>Pagar Fatura</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:11,padding:"12px 14px",marginBottom:16,textAlign:"center"}}>
           <div style={{fontSize:11,color:"var(--text3)",marginBottom:4}}>Total da fatura</div>

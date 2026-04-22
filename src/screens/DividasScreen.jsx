@@ -127,9 +127,9 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                   const isNow=m===NOW;
                   return(
                     <button key={m} onClick={()=>toggleMonth(d,m)} title={`${mLabel(m)} — ${isPaid?"Pago":"Pendente"}`}
-                      style={{flexShrink:0,width:28,height:28,borderRadius:7,border:`1px solid ${isNow?"#8ab4f8":(isPaid?"#4ade8033":"#111820")}`,background:isPaid?"rgba(74,222,128,.2)":isNow?"rgba(138,180,248,.12)":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:1}}>
-                      <span style={{fontSize:7,color:isPaid?"#4ade80":isNow?"#8ab4f8":"var(--text4)",fontWeight:700,lineHeight:1}}>{mShort(m)}</span>
-                      <span style={{fontSize:8,color:isPaid?"#4ade80":isNow?"#8ab4f8":"var(--text4)",lineHeight:1}}>{isPaid?"✓":i+1}</span>
+                      style={{flexShrink:0,width:40,height:40,borderRadius:9,border:`1.5px solid ${isNow?"#8ab4f8":(isPaid?"#4ade8055":"var(--border)")}`,background:isPaid?"rgba(74,222,128,.18)":isNow?"rgba(138,180,248,.12)":"var(--bg)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:2,transition:"all .15s"}}>
+                      <span style={{fontSize:8,color:isPaid?"#4ade80":isNow?"#8ab4f8":"var(--text4)",fontWeight:700,lineHeight:1}}>{mShort(m)}</span>
+                      <span style={{fontSize:11,color:isPaid?"#4ade80":isNow?"#8ab4f8":"var(--text4)",lineHeight:1,fontWeight:600}}>{isPaid?"✓":i+1}</span>
                     </button>
                   );
                 })}

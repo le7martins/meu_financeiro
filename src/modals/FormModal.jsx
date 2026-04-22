@@ -34,6 +34,7 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div style={S.modal} className="modal-in">
+        <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div style={S.mTitle}>Novo Lançamento</div><div style={{fontSize:11,color:typeColor,fontWeight:600,marginTop:3}}>{type==="receita"?"🟢 Receita":"🔴 Despesa"}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label={<>Descrição <span style={{color:"#f87171"}}>*</span></>}>
           <input style={{...S.inp,borderColor:descErr?"#f87171":"var(--border,#111820)"}} placeholder={type==="receita"?"Ex: Salário, freelance...":"Ex: Conta de luz, aluguel..."} value={form.description} onChange={e=>set("description",e.target.value)} onBlur={()=>setTouched(p=>({...p,description:true}))}/>
