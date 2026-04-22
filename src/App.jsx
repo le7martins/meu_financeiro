@@ -473,7 +473,13 @@ function MainApp({ fbUser, onLogout }){
     saveEntries(entries.map(e=>{
       if(e.id!==entry.id) return e;
       if(!entry.isRecurring) return {...e,status:newSt,paidDate:paidDt};
-      return {...e,statusByMonth:{...e.statusByMonth,[selMonth]:newSt},paidDateByMonth:{...e.paidDateByMonth,[selMonth]:paidDt}};
+      // Se há override para este mês, atualiza status dentro dele também
+      // (impede o override de sobrepor o statusByMonth no getMonthEntries)
+      const existingOv=e.overrides?.[selMonth];
+      const newOverrides=existingOv
+        ?{...e.overrides,[selMonth]:{...existingOv,status:newSt}}
+        :e.overrides;
+      return {...e,statusByMonth:{...e.statusByMonth,[selMonth]:newSt},paidDateByMonth:{...e.paidDateByMonth,[selMonth]:paidDt},overrides:newOverrides};
     }));
     toast(newSt==="pago"?"✓ Marcado como pago":"↩ Marcado como pendente");
   },[saveDividas,dividas,selMonth,saveEntries,entries,toast]);
