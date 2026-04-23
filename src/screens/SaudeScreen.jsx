@@ -27,7 +27,28 @@ function CurrencyInput({ value, onChange, placeholder = "0,00", style = {} }) {
   );
 }
 
+// ─── Mini sparkline SVG ──────────────────────────────────────
+function Sparkline({ data, color = "#4ade80", width = 60, height = 22 }) {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x},${y}`;
+  });
+  return (
+    <svg width={width} height={height} style={{ display: 'block' }}>
+      <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={pts[pts.length-1].split(',')[0]} cy={pts[pts.length-1].split(',')[1]} r="2.5" fill={color} />
+    </svg>
+  );
+}
+
 export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets, todayWidget }) {
+  const [showAllBudget, setShowAllBudget] = useState(false);
+
   const me = getMonthEntries(entries, dividas, nowMonth, cards, cardPurchases, cardFaturas);
   const rec = me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
   const dep = me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
@@ -43,13 +64,16 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   const metaEcon = goals.savingsPct>0?((goals.savingsPct/100)*rec):0;
   const metaRenda = goals.monthly||0;
 
-  const trend = Array.from({length:3},(_,i)=>{
-    const m = addM(nowMonth,-(2-i));
+  // 6-month trend for sparklines
+  const trend6 = Array.from({length:6},(_,i)=>{
+    const m = addM(nowMonth,-(5-i));
     const me2 = getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
     const r2 = me2.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
     const d2 = me2.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
     return { month: mShort(m), saldo: r2-d2, rec:r2, dep:d2 };
   });
+
+  const trend = trend6.slice(-3);
 
   // Mesma lógica do healthScore em App.jsx (limiares unificados: 80/60)
   let score = 100;
@@ -63,13 +87,24 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   const scoreColor = score>=80?"#4ade80":score>=60?"#facc15":"#f87171";
   const scoreLabel = score>=80?"Saudável 💚":score>=60?"Atenção ⚠️":"Crítico 🚨";
 
+  // All categories with spending this month
   const catMap = {};
   me.filter(e=>e.type==="despesa").forEach(e=>{
     catMap[e.category]=(catMap[e.category]||0)+eVal(e);
   });
   const catRank = Object.entries(catMap)
     .map(([id,v])=>({id,name:(categories.find(c=>c.id===id)||{name:id}).name,color:(categories.find(c=>c.id===id)||{color:"#9E9E9E"}).color,value:v}))
-    .sort((a,b)=>b.value-a.value).slice(0,5);
+    .sort((a,b)=>b.value-a.value);
+
+  // Categories with budget set but no spending this month — show in budget section
+  const catsWithBudgetOnly = categories.filter(c =>
+    budgets[c.id] > 0 && !catMap[c.id]
+  ).map(c => ({ id: c.id, name: c.name, color: c.color, value: 0 }));
+
+  // Combined budget list: spending cats + budget-only cats
+  const budgetList = [...catRank, ...catsWithBudgetOnly];
+  const budgetListVisible = showAllBudget ? budgetList : budgetList.slice(0, 6);
+  const hasBudgetOverrun = budgetList.some(c => budgets[c.id] > 0 && c.value > budgets[c.id]);
 
   const pct = (v,max) => max>0?Math.min(100,(v/max)*100):0;
 
@@ -81,15 +116,19 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
     outline:"none", fontFamily:"inherit",
   };
   const budgetInpStyle = {
-    flex:1, background:"var(--bg)",
+    width:90, background:"var(--bg)",
     border:"1px solid #1a3a6e33", borderRadius:7,
     padding:"5px 9px", color:"#8ab4f8",
     fontSize:11, outline:"none", fontFamily:"inherit",
+    flexShrink: 0,
   };
 
   // Título de sessão padrão
-  const SectionTitle = ({children, color="#8ab4f8"}) => (
-    <div style={{fontSize:11,fontWeight:700,color,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:12}}>{children}</div>
+  const SectionTitle = ({children, color="#8ab4f8", extra=null}) => (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+      <div style={{fontSize:11,fontWeight:700,color,textTransform:"uppercase",letterSpacing:"0.06em"}}>{children}</div>
+      {extra}
+    </div>
   );
 
   return(
@@ -101,24 +140,37 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
       <div style={{padding:"14px 14px 0",display:"flex",flexDirection:"column",gap:12}}>
 
-        {/* Score circle */}
-        <div className="scoreCard" style={{background:"linear-gradient(135deg,var(--card-bg),var(--card-bg2))",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px",textAlign:"center"}}>
-          <div style={{fontSize:11,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>Score do mês</div>
-          <div style={{position:"relative",width:110,height:110,margin:"0 auto 12px"}}>
-            <svg viewBox="0 0 110 110" style={{width:"100%",height:"100%"}}>
-              <circle cx="55" cy="55" r="46" fill="none" stroke="#111820" strokeWidth="10"/>
-              <circle cx="55" cy="55" r="46" fill="none" stroke={scoreColor} strokeWidth="10"
-                strokeDasharray={`${(score/100)*289} 289`}
-                strokeLinecap="round"
-                transform="rotate(-90 55 55)"
-                style={{transition:"stroke-dasharray .8s ease"}}/>
-              <text x="55" y="52" textAnchor="middle" fill={scoreColor} fontSize="26" fontWeight="800">{score}</text>
-              <text x="55" y="68" textAnchor="middle" fill="#94a3b8" fontSize="10">pontos</text>
-            </svg>
+        {/* Score circle + sparkline */}
+        <div className="scoreCard" style={{background:"linear-gradient(135deg,var(--card-bg),var(--card-bg2))",border:`1px solid ${scoreColor}33`,borderRadius:16,padding:"18px 18px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:16}}>
+            {/* Círculo */}
+            <div style={{position:"relative",width:90,height:90,flexShrink:0}}>
+              <svg viewBox="0 0 110 110" style={{width:"100%",height:"100%"}}>
+                <circle cx="55" cy="55" r="46" fill="none" stroke="#111820" strokeWidth="10"/>
+                <circle cx="55" cy="55" r="46" fill="none" stroke={scoreColor} strokeWidth="10"
+                  strokeDasharray={`${(score/100)*289} 289`}
+                  strokeLinecap="round"
+                  transform="rotate(-90 55 55)"
+                  style={{transition:"stroke-dasharray .8s ease"}}/>
+                <text x="55" y="52" textAnchor="middle" fill={scoreColor} fontSize="26" fontWeight="800">{score}</text>
+                <text x="55" y="68" textAnchor="middle" fill="#94a3b8" fontSize="10">pontos</text>
+              </svg>
+            </div>
+            {/* Info + sparkline */}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:3}}>Score do mês</div>
+              <div style={{fontSize:16,fontWeight:700,color:scoreColor,marginBottom:10}}>{scoreLabel}</div>
+              {/* Mini sparkline saldo 6m */}
+              <div style={{fontSize:9,color:"var(--text4)",marginBottom:3}}>Saldo — últimos 6 meses</div>
+              <Sparkline data={trend6.map(t=>t.saldo)} color={trend6[5]?.saldo>=0?"#4ade80":"#f87171"} width={100} height={24}/>
+              <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
+                <span style={{fontSize:8,color:"var(--text4)"}}>{trend6[0]?.month}</span>
+                <span style={{fontSize:8,color:"var(--text4)"}}>{trend6[5]?.month}</span>
+              </div>
+            </div>
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:scoreColor}}>{scoreLabel}</div>
           {rec===0&&(
-            <div style={{marginTop:8,fontSize:11,color:"var(--text3)"}}>Adicione receitas e despesas para calcular seu score</div>
+            <div style={{marginTop:10,fontSize:11,color:"var(--text3)",textAlign:"center"}}>Adicione receitas e despesas para calcular seu score</div>
           )}
         </div>
 
@@ -143,6 +195,23 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           </div>
         )}
 
+        {/* Resumo rápido */}
+        {rec>0&&(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {[
+              {label:"Recebido",value:rec,color:"#4ade80",icon:"↑"},
+              {label:"Gasto",value:dep,color:"#fb923c",icon:"↓"},
+              {label:"Pago",value:pago,color:"#8ab4f8",icon:"✓"},
+            ].map(({label,value,color,icon})=>(
+              <div key={label} style={{background:"var(--card-bg)",border:`1px solid ${color}22`,borderRadius:12,padding:"10px 10px",textAlign:"center"}}>
+                <div style={{fontSize:16,marginBottom:4}}>{icon}</div>
+                <div style={{fontSize:11,fontWeight:800,color}}>{fmtShort(value)}</div>
+                <div style={{fontSize:9,color:"var(--text3)",marginTop:2}}>{label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Health bars */}
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <HealthBar label="Gastos fixos / Renda" value={fixosPct} max={100} color={fixosPct>70?"#f87171":fixosPct>50?"#facc15":"#4ade80"} suffix="%" detail={`${fmt(fixos)} de ${fmt(rec)}`}/>
@@ -156,11 +225,13 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           <SectionTitle>Tendência — 3 meses</SectionTitle>
           <div style={{display:"flex",gap:6}}>
             {trend.map((t,i)=>(
-              <div key={i} style={{flex:1,textAlign:"center",padding:"6px 0",background:i===2?"var(--bg)":"transparent",borderRadius:8}}>
+              <div key={i} style={{flex:1,textAlign:"center",padding:"8px 6px",background:i===2?"var(--bg)":"transparent",borderRadius:10,border:i===2?"1px solid var(--border2)":"none"}}>
                 <div style={{fontSize:10,color:i===2?"var(--text2)":"var(--text3)",fontWeight:i===2?700:400,marginBottom:6}}>{t.month}</div>
                 <div style={{fontSize:11,color:"#4ade80"}}>↑ {fmtShort(t.rec)}</div>
                 <div style={{fontSize:11,color:"#fb923c"}}>↓ {fmtShort(t.dep)}</div>
-                <div style={{fontSize:12,fontWeight:700,color:t.saldo>=0?"#4ade80":"#f87171",marginTop:2}}>{fmtShort(t.saldo)}</div>
+                <div style={{fontSize:12,fontWeight:700,color:t.saldo>=0?"#4ade80":"#f87171",marginTop:2,borderTop:"1px solid var(--border2)",paddingTop:4}}>
+                  {t.saldo>=0?"+":" "}{fmtShort(t.saldo)}
+                </div>
               </div>
             ))}
           </div>
@@ -262,40 +333,121 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           </div>
         </div>
 
-        {/* Budget per category */}
-        {catRank.length>0&&(
-          <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
-            <SectionTitle>💰 Orçamento por Categoria</SectionTitle>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {catRank.map((c,i)=>{
-                const budget=budgets[c.id]||0;
-                const pctUsed=budget>0?Math.min(100,(c.value/budget)*100):0;
-                return(
-                  <div key={i}>
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-                      <div style={{width:7,height:7,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                      <span style={{fontSize:12,color:"var(--text2)",flex:1}}>{c.name}</span>
-                      <span style={{fontSize:11,fontWeight:700,color:c.color}}>{fmt(c.value)}</span>
-                      {budget>0&&<span style={{fontSize:10,color:pctUsed>100?"#f87171":"var(--text3)"}}>/ {fmt(budget)}</span>}
+        {/* Budget per category — enhanced */}
+        {budgetList.length>0&&(
+          <div style={{background:"var(--card-bg)",border:`1px solid ${hasBudgetOverrun?"#f8717133":"var(--border)"}`,borderRadius:14,padding:"14px"}}>
+            <SectionTitle color={hasBudgetOverrun?"#f87171":"#8ab4f8"}
+              extra={hasBudgetOverrun&&<span style={{fontSize:9,background:"#f8717122",color:"#f87171",border:"1px solid #f8717144",borderRadius:5,padding:"2px 7px",fontWeight:700}}>⚠️ Orçamento estourado</span>}>
+              💰 Orçamento por Categoria
+            </SectionTitle>
+
+            {/* Summary totals row */}
+            {Object.keys(budgets).length>0&&(()=>{
+              const totalBudget = Object.values(budgets).reduce((s,v)=>s+(v||0),0);
+              const totalSpent  = budgetList.reduce((s,c)=>s+c.value,0);
+              const pctTot = totalBudget>0?Math.min(100,(totalSpent/totalBudget)*100):0;
+              return (
+                <div style={{background:"var(--bg)",borderRadius:10,padding:"10px 12px",marginBottom:12,display:"flex",gap:14,alignItems:"center"}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                      <span style={{fontSize:10,color:"var(--text3)"}}>Total gasto / orçamento</span>
+                      <span style={{fontSize:10,fontWeight:700,color:pctTot>100?"#f87171":pctTot>80?"#facc15":"#4ade80"}}>{pctTot.toFixed(0)}%</span>
                     </div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <div style={{height:6,background:"#111820",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${pctTot}%`,background:pctTot>100?"linear-gradient(90deg,#f87171,#ef4444)":pctTot>80?"linear-gradient(90deg,#facc15,#f59e0b)":"linear-gradient(90deg,#4ade80,#22d3ee)",borderRadius:3,transition:"width .6s"}}/>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:12,fontWeight:800,color:pctTot>100?"#f87171":"var(--text1)"}}>{fmt(totalSpent)}</div>
+                    <div style={{fontSize:9,color:"var(--text3)"}}>de {fmt(totalBudget)}</div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {budgetListVisible.map((c,i)=>{
+                const budget=budgets[c.id]||0;
+                const pctUsed=budget>0?Math.min(120,(c.value/budget)*100):0;
+                const overrun = budget>0 && c.value>budget;
+                const barColor = overrun?"#f87171":pctUsed>80?"#facc15":c.color;
+                return(
+                  <div key={i} style={{background:"var(--bg)",borderRadius:10,padding:"10px 12px",border:`1px solid ${overrun?"#f8717133":budget>0?"#1a3a6e22":"transparent"}`}}>
+                    {/* Header row */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:budget>0?7:5}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                      <span style={{fontSize:12,color:"var(--text2)",flex:1,fontWeight:500}}>{c.name}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <span style={{fontSize:12,fontWeight:700,color:overrun?"#f87171":c.color}}>{fmt(c.value)}</span>
+                        {budget>0&&(
+                          <span style={{fontSize:10,color:"var(--text4)"}}>/ {fmt(budget)}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Progress bar — only when budget set */}
+                    {budget>0&&(
+                      <div style={{marginBottom:6}}>
+                        <div style={{height:6,background:"#111820",borderRadius:3,overflow:"hidden",position:"relative"}}>
+                          <div style={{
+                            height:"100%",
+                            width:`${Math.min(100,pctUsed)}%`,
+                            background:overrun
+                              ?"linear-gradient(90deg,#f87171,#ef4444)"
+                              :pctUsed>80
+                              ?"linear-gradient(90deg,#facc15,#f59e0b)"
+                              :`linear-gradient(90deg,${c.color}99,${c.color})`,
+                            borderRadius:3,
+                            transition:"width .5s"
+                          }}/>
+                        </div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
+                          <span style={{fontSize:9,color:barColor,fontWeight:600}}>
+                            {overrun
+                              ?`⚠️ +${fmt(c.value-budget)} acima`
+                              :pctUsed>80
+                              ?`⏳ ${fmt(budget-c.value)} restante`
+                              :`${(100-pctUsed).toFixed(0)}% livre`}
+                          </span>
+                          <span style={{fontSize:9,color:"var(--text4)"}}>{pctUsed.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Budget input */}
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:10,color:"var(--text4)",flexShrink:0}}>Limite:</span>
                       <CurrencyInput
                         value={budget}
                         onChange={v=>onSaveBudgets({...budgets,[c.id]:v})}
-                        placeholder="Orçamento R$"
+                        placeholder="R$ 0,00"
                         style={budgetInpStyle}
                       />
-                      {budget>0&&<div style={{flex:2,height:5,background:"var(--bg)",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pctUsed}%`,background:pctUsed>100?"#f87171":pctUsed>80?"#facc15":c.color,borderRadius:3,transition:"width .5s"}}/></div>}
+                      {budget>0&&(
+                        <button onClick={()=>onSaveBudgets({...budgets,[c.id]:0})}
+                          style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:14,padding:"0 4px",lineHeight:1,flexShrink:0}}
+                          title="Remover limite">✕</button>
+                      )}
                     </div>
-                    {budget>0&&pctUsed>80&&(
-                      <div style={{marginTop:4,fontSize:10,color:pctUsed>100?"#f87171":"#facc15",fontWeight:600}}>
-                        {pctUsed>100?`⚠️ Orçamento estourado em ${(pctUsed-100).toFixed(0)}%`:`⏳ ${(100-pctUsed).toFixed(0)}% restante do orçamento`}
-                      </div>
-                    )}
                   </div>
                 );
               })}
             </div>
+
+            {/* Show more / less */}
+            {budgetList.length>6&&(
+              <button onClick={()=>setShowAllBudget(p=>!p)}
+                style={{width:"100%",marginTop:10,padding:"8px",background:"none",border:"1px solid var(--border2)",borderRadius:8,color:"var(--text3)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>
+                {showAllBudget?`▲ Mostrar menos`:`▼ Ver mais ${budgetList.length-6} categorias`}
+              </button>
+            )}
+
+            {/* Add budget hint when no budgets set */}
+            {Object.keys(budgets).filter(k=>budgets[k]>0).length===0&&(
+              <div style={{marginTop:8,fontSize:11,color:"var(--text3)",textAlign:"center",lineHeight:1.5}}>
+                💡 Defina limites de orçamento para cada categoria e receba alertas quando ultrapassar
+              </div>
+            )}
           </div>
         )}
 

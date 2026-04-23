@@ -105,6 +105,7 @@ function MainApp({ fbUser, onLogout }){
   const [showUpcoming, setShowUpcoming] = useState(true);
   const [showOverdue,  setShowOverdue]  = useState(false); // vencidos ocultos por padrão
   const [confirmQueue, setConfirmQueue] = useState(null); // {title,message,detail,danger,confirmLabel,onConfirm}
+  const [showCelebrate, setShowCelebrate] = useState(false);
   const {toasts,toast} = useToast();
   const showConfirm = useCallback((opts)=> new Promise(resolve=>{
     setConfirmQueue({...opts, onConfirm:()=>{setConfirmQueue(null);resolve(true);}, onClose:()=>{setConfirmQueue(null);resolve(false);}});
@@ -326,6 +327,8 @@ function MainApp({ fbUser, onLogout }){
     if(metaAtingida && !prevGoalAlertRef.current){
       prevGoalAlertRef.current = true;
       toast(`🎯 Meta de economia de ${goals.savingsPct}% atingida! Parabéns!`,"celebrate");
+      setShowCelebrate(true);
+      setTimeout(()=>setShowCelebrate(false),4000);
       if(notifSettings.enabled && Notification.permission==="granted"){
         fireNotification("🎯 Meta de economia atingida!",`Você economizou ${economiaPct.toFixed(0)}% da sua renda este mês. Continue assim!`,"mf-goal");
       }
@@ -359,6 +362,15 @@ function MainApp({ fbUser, onLogout }){
   },[prevMonthEntries]);
   const saldoDiff = saldo - prevSaldo;
 
+  // Mini-sparkline: saldo dos últimos 6 meses para o hero card
+  const heroSparkData = useMemo(()=>Array.from({length:6},(_,i)=>{
+    const m=addM(selMonth,-(5-i));
+    const me=getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
+    const r=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+    const d=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+    return r-d;
+  }),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
+
   // "Quanto posso gastar hoje" — (saldo_esperado - pendentes_fixos) / dias_restantes
   const todayWidget = useMemo(()=>{
     if(selMonth !== NOW) return null; // só faz sentido no mês atual
@@ -388,6 +400,14 @@ function MainApp({ fbUser, onLogout }){
     const color=score>=80?"#4ade80":score>=60?"#facc15":"#f87171";
     return {score,level,color,fixedPct,savingPct};
   },[entries,dividas,totRec,totDesp,totPend]);
+
+  // Budget overrun count — used in nav badge
+  const budgetOverCount=useMemo(()=>{
+    if(!Object.keys(budgets).length) return 0;
+    const catTotals={};
+    monthEntries.filter(e=>e.type==="despesa").forEach(e=>{catTotals[e.category]=(catTotals[e.category]||0)+eVal(e);});
+    return Object.entries(budgets).filter(([id,limit])=>limit>0&&(catTotals[id]||0)>limit).length;
+  },[budgets,monthEntries]);
 
   const normStr=(s)=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const filtered=useMemo(()=>{
@@ -684,10 +704,22 @@ function MainApp({ fbUser, onLogout }){
               <button className="iconBtn" onClick={()=>setDelTarget(entry)} style={{...S.iconBtn,background:"rgba(239,68,68,.1)",color:"#f87171"}}>✕</button>
             )}
           </div>
-          <button onClick={()=>handleToggle(entry)} className="statusToggleBtn"
-            style={{...S.badge,background:entry.isOpenFatura?"rgba(138,180,248,.1)":entry.statusForMonth==="pago"?"rgba(74,222,128,.15)":"rgba(251,146,60,.15)",color:entry.isOpenFatura?"#8ab4f8":entry.statusForMonth==="pago"?"#4ade80":"#fb923c",border:`1px solid ${entry.isOpenFatura?"#8ab4f833":entry.statusForMonth==="pago"?"#4ade8033":"#fb923c33"}`,cursor:entry.isOpenFatura?"default":"pointer",padding:"4px 8px"}}>
-            {entry.isOpenFatura?"🔄 em aberto":entry.statusForMonth==="pago"?(entry.type==="receita"?"✓ recebido":"✓ pago"):(entry.type==="receita"?"⏳ a receber":"⏳ a pagar")}
-          </button>
+          {entry.isOpenFatura?(
+            <span style={{...S.badge,background:"rgba(138,180,248,.1)",color:"#8ab4f8",border:"1px solid #8ab4f833",padding:"4px 8px",fontSize:10}}>🔄 em aberto</span>
+          ):(
+            <button onClick={()=>handleToggle(entry)} className="statusToggleBtn"
+              title={entry.statusForMonth==="pago"?(entry.type==="receita"?"Clique para marcar como a receber":"Clique para marcar como a pagar"):(entry.type==="receita"?"Clique para marcar como recebido":"Clique para marcar como pago")}
+              style={{display:"flex",alignItems:"center",gap:5,padding:"5px 9px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,
+                background:entry.statusForMonth==="pago"?"rgba(74,222,128,.18)":"rgba(251,146,60,.15)",
+                color:entry.statusForMonth==="pago"?"#4ade80":"#fb923c",
+                transition:"all .15s"}}>
+              {entry.statusForMonth==="pago"?(
+                <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>{entry.type==="receita"?"Recebido":"Pago"}</>
+              ):(
+                <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{entry.type==="receita"?"A receber":"A pagar"}</>
+              )}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -725,6 +757,30 @@ function MainApp({ fbUser, onLogout }){
           );
         })}
       </div>
+
+      {/* Confetti celebration overlay */}
+      {showCelebrate&&(
+        <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1000,overflow:"hidden"}}>
+          {Array.from({length:30},(_,i)=>{
+            const colors=["#4ade80","#facc15","#8ab4f8","#f87171","#a78bfa","#fb923c"];
+            const c=colors[i%colors.length];
+            const left=Math.random()*100;
+            const delay=Math.random()*1.5;
+            const dur=2+Math.random()*2;
+            const size=6+Math.random()*8;
+            const rot=Math.random()*360;
+            return(
+              <div key={i} style={{
+                position:"absolute",top:-20,left:`${left}%`,
+                width:size,height:size,borderRadius:Math.random()>0.5?"50%":2,
+                background:c,opacity:0.9,
+                animation:`confettiFall ${dur}s ${delay}s ease-in forwards`,
+                transform:`rotate(${rot}deg)`,
+              }}/>
+            );
+          })}
+        </div>
+      )}
 
       <header style={S.header}>
         <div style={S.headerLeft}>
@@ -788,16 +844,43 @@ function MainApp({ fbUser, onLogout }){
               </div>
               <span className="heroSubtext" style={{fontSize:14,color:"rgba(255,255,255,.6)",fontWeight:500}}>Saldo do mês</span>
             </div>
-            <div style={{fontSize:28,fontWeight:800,letterSpacing:"-0.5px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
+            <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:10}}>
+              <div style={{fontSize:28,fontWeight:800,letterSpacing:"-0.5px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,#4ade80,#34d399)":"linear-gradient(135deg,#f87171,#ef4444)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
+              {/* Mini-sparkline 6 meses */}
+              {(()=>{
+                const data=heroSparkData;
+                const min=Math.min(...data),max=Math.max(...data),range=max-min||1;
+                const W=72,H=28,pts=data.map((v,i)=>{const x=(i/(data.length-1))*W;const y=H-((v-min)/range)*(H-6)-3;return`${x},${y}`;});
+                const sparkColor=saldo>=0?"#4ade80":"#f87171";
+                return(
+                  <svg width={W} height={H} style={{opacity:0.7,flexShrink:0}}>
+                    <polyline points={pts.join(' ')} fill="none" stroke={sparkColor} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx={pts[pts.length-1].split(',')[0]} cy={pts[pts.length-1].split(',')[1]} r="2.5" fill={sparkColor}/>
+                  </svg>
+                );
+              })()}
+            </div>
             {/* Comparação mês anterior */}
-            {prevSaldo !== 0 && (
-              <div className="heroCardFooter" style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>vs mês anterior</span>
-                <span style={{fontSize:12,fontWeight:700,color:saldoDiff>=0?"#4ade80":"#f87171"}}>
-                  {saldoDiff>=0?"▲":""}{saldoDiff<0?"▼":""} {fmt(Math.abs(saldoDiff))}
-                </span>
-              </div>
-            )}
+            {prevSaldo !== 0 && (()=>{
+              const pctChange = prevSaldo!==0?((saldoDiff/Math.abs(prevSaldo))*100):0;
+              const isUp = saldoDiff>=0;
+              return(
+                <div className="heroCardFooter" style={{marginTop:8,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.08)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)"}}>vs mês anterior</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:10,padding:"2px 6px",borderRadius:5,fontWeight:700,
+                      background:isUp?"rgba(74,222,128,.15)":"rgba(248,113,113,.15)",
+                      color:isUp?"#4ade80":"#f87171",
+                      border:`1px solid ${isUp?"#4ade8033":"#f8717133"}`}}>
+                      {isUp?"▲":"▼"} {Math.abs(pctChange).toFixed(0)}%
+                    </span>
+                    <span style={{fontSize:11,fontWeight:600,color:isUp?"#4ade8088":"#f8717188"}}>
+                      {isUp?"+":"-"} {fmt(Math.abs(saldoDiff))}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
             {accumSaldo!==null&&<div className="heroCardFooter" style={{marginTop:6,paddingTop:6,borderTop:"1px solid rgba(255,255,255,.08)"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <span className="heroMuted" style={{fontSize:10,color:"rgba(255,255,255,.35)",display:"flex",alignItems:"center",gap:4}}>
@@ -824,6 +907,23 @@ function MainApp({ fbUser, onLogout }){
           <GradCard label="A pagar" value={fmt(totPend)} color="#facc15" bg="rgba(250,204,21,.08)" empty={totPend===0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}/>
         </div>
+        {/* Payment progress bar */}
+        {totDesp>0&&(
+          <div style={{padding:"0 14px 8px"}}>
+            <div style={{background:"var(--card-bg)",border:"1px solid var(--border2)",borderRadius:10,padding:"9px 12px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                <span style={{fontSize:9,color:"var(--text4)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Progresso pagamentos</span>
+                <span style={{fontSize:10,fontWeight:700,color:totPago>=totDesp?"#4ade80":totPend>0?"#facc15":"#8ab4f8"}}>
+                  {totDesp>0?((totPago/totDesp)*100).toFixed(0):0}% pago
+                </span>
+              </div>
+              <div style={{height:6,background:"rgba(255,255,255,.06)",borderRadius:3,overflow:"hidden",display:"flex"}}>
+                <div style={{height:"100%",width:`${totDesp>0?(totPago/totDesp)*100:0}%`,background:"linear-gradient(90deg,#8ab4f888,#8ab4f8)",borderRadius:"3px 0 0 3px",transition:"width .5s"}}/>
+                <div style={{height:"100%",width:`${totDesp>0?(totPend/totDesp)*100:0}%`,background:"linear-gradient(90deg,#facc1566,#facc1533)",transition:"width .5s"}}/>
+              </div>
+            </div>
+          </div>
+        )}
 
 
         {/* ── Vencidos ─────────────────────────────────────────── */}
@@ -845,18 +945,26 @@ function MainApp({ fbUser, onLogout }){
                 {overdueDue.map((e,i)=>{
                   const delay=Math.abs(e._days);
                   return(
-                    <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
-                      style={{display:"flex",alignItems:"center",gap:8,background:"rgba(248,113,113,.06)",border:"1.5px solid #f8717133",borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(248,113,113,.06)",border:"1.5px solid #f8717133",borderRadius:10,padding:"9px 11px",transition:"border-color .15s"}}
                       onMouseEnter={ev=>ev.currentTarget.style.borderColor="#f8717188"}
                       onMouseLeave={ev=>ev.currentTarget.style.borderColor="#f8717133"}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
-                      <div style={{flex:1,minWidth:0}}>
+                      <button onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
+                        style={{flex:1,minWidth:0,background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,fontFamily:"inherit"}}>
                         <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
                         <div style={{fontSize:9,color:"#f8717188",marginTop:1}}>{fmtDate(e._due)}</div>
-                      </div>
+                      </button>
                       <div style={{fontSize:12,fontWeight:700,color:"#fb923c",flexShrink:0}}>{fmt(eVal(e))}</div>
                       <div style={{fontSize:9,fontWeight:800,color:"#f87171",background:"rgba(248,113,113,.15)",border:"1px solid #f8717133",borderRadius:4,padding:"2px 7px",flexShrink:0,whiteSpace:"nowrap"}}>{delay}d atraso</div>
-                    </button>
+                      {!e.isFatura&&(
+                        <button
+                          onClick={ev=>{ev.stopPropagation();handleToggle(e);}}
+                          title={e.type==="receita"?"Marcar recebido":"Marcar pago"}
+                          style={{flexShrink:0,padding:"4px 8px",borderRadius:7,border:"1px solid #4ade8044",background:"rgba(74,222,128,.1)",color:"#4ade80",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                          ✓ {e.type==="receita"?"Receber":"Pagar"}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -884,18 +992,26 @@ function MainApp({ fbUser, onLogout }){
                   const dayColor=e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
                   const dayLabel=e._days===0?"Hoje":`${e._days}d`;
                   return(
-                    <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
-                      style={{display:"flex",alignItems:"center",gap:8,background:e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",transition:"border-color .15s"}}
                       onMouseEnter={ev=>ev.currentTarget.style.borderColor=dayColor+"88"}
                       onMouseLeave={ev=>ev.currentTarget.style.borderColor=dayColor+"33"}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
-                      <div style={{flex:1,minWidth:0}}>
+                      <button onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
+                        style={{flex:1,minWidth:0,background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,fontFamily:"inherit"}}>
                         <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
                         <div style={{fontSize:9,color:"var(--text3)",marginTop:1}}>{fmtDate(e._due)}</div>
-                      </div>
+                      </button>
                       <div style={{fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":"#fb923c",flexShrink:0}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
                       <div style={{fontSize:9,fontWeight:700,color:dayColor,background:dayColor+"18",border:`1px solid ${dayColor}33`,borderRadius:4,padding:"2px 7px",flexShrink:0}}>{dayLabel}</div>
-                    </button>
+                      {!e.isFatura&&(
+                        <button
+                          onClick={ev=>{ev.stopPropagation();handleToggle(e);}}
+                          title={e.type==="receita"?"Marcar recebido":"Marcar pago"}
+                          style={{flexShrink:0,padding:"4px 8px",borderRadius:7,border:`1px solid ${dayColor}44`,background:dayColor+"18",color:dayColor,fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                          ✓ {e.type==="receita"?"Receber":"Pagar"}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -1079,14 +1195,14 @@ function MainApp({ fbUser, onLogout }){
         </button>
 
         {[
-          ["lancamentos","Contas",<svg key="l" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>],
+          ["lancamentos","Contas",<span key="l" style={{position:"relative",display:"inline-flex"}}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>{overdueDue.length>0&&<span style={{position:"absolute",top:-4,right:-5,minWidth:14,height:14,borderRadius:7,background:"#f87171",border:"1.5px solid var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:800,color:"#fff",padding:"0 2px"}}>{overdueDue.length}</span>}</span>],
           ["graficos","Análise",<svg key="g" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>],
           ["cartoes","Cartões",<svg key="c" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>],
           ["dividas","Dívidas",<svg key="d" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>],
         ].map(([tab,label,icon])=>(
           <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);setShowFabMenu(false);}} className="navBtn"
             style={{...S.navBtn,borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
-            <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
+            <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75,display:"inline-flex"}}>{icon}</span>
             <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
           </button>
         ))}
@@ -1099,7 +1215,10 @@ function MainApp({ fbUser, onLogout }){
         ].map(([tab,label,icon])=>(
           <button key={tab} onClick={()=>{setActiveTab(tab);setShowFabMenu(false);}} className="navDesktopOnly navBtn"
             style={{...S.navBtn,display:"none",borderTop:activeTab===tab?"2px solid #8ab4f8":"2px solid transparent",...(activeTab===tab?S.navBtnActive:{})}}>
-            <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
+            <div style={{position:"relative",display:"inline-flex"}}>
+              <span style={{color:activeTab===tab?"#8ab4f8":"var(--text3)",transition:"all .2s",opacity:activeTab===tab?1:0.75}}>{icon}</span>
+              {tab==="saude"&&budgetOverCount>0&&<div style={{position:"absolute",top:-4,right:-4,width:8,height:8,borderRadius:"50%",background:"#f87171",border:"1.5px solid var(--bg)"}}/>}
+            </div>
             <span style={{fontSize:9,fontWeight:activeTab===tab?700:500,color:activeTab===tab?"#8ab4f8":"var(--text3)",marginTop:2}}>{label}</span>
           </button>
         ))}
@@ -1107,7 +1226,12 @@ function MainApp({ fbUser, onLogout }){
         {/* Mobile-only: Botão "Mais" */}
         <button className="navMobileOnly navBtn" onClick={()=>setShowMoreNav(p=>!p)}
           style={{...S.navBtn,borderTop:["saude","perfil","admin"].includes(activeTab)?"2px solid #8ab4f8":"2px solid transparent",...(["saude","perfil","admin"].includes(activeTab)?S.navBtnActive:{})}}>
-          <span style={{color:showMoreNav||["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",fontSize:20,lineHeight:1,opacity:showMoreNav||["saude","perfil","admin"].includes(activeTab)?1:0.75}}>⋯</span>
+          <div style={{position:"relative",display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
+            <span style={{color:showMoreNav||["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",fontSize:20,lineHeight:1,opacity:showMoreNav||["saude","perfil","admin"].includes(activeTab)?1:0.75}}>⋯</span>
+            {budgetOverCount>0&&!["saude","perfil","admin"].includes(activeTab)&&(
+              <div style={{position:"absolute",top:-5,right:-5,width:8,height:8,borderRadius:"50%",background:"#f87171",border:"1.5px solid var(--bg)"}}/>
+            )}
+          </div>
           <span style={{fontSize:9,fontWeight:["saude","perfil","admin"].includes(activeTab)?700:500,color:["saude","perfil","admin"].includes(activeTab)?"#8ab4f8":"var(--text3)",marginTop:2}}>Mais</span>
         </button>
       </nav>
@@ -1123,6 +1247,9 @@ function MainApp({ fbUser, onLogout }){
             <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}}
               style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"11px 14px",background:activeTab===tab?"#111820":"transparent",border:"none",borderRadius:9,color:activeTab===tab?"#8ab4f8":"#ccd",fontSize:13,fontWeight:activeTab===tab?700:500,cursor:"pointer",textAlign:"left"}}>
               {label}
+              {tab==="saude"&&budgetOverCount>0&&(
+                <span style={{marginLeft:"auto",fontSize:9,background:"#f87171",color:"#fff",padding:"1px 6px",borderRadius:4,fontWeight:800}}>{budgetOverCount}</span>
+              )}
             </button>
           ))}
         </div>
@@ -1334,6 +1461,9 @@ const CSS=`
   }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
+  @keyframes heroGlow { 0%,100%{box-shadow:0 0 0 rgba(74,222,128,0)} 50%{box-shadow:0 0 24px rgba(74,222,128,.15)} }
+  .celebrate-glow { animation: heroGlow 2s ease-in-out 3; }
   -webkit-tap-highlight-color: transparent;
 
   /* ── CSS Variables: dark (default) ── */

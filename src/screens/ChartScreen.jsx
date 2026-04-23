@@ -161,7 +161,7 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
       </div>)}
 
       <div style={{display:"flex",gap:6,padding:"0 14px 12px",flexWrap:"wrap"}}>
-        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"]].map(([t,l])=>(
+        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"],["anual","📅 Anual"]].map(([t,l])=>(
           <button key={t} onClick={()=>setChartType(t)} className="fTab" style={{...S.fTab,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
         ))}
       </div>
@@ -371,6 +371,76 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             </div>
           </>)}
         </div>)}
+
+        {chartType==="anual"&&(()=>{
+          const year=specMonth.split("-")[0];
+          const months=Array.from({length:12},(_,i)=>`${year}-${String(i+1).padStart(2,"0")}`);
+          const rows=months.map(m=>{
+            const me=mData(m);
+            const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+            const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+            return{m,rec,dep,saldo:rec-dep};
+          });
+          const totRec=rows.reduce((s,r)=>s+r.rec,0);
+          const totDep=rows.reduce((s,r)=>s+r.dep,0);
+          const totSaldo=totRec-totDep;
+          const maxVal=Math.max(...rows.map(r=>Math.max(r.rec,r.dep)),1);
+          const MNAMES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+          return(
+            <div style={S.chartBox}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <div style={S.chartTitle}>Resumo Anual {year}</div>
+                <div style={{display:"flex",gap:4}}>
+                  <button onClick={()=>{const y=parseInt(year)-1;setSpecMonth(`${y}-01`);}} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 8px",fontSize:12}}>‹</button>
+                  <button onClick={()=>{const y=parseInt(year)+1;setSpecMonth(`${y}-01`);}} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 8px",fontSize:12}}>›</button>
+                </div>
+              </div>
+
+              {/* Totais anuais */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
+                {[{l:"Receitas",v:totRec,c:"#4ade80"},{l:"Despesas",v:totDep,c:"#fb923c"},{l:"Saldo",v:totSaldo,c:totSaldo>=0?"#4ade80":"#f87171"}].map(({l,v,c})=>(
+                  <div key={l} style={{background:"var(--bg)",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:9,color:"var(--text3)",marginBottom:3}}>{l}</div>
+                    <div style={{fontSize:11,fontWeight:800,color:c}}>{fmtShort(v)}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabela meses */}
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {rows.map(({m,rec,dep,saldo},i)=>{
+                  const recPct=maxVal>0?(rec/maxVal)*100:0;
+                  const depPct=maxVal>0?(dep/maxVal)*100:0;
+                  const isCurrent=m===nowMonth;
+                  return(
+                    <div key={m} style={{background:isCurrent?"var(--bg)":"transparent",borderRadius:8,padding:"5px 8px",border:isCurrent?"1px solid var(--border2)":"none"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:26,fontSize:10,fontWeight:isCurrent?700:400,color:isCurrent?"var(--text1)":"var(--text3)",flexShrink:0}}>{MNAMES[i]}</div>
+                        <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
+                          <div style={{height:4,background:"var(--bg2,#0d1118)",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${recPct}%`,background:"#4ade8088",borderRadius:2}}/>
+                          </div>
+                          <div style={{height:4,background:"var(--bg2,#0d1118)",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${depPct}%`,background:"#fb923c88",borderRadius:2}}/>
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:8,flexShrink:0}}>
+                          <span style={{fontSize:10,color:"#4ade8088",minWidth:50,textAlign:"right"}}>{rec>0?fmtShort(rec):"-"}</span>
+                          <span style={{fontSize:10,color:"#fb923c88",minWidth:50,textAlign:"right"}}>{dep>0?fmtShort(dep):"-"}</span>
+                          <span style={{fontSize:10,fontWeight:700,color:saldo>=0?"#4ade80":"#f87171",minWidth:54,textAlign:"right"}}>{rec===0&&dep===0?"-":`${saldo>=0?"+":""}${fmtShort(saldo)}`}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginTop:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:"#4ade8088"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Receitas</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:"#fb923c88"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Despesas</span></div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
