@@ -103,6 +103,7 @@ function MainApp({ fbUser, onLogout }){
   const [showFabMenu,  setShowFabMenu]  = useState(false);
   const [showHealth,   setShowHealth]   = useState(false);
   const [showUpcoming, setShowUpcoming] = useState(true);
+  const [showOverdue,  setShowOverdue]  = useState(false); // vencidos ocultos por padrão
   const [confirmQueue, setConfirmQueue] = useState(null); // {title,message,detail,danger,confirmLabel,onConfirm}
   const {toasts,toast} = useToast();
   const showConfirm = useCallback((opts)=> new Promise(resolve=>{
@@ -401,18 +402,27 @@ function MainApp({ fbUser, onLogout }){
     return list;
   },[monthEntries,filter,filterCat,search,sortBy]);
 
-  const upcomingDue=useMemo(()=>{
-    const items=[];
+  const {overdueDue,upcomingDue}=useMemo(()=>{
+    const overdue=[],upcoming=[];
+    const seen=new Set();
     for(let i=0;i<=2;i++){
       const m=addM(NOW,i);
       const me=getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
       me.filter(e=>e.statusForMonth==="a_pagar").forEach(e=>{
         const due=(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
         const days=daysUntil(due);
-        if(days!==null&&days<=14) items.push({...e,_mk:m,_due:due,_days:days});
+        if(days===null) return;
+        const key=`${e.id||e.dividaId||e.faturaKey}_${m}`;
+        if(seen.has(key)) return;
+        seen.add(key);
+        if(days<0)       overdue.push({...e,_mk:m,_due:due,_days:days});
+        else if(days<=30)upcoming.push({...e,_mk:m,_due:due,_days:days});
       });
     }
-    return items.sort((a,b)=>a._days-b._days).slice(0,10);
+    return {
+      overdueDue:  overdue.sort((a,b)=>a._days-b._days),
+      upcomingDue: upcoming.sort((a,b)=>a._days-b._days).slice(0,10),
+    };
   },[entries,dividas,cards,cardPurchases,cardFaturas,NOW]);
 
   const grouped=useMemo(()=>{
@@ -816,7 +826,45 @@ function MainApp({ fbUser, onLogout }){
         </div>
 
 
-        {/* Próximos vencimentos */}
+        {/* ── Vencidos ─────────────────────────────────────────── */}
+        {overdueDue.length>0&&(
+          <div style={{padding:"0 14px 6px"}}>
+            <button onClick={()=>setShowOverdue(p=>!p)}
+              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",background:"none",border:"none",cursor:"pointer",padding:"0 0 8px",fontFamily:"inherit"}}>
+              <div style={{display:"flex",alignItems:"center",gap:7}}>
+                <span style={{fontSize:10,color:"#f87171",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}>🔴 Contas Vencidas</span>
+                <span style={{fontSize:9,background:"#f87171",color:"#fff",padding:"2px 7px",borderRadius:4,fontWeight:800}}>{overdueDue.length}</span>
+              </div>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2.5" strokeLinecap="round"
+                style={{transform:showOverdue?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {showOverdue&&(
+              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                {overdueDue.map((e,i)=>{
+                  const delay=Math.abs(e._days);
+                  return(
+                    <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
+                      style={{display:"flex",alignItems:"center",gap:8,background:"rgba(248,113,113,.06)",border:"1.5px solid #f8717133",borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
+                      onMouseEnter={ev=>ev.currentTarget.style.borderColor="#f8717188"}
+                      onMouseLeave={ev=>ev.currentTarget.style.borderColor="#f8717133"}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
+                        <div style={{fontSize:9,color:"#f8717188",marginTop:1}}>{fmtDate(e._due)}</div>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:700,color:"#fb923c",flexShrink:0}}>{fmt(eVal(e))}</div>
+                      <div style={{fontSize:9,fontWeight:800,color:"#f87171",background:"rgba(248,113,113,.15)",border:"1px solid #f8717133",borderRadius:4,padding:"2px 7px",flexShrink:0,whiteSpace:"nowrap"}}>{delay}d atraso</div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Próximos vencimentos ─────────────────────────────── */}
         {upcomingDue.length>0&&(
           <div style={{padding:"0 14px 10px"}}>
             <button onClick={()=>setShowUpcoming(p=>!p)}
@@ -833,11 +881,11 @@ function MainApp({ fbUser, onLogout }){
             {showUpcoming&&(
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
                 {upcomingDue.map((e,i)=>{
-                  const dayColor=e._days<0?"#f87171":e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
-                  const dayLabel=e._days<0?`${Math.abs(e._days)}d atraso`:e._days===0?"Hoje":`${e._days}d`;
+                  const dayColor=e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
+                  const dayLabel=e._days===0?"Hoje":`${e._days}d`;
                   return(
                     <button key={i} onClick={()=>e.isFatura?setFatPayTarget(e):setEditTarget({entry:e,monthKey:e._mk})}
-                      style={{display:"flex",alignItems:"center",gap:8,background:e._days<0?"rgba(248,113,113,.07)":e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
+                      style={{display:"flex",alignItems:"center",gap:8,background:e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px",cursor:"pointer",textAlign:"left",width:"100%",transition:"border-color .15s"}}
                       onMouseEnter={ev=>ev.currentTarget.style.borderColor=dayColor+"88"}
                       onMouseLeave={ev=>ev.currentTarget.style.borderColor=dayColor+"33"}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
