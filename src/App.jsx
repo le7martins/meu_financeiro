@@ -8,12 +8,14 @@ import { fmt, fmtShort, fmtDate, TODAY, MNAMES, mLabel, mShort, getNow, mDiff, a
 import { DEFAULT_CATS, BLANK, PRESET_COLORS, CARD_COLORS, NOTIF_KEY, NOTIF_LAST_KEY, defaultNotifSettings } from './constants.js';
 import { getBillingMonth, getFaturaDueDate, getFaturaCloseDate, isFaturaOpen, getPurchaseInstallmentsForBilling, buildFatura, getCardBillingMonths, getMonthEntries, requestNotifPermission, fireNotification, checkAndNotify } from './logic.js';
 import S from './styles.js';
-const ChartScreen   = lazy(() => import('./screens/ChartScreen.jsx'));
-const CartaoScreen  = lazy(() => import('./screens/CartaoScreen.jsx'));
-const DividasScreen = lazy(() => import('./screens/DividasScreen.jsx'));
-const ProfileScreen = lazy(() => import('./screens/ProfileScreen.jsx'));
-const SaudeScreen   = lazy(() => import('./screens/SaudeScreen.jsx'));
-const AdminScreen   = lazy(() => import('./screens/AdminScreen.jsx'));
+import { generateMonthPDF } from './pdfReport.js';
+const ChartScreen      = lazy(() => import('./screens/ChartScreen.jsx'));
+const CartaoScreen     = lazy(() => import('./screens/CartaoScreen.jsx'));
+const DividasScreen    = lazy(() => import('./screens/DividasScreen.jsx'));
+const ProfileScreen    = lazy(() => import('./screens/ProfileScreen.jsx'));
+const SaudeScreen      = lazy(() => import('./screens/SaudeScreen.jsx'));
+const AdminScreen      = lazy(() => import('./screens/AdminScreen.jsx'));
+const OnboardingScreen = lazy(() => import('./screens/OnboardingScreen.jsx'));
 import FaturaPayModal from './modals/FaturaPayModal.jsx';
 import FormModal from './modals/FormModal.jsx';
 import EditModal from './modals/EditModal.jsx';
@@ -94,6 +96,7 @@ function MainApp({ fbUser, onLogout }){
   const [filterCat,    setFilterCat]    = useState("all");
   const [filterTag,    setFilterTag]    = useState("all");
   const [dbReady,      setDbReady]      = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(()=>!loadLS(k('onboarding_done'), false));
   const [syncStatus,   setSyncStatus]   = useState("idle"); // "idle"|"saving"|"saved"|"offline"
   const syncTimerRef = useRef(null);
   const [showMoreNav,  setShowMoreNav]  = useState(false);
@@ -331,6 +334,21 @@ function MainApp({ fbUser, onLogout }){
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dbReady, goals.savingsPct, totRec, saldo, selMonth]);
 
+  // Notificação de meta de renda atingida
+  const prevIncomeAlertRef = useRef(false);
+  useEffect(()=>{
+    if(!dbReady||!goals.monthly||goals.monthly<=0||totRec<=0) return;
+    const metaAtingida = totRec >= goals.monthly;
+    if(metaAtingida && !prevIncomeAlertRef.current){
+      prevIncomeAlertRef.current = true;
+      toast(`🏆 Meta de renda de ${fmt(goals.monthly)} atingida!`,"celebrate");
+      if(notifSettings.enabled&&Notification.permission==="granted"){
+        fireNotification("🏆 Meta de renda atingida!",`Você recebeu ${fmt(totRec)} este mês — meta de ${fmt(goals.monthly)} alcançada!`,"mf-income-goal");
+      }
+    } else if(!metaAtingida){ prevIncomeAlertRef.current=false; }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[dbReady,goals.monthly,totRec,selMonth]);
+
   // Comparação com mês anterior
   const prevMonthEntries = useMemo(()=>getMonthEntries(entries,dividas,addM(selMonth,-1),cards,cardPurchases,cardFaturas),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
   const prevSaldo = useMemo(()=>{
@@ -445,10 +463,15 @@ function MainApp({ fbUser, onLogout }){
       if(total>limit){
         alertedBudgets.current.add(key);
         const cat=categories.find(c=>c.id===catId);
-        if(cat) toast(`⚠️ Orçamento de "${cat.name}" estourado (${fmt(total)} / ${fmt(limit)})`,'error');
+        if(cat){
+          toast(`⚠️ Orçamento de "${cat.name}" estourado (${fmt(total)} / ${fmt(limit)})`,'error');
+          if(notifSettings.enabled&&Notification.permission==="granted"){
+            fireNotification(`⚠️ Orçamento estourado: ${cat.name}`,`Você gastou ${fmt(total)} de um limite de ${fmt(limit)} este mês.`,`budget-${catId}`);
+          }
+        }
       }
     });
-  },[dbReady,selMonth,monthEntries,budgets,categories,toast]);
+  },[dbReady,selMonth,monthEntries,budgets,categories,toast,notifSettings]);
 
   const handleToggle=useCallback((entry)=>{
     if(entry.isFatura){
@@ -595,6 +618,15 @@ function MainApp({ fbUser, onLogout }){
     URL.revokeObjectURL(url);toast("📊 CSV exportado");
   },[entries,dividas,cards,cardPurchases,cardFaturas,categories,toast]);
 
+  const handleExportPDF=useCallback((mk)=>{
+    generateMonthPDF({
+      entries,monthKey:mk||selMonth,categories,
+      mLabel,fmt,fmtDate,eVal,getMonthEntries,
+      dividas,cards,cardPurchases,cardFaturas,
+    });
+    toast("📄 Relatório aberto — use Ctrl+P / Cmd+P para salvar como PDF","info");
+  },[entries,dividas,cards,cardPurchases,cardFaturas,categories,selMonth,toast]);
+
   const FILTERS=[
     ["all","Todos",monthEntries.length],
     ["despesa","Despesas",monthEntries.filter(e=>e.type==="despesa").length],
@@ -650,6 +682,18 @@ function MainApp({ fbUser, onLogout }){
       </div>
     );
   };
+
+  // ── Onboarding: mostrado na primeira vez que o usuário acessa ──
+  if(showOnboarding){
+    return(
+      <Suspense fallback={null}>
+        <div data-theme={theme} className={theme==="light"?"light-mode":""} style={{background:"var(--bg,#080c12)"}}>
+          <style>{`:root{--bg:#080c12;--text1:#fff;--text3:#778;--text4:#334;} .light-mode{--bg:#f8fafc;--text1:#111827;--text3:#6b7280;--text4:#9ca3af;}`}</style>
+          <OnboardingScreen onDone={()=>{ saveLS(k('onboarding_done'),true); setShowOnboarding(false); }}/>
+        </div>
+      </Suspense>
+    );
+  }
 
   return(
     <div style={S.root} className={`appRoot ${theme === "light" ? "light-mode" : ""}`} data-theme={theme}>
@@ -916,7 +960,7 @@ function MainApp({ fbUser, onLogout }){
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
         {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets} todayWidget={todayWidget}/>}
-        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries)=>{saveEntries([...newEntries,...entries]);toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}`);}}/>}
+        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries)=>{saveEntries([...newEntries,...entries]);toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}`);}}/>}
         {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
       </Suspense>
 

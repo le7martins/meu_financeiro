@@ -7,7 +7,7 @@ import S from '../styles.js';
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
 function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
 
-export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[]}){
+export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onExportPDF,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[]}){
   const [confirmReset,setConfirmReset]=useState(false);
   const [confirmLogout,setConfirmLogout]=useState(false);
   const [showImport,setShowImport]=useState(false);
@@ -160,7 +160,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ProfileSection>
 
         <ProfileSection title="Exportar dados">
-          <ProfileItem icon="📅" label="Exportar mês atual" sub={`Lançamentos de ${mLabel(selMonth)}`} onClick={onExportMonth}/>
+          <ProfileItem icon="📄" label="Relatório PDF do mês" sub={`Resumo visual de ${mLabel(selMonth)}`} onClick={onExportPDF}/>
+          <ProfileItem icon="📅" label="Exportar mês atual" sub={`CSV com lançamentos de ${mLabel(selMonth)}`} onClick={onExportMonth}/>
           <ProfileItem icon="📦" label="Exportar tudo" sub="Todos os lançamentos em CSV" onClick={onExportAll} last/>
         </ProfileSection>
 
