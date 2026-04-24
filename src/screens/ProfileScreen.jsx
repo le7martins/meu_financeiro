@@ -58,7 +58,6 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
     const {date:dCol,desc:descCol,amount:amtCol,category:catCol}=importMap;
     if(!dCol||!descCol||!amtCol)return;
     const now=Date.now();
-    // mapeia texto de categoria do CSV para id da categoria mais próxima
     const guessCategory=(rawCat)=>{
       if(!rawCat||!catCol) return 'outro';
       const norm=(s)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -66,15 +65,24 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       const found=categories.find(c=>norm(c.name).includes(r)||r.includes(norm(c.name)));
       return found?found.id:'outro';
     };
-    const newEntries=importRows.map((row,i)=>{
+    const isDuplicate=(ne)=>entries.some(e=>{
+      if(Math.abs(parseFloat(e.amount)-ne.amount)>0.01) return false;
+      if(e.type!==ne.type) return false;
+      if(Math.abs(new Date(e.date)-new Date(ne.date))/86400000>3) return false;
+      return e.description.toLowerCase().trim().slice(0,15)===ne.description.toLowerCase().trim().slice(0,15);
+    });
+    const candidates=importRows.map((row,i)=>{
       const parsedDate=parseBRDate(row[dCol]);
       const parsedAmt=parseBRNum(row[amtCol]);
       if(!parsedDate||parsedAmt===null||parsedAmt===0)return null;
       const type=importMap.type||(parsedAmt<0?'despesa':'receita');
       return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type,status:'pago',category:guessCategory(row[catCol]),recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
     }).filter(Boolean);
-    if(newEntries.length===0)return;
-    onImportEntries(newEntries);
+    if(candidates.length===0)return;
+    const unique=candidates.filter(ne=>!isDuplicate(ne));
+    const skipped=candidates.length-unique.length;
+    if(unique.length===0){alert(`Todos os ${skipped} lançamento${skipped!==1?'s':''} já existem — nenhum importado.`);return;}
+    onImportEntries(unique,skipped);
     setShowImport(false);setImportRows([]);setImportHeaders([]);
   };
 

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import { useMonthStats } from './hooks/useMonthStats.js';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { loadUserData, saveData, subscribeData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
@@ -284,39 +285,12 @@ function MainApp({ fbUser, onLogout }){
     }
   },[dbReady]);
 
-  const monthEntries=useMemo(()=>getMonthEntries(entries,dividas,selMonth,cards,cardPurchases,cardFaturas),[entries,dividas,selMonth,cards,cardPurchases,cardFaturas]);
-
-  // accumSaldo: cache por mês para evitar re-cálculo desnecessário
-  // Retorna { value, capped } — capped=true quando cortado em 36 meses
-  const accumSaldoCache = useRef({});
-  const accumSaldoResult=useMemo(()=>{
-    const allDates=[...entries.map(e=>e.date.substring(0,7)),...dividas.map(d=>d.startMonth)];
-    if(!allDates.length) return null;
-    const earliest=allDates.reduce((mn,m)=>m<mn?m:mn,selMonth);
-    if(earliest>=selMonth) return null;
-    const cap=addM(selMonth,-36);
-    const capped=earliest<cap;
-    const start=capped?cap:earliest;
-    // Se já calculamos para este selMonth com os mesmos dados, retorna cache
-    const cacheKey=`${selMonth}_${start}`;
-    if(accumSaldoCache.current[cacheKey]!==undefined) return {value:accumSaldoCache.current[cacheKey],capped};
-    let total=0,cur=start;
-    while(cur<selMonth){
-      const me=getMonthEntries(entries,dividas,cur,cards,cardPurchases,cardFaturas);
-      total+=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0)-me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-      cur=addM(cur,1);
-    }
-    accumSaldoCache.current={[cacheKey]:total}; // mantém só 1 entrada (mês ativo)
-    return {value:total,capped};
-  },[entries,dividas,cards,cardPurchases,cardFaturas,selMonth]);
-  const accumSaldo = accumSaldoResult?.value ?? null;
-  const accumSaldoCapped = accumSaldoResult?.capped ?? false;
-
-  const totRec =monthEntries.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-  const totDesp=monthEntries.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-  const saldo  =totRec-totDesp;
-  const totPend=monthEntries.filter(e=>e.statusForMonth==="a_pagar"&&e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-  const totPago=monthEntries.filter(e=>e.statusForMonth==="pago"&&e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+  const {
+    monthEntries, totRec, totDesp, totPend, totPago, saldo,
+    accumSaldo, accumSaldoCapped,
+    healthScore, budgetOverCount,
+    overdueDue, upcomingDue,
+  } = useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, NOW });
 
   // Notificação de meta de economia atingida (após totRec/saldo definidos)
   const prevGoalAlertRef = useRef(false);
@@ -383,32 +357,6 @@ function MainApp({ fbUser, onLogout }){
     return { available, perDay, daysLeft };
   },[selMonth, NOW, totRec, totDesp, totPend]);
 
-  // Health score
-  const healthScore=useMemo(()=>{
-    if(totRec===0) return null;
-    const fixedDesp=entries.filter(e=>e.recurrence!=="none"&&e.type==="despesa").reduce((s,e)=>s+(e.recurrence==="installment"?e.amount/e.installments:e.amount),0);
-    const dividaDesp=dividas.reduce((s,d)=>s+d.totalAmount/d.installments,0);
-    const fixedTotal=fixedDesp+dividaDesp;
-    const fixedPct=totRec>0?Math.min(100,(fixedTotal/totRec)*100):0;
-    const savingPct=totRec>0?Math.max(0,((totRec-totDesp)/totRec)*100):0;
-    let score=100;
-    if(fixedPct>70) score-=30; else if(fixedPct>50) score-=15; else if(fixedPct>30) score-=5;
-    if(savingPct<10) score-=20; else if(savingPct<20) score-=10;
-    if(totPend>totRec*0.3) score-=10;
-    score=Math.max(0,Math.min(100,score));
-    const level=score>=80?"Saudável":score>=60?"Atenção":"Crítico";
-    const color=score>=80?"#4ade80":score>=60?"#facc15":"#f87171";
-    return {score,level,color,fixedPct,savingPct};
-  },[entries,dividas,totRec,totDesp,totPend]);
-
-  // Budget overrun count — used in nav badge
-  const budgetOverCount=useMemo(()=>{
-    if(!Object.keys(budgets).length) return 0;
-    const catTotals={};
-    monthEntries.filter(e=>e.type==="despesa").forEach(e=>{catTotals[e.category]=(catTotals[e.category]||0)+eVal(e);});
-    return Object.entries(budgets).filter(([id,limit])=>limit>0&&(catTotals[id]||0)>limit).length;
-  },[budgets,monthEntries]);
-
   const normStr=(s)=>s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const filtered=useMemo(()=>{
     let list=filter==="all"?monthEntries:filter==="despesa"?monthEntries.filter(e=>e.type==="despesa"):filter==="receita"?monthEntries.filter(e=>e.type==="receita"):filter==="a_pagar"?monthEntries.filter(e=>e.statusForMonth==="a_pagar"):monthEntries.filter(e=>e.statusForMonth==="pago");
@@ -421,29 +369,6 @@ function MainApp({ fbUser, onLogout }){
     else list=[...list].sort((a,b)=>a.date.localeCompare(b.date));
     return list;
   },[monthEntries,filter,filterCat,search,sortBy]);
-
-  const {overdueDue,upcomingDue}=useMemo(()=>{
-    const overdue=[],upcoming=[];
-    const seen=new Set();
-    for(let i=0;i<=2;i++){
-      const m=addM(NOW,i);
-      const me=getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
-      me.filter(e=>e.statusForMonth==="a_pagar").forEach(e=>{
-        const due=(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
-        const days=daysUntil(due);
-        if(days===null) return;
-        const key=`${e.id||e.dividaId||e.faturaKey}_${m}`;
-        if(seen.has(key)) return;
-        seen.add(key);
-        if(days<0)       overdue.push({...e,_mk:m,_due:due,_days:days});
-        else if(days<=30)upcoming.push({...e,_mk:m,_due:due,_days:days});
-      });
-    }
-    return {
-      overdueDue:  overdue.sort((a,b)=>a._days-b._days),
-      upcomingDue: upcoming.sort((a,b)=>a._days-b._days).slice(0,10),
-    };
-  },[entries,dividas,cards,cardPurchases,cardFaturas,NOW]);
 
   const grouped=useMemo(()=>{
     if(!groupBy) return null;
@@ -465,7 +390,10 @@ function MainApp({ fbUser, onLogout }){
 
   // ─── Keyboard shortcuts ───────────────────────────────────────
   useEffect(()=>{
+    const focusSearch=()=>{ const el=document.querySelector('input[placeholder*="Buscar"]'); if(el){el.focus();el.select();} };
     const onKey=(e)=>{
+      // Ctrl+F / Cmd+F → foca busca (intercepta o padrão do browser)
+      if((e.ctrlKey||e.metaKey)&&e.key==='f'&&activeTab==='lancamentos'){e.preventDefault();focusSearch();return;}
       if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
       if(e.metaKey||e.ctrlKey||e.altKey) return;
       if(showForm||editTarget||delTarget||fatPayTarget) return;
@@ -473,7 +401,7 @@ function MainApp({ fbUser, onLogout }){
         if(e.key==='ArrowLeft'){setSelMonth(p=>addM(p,-1));}
         else if(e.key==='ArrowRight'){setSelMonth(p=>addM(p,1));}
         else if(e.key==='n'||e.key==='N'){e.preventDefault();setFormType('despesa');setForm(BLANK('despesa'));setShowForm(true);}
-        else if(e.key==='/'){e.preventDefault();document.querySelector('input[placeholder*="Buscar"]')?.focus();}
+        else if(e.key==='/'){e.preventDefault();focusSearch();}
       }
     };
     window.addEventListener('keydown',onKey);
@@ -671,8 +599,32 @@ function MainApp({ fbUser, onLogout }){
     const borderColor=entry.type==="receita"?"#4ade8055":entry.isDivida?"#f8717155":entry.isFatura?`${entry.cardColor}55`:"var(--border)";
     const amtColor=entry.type==="receita"?"#4ade80":entry.isDivida?"#f87171":entry.isFatura?entry.cardColor:"var(--text1)";
     const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
+    const canSwipe=!entry.isOpenFatura;
+    const onTouchStart=(ev)=>{ ev.currentTarget._tx=ev.touches[0].clientX; ev.currentTarget._ty=ev.touches[0].clientY; };
+    const onTouchMove=(ev)=>{
+      if(!canSwipe) return;
+      const dx=ev.touches[0].clientX-(ev.currentTarget._tx||0);
+      const dy=ev.touches[0].clientY-(ev.currentTarget._ty||0);
+      if(Math.abs(dx)<Math.abs(dy)) return;
+      ev.currentTarget.style.transform=`translateX(${dx*0.35}px)`;
+      ev.currentTarget.style.transition='none';
+      const pct=Math.min(Math.abs(dx)/80,1);
+      ev.currentTarget.style.opacity=String(1-pct*0.25);
+    };
+    const onTouchEnd=(ev)=>{
+      ev.currentTarget.style.transform='';
+      ev.currentTarget.style.transition='transform .2s,opacity .2s';
+      ev.currentTarget.style.opacity='';
+      setTimeout(()=>{ if(ev.currentTarget) ev.currentTarget.style.transition=''; },220);
+      if(!canSwipe) return;
+      const dx=ev.changedTouches[0].clientX-(ev.currentTarget._tx||0);
+      const dy=ev.changedTouches[0].clientY-(ev.currentTarget._ty||0);
+      if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.5) handleToggle(entry);
+    };
     return(
-      <div key={`${entry.id}-${selMonth}`} className="eCard" style={{...S.card,borderLeft:`3px solid ${borderColor}`,...openStyle}}>
+      <div key={`${entry.id}-${selMonth}`} className="eCard"
+        style={{...S.card,borderLeft:`3px solid ${borderColor}`,...openStyle}}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div style={S.cardL}>
           <div style={{width:8,height:8,borderRadius:"50%",background:entry.isFatura?entry.cardColor:catColor(entry.category),flexShrink:0,marginTop:3}}/>
           <div style={{minWidth:0,flex:1}}>
@@ -1069,6 +1021,14 @@ function MainApp({ fbUser, onLogout }){
           )}
         </div>
 
+        {/* Banner — mês passado */}
+        {selMonth<NOW&&(
+          <div style={{margin:"4px 0 8px",padding:"8px 12px",background:"rgba(250,204,21,.07)",border:"1px solid rgba(250,204,21,.18)",borderRadius:10,display:"flex",alignItems:"center",gap:8,fontSize:11,color:"#facc15"}}>
+            <span>📅</span>
+            <span>Visualizando mês passado — itens "a pagar" estão vencidos</span>
+          </div>
+        )}
+
         {/* List */}
         <div style={S.list}>
           {filtered.length===0&&(
@@ -1124,7 +1084,7 @@ function MainApp({ fbUser, onLogout }){
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
         {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets} todayWidget={todayWidget}/>}
-        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries)=>{saveEntries([...newEntries,...entries]);toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}`);}}/>}
+        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries,skipped=0)=>{saveEntries([...newEntries,...entries]);const sk=skipped>0?` (${skipped} duplicado${skipped!==1?"s":""} ignorado${skipped!==1?"s":""})`:"";toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}${sk}`);}}/>}
         {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
       </Suspense>
 
