@@ -634,6 +634,9 @@ function MainApp({ fbUser, onLogout }){
               {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"#f87171":"#8ab4f8",borderColor:entry.isDivida?"#f8717144":"#1a3a6e",background:entry.isDivida?"rgba(248,113,113,.12)":"#0d1a2e"}}>{entry.recurLabel}</span>}
               <span style={{fontSize:10,color:"var(--text4)"}}>{fmtDate(entry.isRecurring&&entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura?`${selMonth}-${entry.date.split("-")[2]}`:entry.date)}</span>
             </div>
+            <div style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px",marginTop:4}}>
+              {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
+            </div>
             {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,background:badge.bg,color:badge.color}}>{badge.text}</div>}
             {entry.notes&&<div style={{fontSize:10,color:"var(--text3)",marginTop:3,fontStyle:"italic"}}>💬 {entry.notes}</div>}
             {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{(entry.tags||[]).map(t=><span key={t} style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(138,180,248,.12)",border:"1px solid #8ab4f822",color:"#8ab4f8",fontWeight:600}}>#{t}</span>)}</div>}
@@ -642,9 +645,6 @@ function MainApp({ fbUser, onLogout }){
           </div>
         </div>
         <div style={S.cardR}>
-          <div style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
-            {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
-          </div>
           <div style={{display:"flex",gap:4}}>
             {!entry.isDivida&&!entry.isFatura&&(
               <button className="iconBtn" onClick={()=>setEditTarget({entry,monthKey:selMonth})}
