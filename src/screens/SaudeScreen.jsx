@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import HealthBar from '../components/HealthBar.jsx';
 import { getMonthEntries } from '../logic.js';
-import { eVal, mLabel, mShort, addM, fmt, fmtShort } from '../utils.js';
+import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort } from '../utils.js';
 
 // ─── Masked currency input ───────────────────────────────────
 function CurrencyInput({ value, onChange, placeholder = "0,00", style = {} }) {
@@ -48,6 +48,18 @@ function Sparkline({ data, color = "#4ade80", width = 60, height = 22 }) {
 
 export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets, todayWidget }) {
   const [showAllBudget, setShowAllBudget] = useState(false);
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const blankDraft = () => ({name:'',targetAmount:0,targetMonth:addM(nowMonth,6),currentAmount:0});
+  const [goalDraft, setGoalDraft] = useState(blankDraft);
+
+  const goalsList = goals.savingsGoals || [];
+  const addGoal = () => {
+    if(!goalDraft.name.trim()||goalDraft.targetAmount<=0) return;
+    onSaveGoals({...goals,savingsGoals:[...goalsList,{id:Date.now().toString(),...goalDraft}]});
+    setGoalDraft(blankDraft());setShowGoalForm(false);
+  };
+  const removeGoal = (id) => onSaveGoals({...goals,savingsGoals:goalsList.filter(g=>g.id!==id)});
+  const updateGoalAmount = (id,v) => onSaveGoals({...goals,savingsGoals:goalsList.map(g=>g.id===id?{...g,currentAmount:v}:g)});
 
   const me = getMonthEntries(entries, dividas, nowMonth, cards, cardPurchases, cardFaturas);
   const rec = me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
@@ -287,6 +299,118 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
               />
             </div>
           </div>
+        </div>
+
+        {/* Savings goals with target date */}
+        <div style={{background:"rgba(167,139,250,.06)",border:"1px solid #a78bfa33",borderRadius:14,padding:"14px"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:goalsList.length>0||showGoalForm?12:0}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>🏁 Objetivos de poupança</div>
+            {!showGoalForm&&<button onClick={()=>{setGoalDraft(blankDraft());setShowGoalForm(true);}}
+              style={{fontSize:11,fontWeight:700,color:"#a78bfa",background:"rgba(167,139,250,.12)",border:"1px solid #a78bfa33",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+              + Novo
+            </button>}
+          </div>
+
+          {goalsList.length===0&&!showGoalForm&&(
+            <div style={{fontSize:11,color:"var(--text3)",textAlign:"center",padding:"8px 0",lineHeight:1.6}}>
+              Viagem, carro, curso... defina um objetivo e acompanhe mês a mês.
+            </div>
+          )}
+
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {goalsList.map(goal=>{
+              const monthsLeft=mDiff(nowMonth,goal.targetMonth);
+              const pctVal=goal.targetAmount>0?Math.min(100,(goal.currentAmount/goal.targetAmount)*100):0;
+              const remaining=Math.max(0,goal.targetAmount-goal.currentAmount);
+              const needed=monthsLeft>0?remaining/monthsLeft:null;
+              const isComplete=goal.currentAmount>=goal.targetAmount;
+              const isOverdue=monthsLeft<0&&!isComplete;
+              const barColor=isComplete?"#4ade80":isOverdue?"#f87171":"#a78bfa";
+              return(
+                <div key={goal.id} style={{background:"var(--bg)",borderRadius:10,padding:"12px",border:`1px solid ${isComplete?"#4ade8033":isOverdue?"#f8717133":"#a78bfa22"}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div>
+                      <div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{goal.name}</div>
+                      <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
+                        {isComplete?"🎉 Concluído!":isOverdue?`⚠️ Prazo vencido (${mLabel(goal.targetMonth)})`:`Até ${mLabel(goal.targetMonth)} · ${monthsLeft} ${monthsLeft===1?"mês":"meses"}`}
+                      </div>
+                    </div>
+                    <button onClick={()=>removeGoal(goal.id)}
+                      style={{background:"transparent",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:14,lineHeight:1,padding:"2px 4px",flexShrink:0}}>✕</button>
+                  </div>
+                  <div style={{height:6,background:"var(--border)",borderRadius:3,overflow:"hidden",marginBottom:6}}>
+                    <div style={{height:"100%",width:`${pctVal}%`,background:barColor,borderRadius:3,transition:"width .6s"}}/>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:isComplete?0:8}}>
+                    <div style={{fontSize:11,color:"var(--text2)"}}>
+                      <span style={{fontWeight:700,color:barColor}}>{fmt(goal.currentAmount)}</span>
+                      <span style={{color:"var(--text3)"}}> de {fmt(goal.targetAmount)}</span>
+                      <span style={{color:"var(--text4)",fontSize:10}}> · {pctVal.toFixed(0)}%</span>
+                    </div>
+                    {!isComplete&&needed!==null&&(
+                      <span style={{fontSize:10,fontWeight:700,color:"#facc15"}}>{fmt(needed)}/mês</span>
+                    )}
+                    {isComplete&&<span style={{fontSize:10,fontWeight:700,color:"#4ade80"}}>Meta atingida!</span>}
+                  </div>
+                  {!isComplete&&(
+                    <CurrencyInput
+                      key={goal.id+goal.currentAmount}
+                      value={goal.currentAmount}
+                      onChange={v=>updateGoalAmount(goal.id,v)}
+                      placeholder="Guardado hoje (R$)"
+                      style={{...inpStyle,fontSize:12,padding:"6px 10px",border:"1px solid #a78bfa22"}}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {showGoalForm&&(
+            <div style={{marginTop:goalsList.length>0?12:0,background:"var(--bg)",borderRadius:10,padding:"12px",border:"1px solid #a78bfa33"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#a78bfa",marginBottom:10}}>Novo objetivo</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <input style={{...inpStyle,fontSize:13}} placeholder="Nome (ex: Viagem, Carro, Curso...)"
+                  value={goalDraft.name} onChange={e=>setGoalDraft(p=>({...p,name:e.target.value}))}/>
+                <div style={{display:"flex",gap:8}}>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:10,color:"var(--text3)",marginBottom:4}}>Quero juntar (R$)</div>
+                    <CurrencyInput value={goalDraft.targetAmount} onChange={v=>setGoalDraft(p=>({...p,targetAmount:v}))}
+                      placeholder="0,00" style={{...inpStyle,fontSize:12,padding:"7px 10px"}}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:10,color:"var(--text3)",marginBottom:4}}>Já tenho (R$)</div>
+                    <CurrencyInput value={goalDraft.currentAmount} onChange={v=>setGoalDraft(p=>({...p,currentAmount:v}))}
+                      placeholder="0,00" style={{...inpStyle,fontSize:12,padding:"7px 10px"}}/>
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)",marginBottom:4}}>Prazo</div>
+                  <input type="month" style={{...inpStyle,fontSize:12,padding:"7px 10px"}}
+                    value={goalDraft.targetMonth} onChange={e=>setGoalDraft(p=>({...p,targetMonth:e.target.value}))}/>
+                </div>
+                {goalDraft.targetAmount>0&&goalDraft.targetMonth&&(()=>{
+                  const ml=mDiff(nowMonth,goalDraft.targetMonth);
+                  const need=ml>0?(goalDraft.targetAmount-goalDraft.currentAmount)/ml:null;
+                  return need!==null&&need>0?(
+                    <div style={{fontSize:11,color:"#a78bfa",background:"rgba(167,139,250,.1)",borderRadius:8,padding:"7px 10px"}}>
+                      Guardar <strong>{fmt(need)}/mês</strong> por {ml} {ml===1?"mês":"meses"} para atingir a meta
+                    </div>
+                  ):null;
+                })()}
+                <div style={{display:"flex",gap:8,marginTop:2}}>
+                  <button onClick={()=>setShowGoalForm(false)}
+                    style={{flex:1,padding:"9px",background:"transparent",border:"1px solid var(--border)",borderRadius:10,color:"var(--text3)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                    Cancelar
+                  </button>
+                  <button onClick={addGoal} disabled={!goalDraft.name.trim()||goalDraft.targetAmount<=0}
+                    style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#4a2a8e,#2d1a6e)",border:"1px solid #a78bfa33",color:"#a78bfa",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:(!goalDraft.name.trim()||goalDraft.targetAmount<=0)?0.5:1}}>
+                    Salvar objetivo
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Budget per category — enhanced */}
