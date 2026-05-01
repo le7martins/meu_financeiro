@@ -73,8 +73,6 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
     return { month: mShort(m), saldo: r2-d2, rec:r2, dep:d2 };
   });
 
-  const trend = trend6.slice(-3);
-
   // Mesma lógica do healthScore em App.jsx (limiares unificados: 80/60)
   let score = 100;
   if (fixosPct > 70) score -= 30;
@@ -93,19 +91,8 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
     catMap[e.category]=(catMap[e.category]||0)+eVal(e);
   });
 
-  // Previous month for trend comparison
-  const mePrev = getMonthEntries(entries,dividas,addM(nowMonth,-1),cards,cardPurchases,cardFaturas);
-  const catMapPrev = {};
-  mePrev.filter(e=>e.type==="despesa").forEach(e=>{
-    catMapPrev[e.category]=(catMapPrev[e.category]||0)+eVal(e);
-  });
-
   const catRank = Object.entries(catMap)
-    .map(([id,v])=>{
-      const prev=catMapPrev[id]||0;
-      const diff=prev>0?((v-prev)/prev)*100:null;
-      return {id,name:(categories.find(c=>c.id===id)||{name:id}).name,color:(categories.find(c=>c.id===id)||{color:"#9E9E9E"}).color,value:v,diff};
-    })
+    .map(([id,v])=>({id,name:(categories.find(c=>c.id===id)||{name:id}).name,color:(categories.find(c=>c.id===id)||{color:"#9E9E9E"}).color,value:v}))
     .sort((a,b)=>b.value-a.value);
 
   // Categories with budget set but no spending this month — show in budget section
@@ -231,59 +218,6 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           {metaRenda>0&&<HealthBar label="Meta de renda" value={pct(rec,metaRenda)} max={100} color="#8ab4f8" suffix="%" detail={`${fmt(rec)} de ${fmt(metaRenda)}`}/>}
           {metaEcon>0&&<HealthBar label="Meta de economia" value={pct(economizado,metaEcon)} max={100} color="#a78bfa" suffix="%" detail={`${fmt(economizado)} de ${fmt(metaEcon)}`}/>}
         </div>
-
-        {/* 3-month trend */}
-        <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
-          <SectionTitle>Tendência — 3 meses</SectionTitle>
-          <div style={{display:"flex",gap:6}}>
-            {trend.map((t,i)=>(
-              <div key={i} style={{flex:1,textAlign:"center",padding:"8px 6px",background:i===2?"var(--bg)":"transparent",borderRadius:10,border:i===2?"1px solid var(--border2)":"none"}}>
-                <div style={{fontSize:10,color:i===2?"var(--text2)":"var(--text3)",fontWeight:i===2?700:400,marginBottom:6}}>{t.month}</div>
-                <div style={{fontSize:11,color:"#4ade80"}}>↑ {fmtShort(t.rec)}</div>
-                <div style={{fontSize:11,color:"#fb923c"}}>↓ {fmtShort(t.dep)}</div>
-                <div style={{fontSize:12,fontWeight:700,color:t.saldo>=0?"#4ade80":"#f87171",marginTop:2,borderTop:"1px solid var(--border2)",paddingTop:4}}>
-                  {t.saldo>=0?"+":" "}{fmtShort(t.saldo)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Top categories */}
-        {catRank.length>0&&(
-          <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
-            <SectionTitle>Top Gastos por Categoria</SectionTitle>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {catRank.map((c,i)=>{
-                const isUp=c.diff!==null&&c.diff>0;
-                const isDown=c.diff!==null&&c.diff<0;
-                const trendColor=isUp?"#f87171":isDown?"#4ade80":"var(--text4)";
-                return(
-                  <div key={i}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{width:7,height:7,borderRadius:"50%",background:c.color}}/>
-                        <span style={{fontSize:12,color:"var(--text2)"}}>{c.name}</span>
-                        {c.diff!==null&&(
-                          <span style={{fontSize:9,fontWeight:700,color:trendColor,display:"flex",alignItems:"center",gap:1}}>
-                            {isUp?"↑":isDown?"↓":"→"}{Math.abs(c.diff).toFixed(0)}%
-                          </span>
-                        )}
-                      </div>
-                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                        <span style={{fontSize:10,color:"var(--text3)"}}>{dep>0?((c.value/dep)*100).toFixed(0):0}%</span>
-                        <span style={{fontSize:12,fontWeight:700,color:c.color}}>{fmt(c.value)}</span>
-                      </div>
-                    </div>
-                    <div style={{height:4,background:"var(--bg)",borderRadius:2,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:`${dep>0?(c.value/dep)*100:0}%`,background:c.color,borderRadius:2,transition:"width .5s"}}/>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Financial goals */}
         <div style={{background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}}>
