@@ -80,6 +80,8 @@ function MainApp({ fbUser, onLogout }){
   const [categories,   setCategories]   = useState(()=>loadLS(k("cats"),DEFAULT_CATS));
   const [selMonth,     setSelMonth]     = useState(getNow());
   const [activeTab,    setActiveTab]    = useState("lancamentos");
+  const [showGlobalSearch, setShowGlobalSearch] = useState(false);
+  const [globalSearch, setGlobalSearch] = useState('');
   const [showForm,     setShowForm]     = useState(false);
   const [formType,     setFormType]     = useState("despesa");
   const [form,         setForm]         = useState(BLANK());
@@ -354,6 +356,12 @@ function MainApp({ fbUser, onLogout }){
   },[accounts,entries]);
 
   // Mini-sparkline: saldo dos últimos 6 meses para o hero card
+  const catTotals = useMemo(()=>{
+    const map={};
+    monthEntries.filter(e=>e.type==="despesa").forEach(e=>{map[e.category]=(map[e.category]||0)+eVal(e);});
+    return map;
+  },[monthEntries]);
+
   const heroSparkData = useMemo(()=>Array.from({length:6},(_,i)=>{
     const m=addM(selMonth,-(5-i));
     const me=getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
@@ -411,6 +419,8 @@ function MainApp({ fbUser, onLogout }){
     const onKey=(e)=>{
       // Ctrl+F / Cmd+F → foca busca (intercepta o padrão do browser)
       if((e.ctrlKey||e.metaKey)&&e.key==='f'&&activeTab==='lancamentos'){e.preventDefault();focusSearch();return;}
+      if((e.ctrlKey||e.metaKey)&&e.key==='g'){e.preventDefault();setShowGlobalSearch(p=>!p);return;}
+      if(e.key==='Escape'){setShowGlobalSearch(false);}
       if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
       if(e.metaKey||e.ctrlKey||e.altKey) return;
       if(showForm||editTarget||delTarget||fatPayTarget) return;
@@ -686,6 +696,7 @@ function MainApp({ fbUser, onLogout }){
                   ⚙ ajustado
                 </span>
               )}
+              {(()=>{if(entry.type!=="despesa"||!budgets[entry.category])return null;const lim=budgets[entry.category];const spent=catTotals[entry.category]||0;if(spent>lim)return<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(248,113,113,.12)",border:"1px solid rgba(248,113,113,.3)",color:"#f87171",cursor:"default"}}>⚠ estourado</span>;if(spent/lim>=0.8)return<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(251,146,60,.12)",border:"1px solid rgba(251,146,60,.3)",color:"#fb923c",cursor:"default"}}>⚡ {((spent/lim)*100).toFixed(0)}%</span>;return null;})()}
             </div>
             {entry.recurrence==="installment"&&entry.installments>1&&(()=>{
               const cur=Math.min(entry.installments,Math.max(1,mDiff(entry.date.substring(0,7),selMonth)+1));
@@ -832,6 +843,11 @@ function MainApp({ fbUser, onLogout }){
               <span style={{fontSize:10,color:healthScore.color,fontWeight:700}}>{healthScore.level}</span>
             </button>
           )}
+          {/* Global search button */}
+          <button onClick={()=>setShowGlobalSearch(p=>!p)} title="Busca global (Ctrl+G)"
+            style={{display:"flex",alignItems:"center",justifyContent:"center",width:34,height:34,background:showGlobalSearch?"#0d1a2e":"var(--card-bg)",border:`1px solid ${showGlobalSearch?"#8ab4f8":"var(--border)"}`,borderRadius:9,cursor:"pointer",color:showGlobalSearch?"#8ab4f8":"var(--text2)"}}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
           {/* Theme toggle */}
           <button onClick={()=>saveTheme(theme==="dark"?"light":"dark")}
             title={theme==="dark"?"Mudar para tema claro":"Mudar para tema escuro"}
@@ -844,6 +860,56 @@ function MainApp({ fbUser, onLogout }){
           </button>
         </div>
       </header>
+
+      {/* Global Search Overlay */}
+      {showGlobalSearch&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:200,display:"flex",flexDirection:"column",padding:"60px 14px 14px"}}
+          onClick={e=>e.target===e.currentTarget&&setShowGlobalSearch(false)}>
+          <div style={{background:"var(--card-bg)",borderRadius:16,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,.5)",maxHeight:"80vh",display:"flex",flexDirection:"column"}}>
+            <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:10}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input autoFocus value={globalSearch} onChange={e=>setGlobalSearch(e.target.value)}
+                placeholder="Buscar em todos os lançamentos..."
+                style={{flex:1,background:"transparent",border:"none",outline:"none",color:"var(--text1)",fontSize:14,fontFamily:"inherit"}}/>
+              {globalSearch&&<button onClick={()=>setGlobalSearch('')} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:16,lineHeight:1,padding:"0 4px"}}>✕</button>}
+              <button onClick={()=>setShowGlobalSearch(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1,padding:"0 4px"}}>✕</button>
+            </div>
+            <div style={{overflowY:"auto",flex:1}}>
+              {(()=>{
+                const q=globalSearch.trim().toLowerCase();
+                if(!q) return <div style={{padding:"24px",textAlign:"center",color:"var(--text4)",fontSize:12}}>Digite para buscar em todos os meses e abas</div>;
+                const allEntries=entries.filter(e=>e.description.toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q));
+                const allDividas=dividas.filter(d=>d.name.toLowerCase().includes(q));
+                const results=[
+                  ...allEntries.map(e=>({...e,_type:'entry'})),
+                  ...allDividas.map(d=>({...d,_type:'divida'}))
+                ].slice(0,30);
+                if(!results.length) return <div style={{padding:"24px",textAlign:"center",color:"var(--text4)",fontSize:12}}>Nenhum resultado para "{globalSearch}"</div>;
+                return results.map((r,i)=>{
+                  const mk=r.date?r.date.substring(0,7):r.startMonth;
+                  const cat=categories.find(c=>c.id===(r.category||r._type));
+                  const color=cat?.color||(r._type==='divida'?"#f87171":"#8ab4f8");
+                  return(
+                    <div key={i} onClick={()=>{if(mk){setSelMonth(mk);setActiveTab('lancamentos');}setShowGlobalSearch(false);}}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:"1px solid var(--border2)",cursor:"pointer",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="rgba(138,180,248,.05)"}
+                      onMouseLeave={e=>e.currentTarget.style.background=""}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:color,flexShrink:0}}/>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:12,fontWeight:600,color:"var(--text1)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.description||r.name}</div>
+                        <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{mLabel(mk)}{cat?` · ${cat.name}`:''}</div>
+                      </div>
+                      <div style={{fontSize:12,fontWeight:700,color:r.type==="receita"?"#4ade80":r._type==="divida"?"#f87171":"var(--text2)",flexShrink:0}}>
+                        {r.type==="receita"?"+":"-"}{fmt(r.amount||r.totalAmount||0)}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeTab==="lancamentos"&&(<>
         {/* Month navigator */}
