@@ -92,8 +92,20 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   me.filter(e=>e.type==="despesa").forEach(e=>{
     catMap[e.category]=(catMap[e.category]||0)+eVal(e);
   });
+
+  // Previous month for trend comparison
+  const mePrev = getMonthEntries(entries,dividas,addM(nowMonth,-1),cards,cardPurchases,cardFaturas);
+  const catMapPrev = {};
+  mePrev.filter(e=>e.type==="despesa").forEach(e=>{
+    catMapPrev[e.category]=(catMapPrev[e.category]||0)+eVal(e);
+  });
+
   const catRank = Object.entries(catMap)
-    .map(([id,v])=>({id,name:(categories.find(c=>c.id===id)||{name:id}).name,color:(categories.find(c=>c.id===id)||{color:"#9E9E9E"}).color,value:v}))
+    .map(([id,v])=>{
+      const prev=catMapPrev[id]||0;
+      const diff=prev>0?((v-prev)/prev)*100:null;
+      return {id,name:(categories.find(c=>c.id===id)||{name:id}).name,color:(categories.find(c=>c.id===id)||{color:"#9E9E9E"}).color,value:v,diff};
+    })
     .sort((a,b)=>b.value-a.value);
 
   // Categories with budget set but no spending this month — show in budget section
@@ -242,23 +254,33 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:"14px"}}>
             <SectionTitle>Top Gastos por Categoria</SectionTitle>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {catRank.map((c,i)=>(
-                <div key={i}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{width:7,height:7,borderRadius:"50%",background:c.color}}/>
-                      <span style={{fontSize:12,color:"var(--text2)"}}>{c.name}</span>
+              {catRank.map((c,i)=>{
+                const isUp=c.diff!==null&&c.diff>0;
+                const isDown=c.diff!==null&&c.diff<0;
+                const trendColor=isUp?"#f87171":isDown?"#4ade80":"var(--text4)";
+                return(
+                  <div key={i}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{width:7,height:7,borderRadius:"50%",background:c.color}}/>
+                        <span style={{fontSize:12,color:"var(--text2)"}}>{c.name}</span>
+                        {c.diff!==null&&(
+                          <span style={{fontSize:9,fontWeight:700,color:trendColor,display:"flex",alignItems:"center",gap:1}}>
+                            {isUp?"↑":isDown?"↓":"→"}{Math.abs(c.diff).toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                        <span style={{fontSize:10,color:"var(--text3)"}}>{dep>0?((c.value/dep)*100).toFixed(0):0}%</span>
+                        <span style={{fontSize:12,fontWeight:700,color:c.color}}>{fmt(c.value)}</span>
+                      </div>
                     </div>
-                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                      <span style={{fontSize:10,color:"var(--text3)"}}>{dep>0?((c.value/dep)*100).toFixed(0):0}%</span>
-                      <span style={{fontSize:12,fontWeight:700,color:c.color}}>{fmt(c.value)}</span>
+                    <div style={{height:4,background:"var(--bg)",borderRadius:2,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${dep>0?(c.value/dep)*100:0}%`,background:c.color,borderRadius:2,transition:"width .5s"}}/>
                     </div>
                   </div>
-                  <div style={{height:4,background:"var(--bg)",borderRadius:2,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${dep>0?(c.value/dep)*100:0}%`,background:c.color,borderRadius:2,transition:"width .5s"}}/>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

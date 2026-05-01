@@ -38,12 +38,13 @@ import HealthBar from './components/HealthBar.jsx';
 // ─── Toast Hook ───────────────────────────────────────────────
 function useToast() {
   const [toasts,setToasts]=useState([]);
-  const toast=useCallback((msg,type="success")=>{
+  const dismiss=useCallback((id)=>setToasts(p=>p.filter(t=>t.id!==id)),[]);
+  const toast=useCallback((msg,type="success",actionLabel=null,onAction=null)=>{
     const id=Date.now();
-    setToasts(p=>[...p,{id,msg,type}]);
-    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3000);
+    setToasts(p=>[...p,{id,msg,type,actionLabel,onAction}]);
+    setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),actionLabel?5000:3000);
   },[]);
-  return {toasts,toast};
+  return {toasts,toast,dismiss};
 }
 
 // ─── App (auth gate) ─────────────────────────────────────────
@@ -107,7 +108,7 @@ function MainApp({ fbUser, onLogout }){
   const [showOverdue,  setShowOverdue]  = useState(false); // vencidos ocultos por padrão
   const [confirmQueue, setConfirmQueue] = useState(null); // {title,message,detail,danger,confirmLabel,onConfirm}
   const [showCelebrate, setShowCelebrate] = useState(false);
-  const {toasts,toast} = useToast();
+  const {toasts,toast,dismiss} = useToast();
   const showConfirm = useCallback((opts)=> new Promise(resolve=>{
     setConfirmQueue({...opts, onConfirm:()=>{setConfirmQueue(null);resolve(true);}, onClose:()=>{setConfirmQueue(null);resolve(false);}});
   }),[]);
@@ -496,11 +497,18 @@ function MainApp({ fbUser, onLogout }){
     setEditTarget(null);toast("✓ Lançamento atualizado");
   },[saveEntries,entries,selMonth,toast]);
 
+  const handleClone=useCallback((entry)=>{
+    setFormType(entry.type);
+    setForm({description:entry.description,amount:String(eVal(entry)),date:TODAY,type:entry.type,status:"a_pagar",category:entry.category,recurrence:"none",installments:2,notes:entry.notes||"",endMonth:"",tags:entry.tags||[]});
+    setShowForm(true);
+  },[]);
+
   const handleDelete=useCallback((entryId,scope)=>{
+    const snap=entries.slice();
     if(scope==="all")        saveEntries(entries.filter(e=>e.id!==entryId));
     else if(scope==="this")  saveEntries(entries.map(e=>e.id!==entryId?e:{...e,deletedMonths:[...(e.deletedMonths||[]),selMonth]}));
     else                     saveEntries(entries.map(e=>e.id!==entryId?e:{...e,deletedFrom:selMonth}));
-    setDelTarget(null);toast("Lançamento removido","info");
+    setDelTarget(null);toast("Lançamento removido","info","Desfazer",()=>saveEntries(snap));
   },[saveEntries,entries,selMonth,toast]);
 
   const handlePayFatura=useCallback((entry,amount,partial)=>{
@@ -637,6 +645,18 @@ function MainApp({ fbUser, onLogout }){
             <div style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px",marginTop:4}}>
               {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
             </div>
+            {entry.recurrence==="installment"&&entry.installments>1&&(()=>{
+              const cur=Math.min(entry.installments,Math.max(1,mDiff(entry.date.substring(0,7),selMonth)+1));
+              const pct=cur/entry.installments;
+              return(
+                <div style={{marginTop:5,display:"flex",alignItems:"center",gap:6}}>
+                  <div style={{flex:1,height:3,background:"var(--border)",borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${pct*100}%`,background:pct>=1?"#4ade80":"#8ab4f8",borderRadius:2,transition:"width .4s"}}/>
+                  </div>
+                  <span style={{fontSize:9,color:"var(--text4)",flexShrink:0}}>{cur}/{entry.installments}</span>
+                </div>
+              );
+            })()}
             {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,background:badge.bg,color:badge.color}}>{badge.text}</div>}
             {entry.notes&&<div style={{fontSize:10,color:"var(--text3)",marginTop:3,fontStyle:"italic",display:"flex",alignItems:"flex-start",gap:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:3,flexShrink:0}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>{entry.notes}</span></div>}
             {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{(entry.tags||[]).map(t=><span key={t} style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(138,180,248,.12)",border:"1px solid #8ab4f822",color:"#8ab4f8",fontWeight:600}}>#{t}</span>)}</div>}
@@ -646,6 +666,12 @@ function MainApp({ fbUser, onLogout }){
         </div>
         <div style={S.cardR}>
           <div style={{display:"flex",gap:4}}>
+            {!entry.isDivida&&!entry.isFatura&&(
+              <button className="iconBtn" title="Clonar" onClick={()=>handleClone(entry)}
+                style={{...S.iconBtn,background:"rgba(74,222,128,.08)",color:"#4ade80"}}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              </button>
+            )}
             {!entry.isDivida&&!entry.isFatura&&(
               <button className="iconBtn" onClick={()=>setEditTarget({entry,monthKey:selMonth})}
                 style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8"}}>
@@ -702,9 +728,15 @@ function MainApp({ fbUser, onLogout }){
           const color=t.type==="error"?"#fca5a5":t.type==="celebrate"?"#6ee7b7":t.type==="info"?"#93c5fd":"#4ade80";
           return(
             <div key={t.id} className="toast-in"
-              style={{background:bg,border:`1.5px solid ${border}`,color,padding:"11px 14px",borderRadius:12,fontSize:13,fontWeight:600,boxShadow:"0 8px 24px rgba(0,0,0,.6)",display:"flex",alignItems:"center",gap:8,width:"100%"}}>
+              style={{background:bg,border:`1.5px solid ${border}`,color,padding:"11px 14px",borderRadius:12,fontSize:13,fontWeight:600,boxShadow:"0 8px 24px rgba(0,0,0,.6)",display:"flex",alignItems:"center",gap:8,width:"100%",pointerEvents:t.actionLabel?"auto":"none"}}>
               <span style={{fontSize:16,flexShrink:0}}>{icon}</span>
               <span style={{flex:1}}>{t.msg}</span>
+              {t.actionLabel&&t.onAction&&(
+                <button onClick={()=>{t.onAction();dismiss(t.id);}}
+                  style={{background:"transparent",border:`1px solid ${color}`,borderRadius:6,padding:"3px 9px",color,fontSize:11,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+                  {t.actionLabel}
+                </button>
+              )}
             </div>
           );
         })}
