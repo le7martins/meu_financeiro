@@ -582,11 +582,18 @@ function MainApp({ fbUser, onLogout }){
     reader.readAsText(file);e.target.value="";
   },[saveEntries,saveDividas,saveCards,saveCardPurchases,saveCardFaturas,saveCategories,toast]);
 
-  const handleExportCSV=useCallback((mk)=>{
+  const handleExportCSV=useCallback((mk,toMk)=>{
     const hdr=["Descrição","Tipo","Valor","Vencimento","Status","Categoria","Recorrência","Notas"];
     const getCatN=(id)=>(categories.find(c=>c.id===id)||{name:id}).name;
     let rows=[];
-    if(mk){
+    if(mk&&toMk){
+      let cur=mk;
+      while(cur<=toMk){
+        const list=getMonthEntries(entries,dividas,cur,cards,cardPurchases,cardFaturas);
+        list.forEach(e=>rows.push([`"${e.description}"`,e.type,(eVal(e)).toFixed(2),fmtDate(e.date),e.statusForMonth||e.status,`"${getCatN(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]));
+        cur=addM(cur,1);
+      }
+    } else if(mk){
       const list=getMonthEntries(entries,dividas,mk,cards,cardPurchases,cardFaturas);
       rows=list.map(e=>[`"${e.description}"`,e.type,(eVal(e)).toFixed(2),fmtDate(e.date),e.statusForMonth||e.status,`"${getCatN(e.category)}"`,e.recurrence||"none",`"${e.notes||""}"`]);
     } else {
@@ -605,7 +612,8 @@ function MainApp({ fbUser, onLogout }){
     }
     const csv=[hdr.join(","),...rows.map(r=>r.join(","))].join("\n");
     const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));
-    Object.assign(document.createElement("a"),{href:url,download:`financeiro_${mk||"completo"}.csv`}).click();
+    const fname=mk&&toMk?`financeiro_${mk}_a_${toMk}.csv`:mk?`financeiro_${mk}.csv`:"financeiro_completo.csv";
+    Object.assign(document.createElement("a"),{href:url,download:fname}).click();
     URL.revokeObjectURL(url);toast("📊 CSV exportado");
   },[entries,dividas,cards,cardPurchases,cardFaturas,categories,toast]);
 
@@ -1142,8 +1150,8 @@ function MainApp({ fbUser, onLogout }){
         {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} accumSaldo={accumSaldo}/>}
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
-        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets} todayWidget={todayWidget}/>}
-        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries,skipped=0)=>{saveEntries([...newEntries,...entries]);const sk=skipped>0?` (${skipped} duplicado${skipped!==1?"s":""} ignorado${skipped!==1?"s":""})`:"";toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}${sk}`);}} accounts={accounts} onSaveAccounts={saveAccounts}/>}
+        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets} todayWidget={todayWidget} accounts={accounts} accountBalances={accountBalances}/>}
+        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportRange={(from,to)=>handleExportCSV(from,to)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries,skipped=0)=>{saveEntries([...newEntries,...entries]);const sk=skipped>0?` (${skipped} duplicado${skipped!==1?"s":""} ignorado${skipped!==1?"s":""})`:"";toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}${sk}`);}} accounts={accounts} onSaveAccounts={saveAccounts}/>}
         {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
       </Suspense>
 

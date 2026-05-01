@@ -16,8 +16,10 @@ const ACC_TYPES=[
 ];
 const ACC_COLORS=["#60a5fa","#4ade80","#f472b6","#fb923c","#a78bfa","#34d399","#facc15","#38bdf8"];
 
-export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onExportPDF,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[],accounts=[],onSaveAccounts}){
+export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onExportPDF,onExportRange,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[],accounts=[],onSaveAccounts}){
   const [confirmReset,setConfirmReset]=useState(false);
+  const [rangeFrom,setRangeFrom]=useState(selMonth);
+  const [rangeTo,setRangeTo]=useState(selMonth);
   const [showAccForm,setShowAccForm]=useState(false);
   const blankAcc=()=>({name:'',type:'corrente',color:ACC_COLORS[0],initialBalance:0});
   const [accDraft,setAccDraft]=useState(blankAcc);
@@ -254,6 +256,23 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ProfileSection title="Exportar dados">
           <ProfileItem icon="📄" label="Relatório PDF do mês" sub={`Resumo visual de ${mLabel(selMonth)}`} onClick={onExportPDF}/>
           <ProfileItem icon="📅" label="Exportar mês atual" sub={`CSV com lançamentos de ${mLabel(selMonth)}`} onClick={onExportMonth}/>
+          <div style={{padding:"12px 14px",borderTop:"1px solid #0f1825"}}>
+            <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:9}}>Exportar período</div>
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,color:"var(--text4)",marginBottom:3}}>De</div>
+                <input type="month" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{width:"100%",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:10,color:"var(--text4)",marginBottom:3}}>Até</div>
+                <input type="month" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{width:"100%",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+              </div>
+            </div>
+            <button disabled={!rangeFrom||!rangeTo||rangeFrom>rangeTo} onClick={()=>onExportRange&&onExportRange(rangeFrom,rangeTo)}
+              style={{width:"100%",padding:"9px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:rangeFrom&&rangeTo&&rangeFrom<=rangeTo?1:0.45}}>
+              Exportar período selecionado
+            </button>
+          </div>
           <ProfileItem icon="📦" label="Exportar tudo" sub="Todos os lançamentos em CSV" onClick={onExportAll} last/>
         </ProfileSection>
 

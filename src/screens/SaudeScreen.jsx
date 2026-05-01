@@ -46,7 +46,7 @@ function Sparkline({ data, color = "#4ade80", width = 60, height = 22 }) {
   );
 }
 
-export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets, todayWidget }) {
+export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets, todayWidget, accounts=[], accountBalances={} }) {
   const [showAllBudget, setShowAllBudget] = useState(false);
   const [showGoalForm, setShowGoalForm] = useState(false);
   const blankDraft = () => ({name:'',targetAmount:0,targetMonth:addM(nowMonth,6),currentAmount:0});
@@ -230,6 +230,54 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           {metaRenda>0&&<HealthBar label="Meta de renda" value={pct(rec,metaRenda)} max={100} color="#8ab4f8" suffix="%" detail={`${fmt(rec)} de ${fmt(metaRenda)}`}/>}
           {metaEcon>0&&<HealthBar label="Meta de economia" value={pct(economizado,metaEcon)} max={100} color="#a78bfa" suffix="%" detail={`${fmt(economizado)} de ${fmt(metaEcon)}`}/>}
         </div>
+
+        {/* Net worth */}
+        {(accounts.length>0||dividas.length>0)&&(()=>{
+          const totalAssets=accounts.reduce((s,acc)=>s+(accountBalances[acc.id]??acc.initialBalance??0),0);
+          const totalLiabilities=dividas.reduce((s,d)=>{
+            const instPaid=Math.min(d.installments,Math.max(0,mDiff(d.startMonth,nowMonth)));
+            return s+Math.max(0,d.totalAmount-instPaid*(d.totalAmount/d.installments));
+          },0);
+          const netWorth=totalAssets-totalLiabilities;
+          const pos=netWorth>=0;
+          return(
+            <div style={{background:"rgba(74,222,128,.05)",border:"1px solid #4ade8033",borderRadius:14,padding:"14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#4ade80",marginBottom:12}}>🏛️ Patrimônio Líquido</div>
+              <div style={{textAlign:"center",marginBottom:14}}>
+                <div style={{fontSize:9,color:"var(--text3)",marginBottom:3}}>Patrimônio líquido</div>
+                <div style={{fontSize:26,fontWeight:800,color:pos?"#4ade80":"#f87171",letterSpacing:"-1px"}}>{fmt(netWorth)}</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:accounts.length>0?10:0}}>
+                <div style={{background:"var(--bg)",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:9,color:"var(--text4)",marginBottom:4}}>↑ Ativos</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>{fmt(totalAssets)}</div>
+                  {accounts.length>0&&<div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>{accounts.length} conta{accounts.length!==1?"s":""}</div>}
+                </div>
+                <div style={{background:"var(--bg)",borderRadius:10,padding:"10px 12px"}}>
+                  <div style={{fontSize:9,color:"var(--text4)",marginBottom:4}}>↓ Passivos</div>
+                  <div style={{fontSize:14,fontWeight:700,color:totalLiabilities>0?"#f87171":"#4ade80"}}>{fmt(totalLiabilities)}</div>
+                  {dividas.length>0&&<div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>{dividas.length} dívida{dividas.length!==1?"s":""}</div>}
+                </div>
+              </div>
+              {accounts.length>0&&(
+                <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  {accounts.map((acc,i)=>{
+                    const bal=accountBalances[acc.id]??acc.initialBalance??0;
+                    return(
+                      <div key={acc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:"1px solid var(--border2)"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:7}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:acc.color||"#4ade80"}}/>
+                          <span style={{fontSize:12,color:"var(--text2)"}}>{acc.name}</span>
+                        </div>
+                        <span style={{fontSize:12,fontWeight:700,color:bal>=0?"#4ade80":"#f87171"}}>{fmt(bal)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Financial goals */}
         <div style={{background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}}>
@@ -530,6 +578,64 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
             )}
           </div>
         )}
+
+        {/* Envelope planning */}
+        {(goals.monthly>0||Object.values(budgets).some(v=>v>0))&&(()=>{
+          const incomeTarget=goals.monthly||rec||0;
+          const totalAllocated=Object.values(budgets).reduce((s,v)=>s+(v||0),0);
+          const unallocated=incomeTarget-totalAllocated;
+          const allocPct=incomeTarget>0?Math.min(100,(totalAllocated/incomeTarget)*100):0;
+          const over=totalAllocated>incomeTarget;
+          const catsEnv=categories.filter(c=>budgets[c.id]>0).map(c=>({...c,budget:budgets[c.id],spent:catMap[c.id]||0})).sort((a,b)=>b.budget-a.budget);
+          return(
+            <div style={{background:"rgba(250,204,21,.05)",border:"1px solid #facc1533",borderRadius:14,padding:"14px"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#facc15",marginBottom:12}}>📋 Planejamento do mês</div>
+              <div style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                  <span style={{fontSize:10,color:"var(--text3)"}}>Envelopes alocados{incomeTarget>0?` / renda${goals.monthly>0?" meta":""}`:""}</span>
+                  <span style={{fontSize:10,fontWeight:700,color:over?"#f87171":allocPct>=90?"#4ade80":"#facc15"}}>{allocPct.toFixed(0)}%</span>
+                </div>
+                <div style={{height:8,background:"var(--bg)",borderRadius:4,overflow:"hidden",marginBottom:5}}>
+                  <div style={{height:"100%",width:`${allocPct}%`,background:over?"linear-gradient(90deg,#f87171,#ef4444)":"linear-gradient(90deg,#facc15,#f59e0b)",borderRadius:4,transition:"width .6s"}}/>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:10,color:over?"#f87171":"var(--text2)",fontWeight:600}}>
+                    {over?`⚠️ +${fmt(totalAllocated-incomeTarget)} acima da renda`:`${fmt(Math.abs(unallocated))} ${unallocated>=0?"livre":"excedido"}`}
+                  </span>
+                  {incomeTarget>0&&<span style={{fontSize:10,color:"var(--text3)"}}>{fmt(totalAllocated)} de {fmt(incomeTarget)}</span>}
+                </div>
+              </div>
+              {catsEnv.length>0&&(
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {catsEnv.map(c=>{
+                    const pctSpent=c.budget>0?Math.min(100,(c.spent/c.budget)*100):0;
+                    const pctOfIncome=incomeTarget>0?((c.budget/incomeTarget)*100):0;
+                    const overCat=c.spent>c.budget;
+                    return(
+                      <div key={c.id} style={{background:"var(--bg)",borderRadius:9,padding:"9px 11px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                          <span style={{fontSize:11,color:"var(--text2)",flex:1}}>{c.name}</span>
+                          {incomeTarget>0&&<span style={{fontSize:10,color:"var(--text4)",marginRight:4}}>{pctOfIncome.toFixed(0)}% da renda</span>}
+                          <span style={{fontSize:11,fontWeight:700,color:overCat?"#f87171":c.color}}>{fmt(c.budget)}</span>
+                        </div>
+                        <div style={{height:4,background:"#111820",borderRadius:2,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pctSpent}%`,background:overCat?"#f87171":pctSpent>80?"#facc15":c.color,borderRadius:2,transition:"width .5s"}}/>
+                        </div>
+                        <div style={{fontSize:9,color:"var(--text4)",marginTop:3,textAlign:"right"}}>gasto {fmt(c.spent)} · {pctSpent.toFixed(0)}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {catsEnv.length===0&&(
+                <div style={{fontSize:11,color:"var(--text3)",textAlign:"center",padding:"4px 0",lineHeight:1.6}}>
+                  Defina orçamentos por categoria para usar o método envelope
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Empty state */}
         {rec===0&&dep===0&&(
