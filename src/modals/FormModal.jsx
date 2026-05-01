@@ -5,7 +5,7 @@ import MonthPicker from '../components/MonthPicker.jsx';
 import { fmt } from '../utils.js';
 import S from '../styles.js';
 
-export default function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose,cards=[]}){
+export default function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose,cards=[],accounts=[]}){
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
   const [editCats,setEditCats]=useState(false);
   const [addingCat,setAddingCat]=useState(false);
@@ -127,6 +127,18 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
         </Field>
 
         <CatSelector cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
+
+        {accounts.length>0&&<Field label="Conta (opcional)">
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button onClick={()=>set("accountId",null)} style={{...S.chipBtn,...(!form.accountId?S.chipActive:{})}}>Sem conta</button>
+            {accounts.map(acc=>(
+              <button key={acc.id} onClick={()=>set("accountId",acc.id)}
+                style={{...S.chipBtn,...(form.accountId===acc.id?{background:acc.color+"22",border:`1px solid ${acc.color}66`,color:acc.color}:{})}}>
+                {acc.name}
+              </button>
+            ))}
+          </div>
+        </Field>}
 
         <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
 

@@ -95,6 +95,7 @@ function MainApp({ fbUser, onLogout }){
   const [theme,        setTheme]        = useState(()=>loadLS(k("theme"),"dark"));
   const [goals,        setGoals]        = useState(()=>loadLS(k("goals"),{monthly:0,savingsPct:20}));
   const [budgets,      setBudgets]      = useState(()=>loadLS(k("budgets"),{}));
+  const [accounts,     setAccounts]     = useState(()=>loadLS(k("accounts"),[]));
   const [filterCat,    setFilterCat]    = useState("all");
   const [filterTag,    setFilterTag]    = useState("all");
   const [dbReady,      setDbReady]      = useState(false);
@@ -137,6 +138,7 @@ function MainApp({ fbUser, onLogout }){
             if(s.theme)         { setTheme(s.theme);                 saveLS(k("theme"),         s.theme);         }
             if(s.goals)         { setGoals(s.goals);                 saveLS(k("goals"),         s.goals);         }
             if(s.budgets)       { setBudgets(s.budgets);             saveLS(k("budgets"),        s.budgets);       }
+            if(s.accounts)      { setAccounts(s.accounts);           saveLS(k("accounts"),       s.accounts);      }
           }
         } else {
           // Sem dados na nuvem → migra localStorage
@@ -191,6 +193,7 @@ function MainApp({ fbUser, onLogout }){
           if(s.theme)         { setTheme(s.theme);                 saveLS(k("theme"),         s.theme);         }
           if(s.goals)         { setGoals(s.goals);                 saveLS(k("goals"),         s.goals);         }
           if(s.budgets)       { setBudgets(s.budgets);             saveLS(k("budgets"),        s.budgets);       }
+          if(s.accounts)      { setAccounts(s.accounts);           saveLS(k("accounts"),       s.accounts);      }
         }, ()=>setSyncStatus("offline")),
       ];
     }
@@ -272,6 +275,7 @@ function MainApp({ fbUser, onLogout }){
   const saveTheme        = useCallback((t)=>{ setTheme(t);         saveLS(k("theme"),t);            _saveSettings({theme:t});         applyTheme(t); },[k,_saveSettings,applyTheme]);
   const saveGoals        = useCallback((g)=>{ setGoals(g);         saveLS(k("goals"),g);            _saveSettings({goals:g});         },[k,_saveSettings]);
   const saveBudgets      = useCallback((b)=>{ setBudgets(b);       saveLS(k("budgets"),b);          _saveSettings({budgets:b});       },[k,_saveSettings]);
+  const saveAccounts     = useCallback((a)=>{ setAccounts(a);      saveLS(k("accounts"),a);         _saveSettings({accounts:a});      },[k,_saveSettings]);
 
   const NOW=getNow();
 
@@ -336,6 +340,18 @@ function MainApp({ fbUser, onLogout }){
     return r-d;
   },[prevMonthEntries]);
   const saldoDiff = saldo - prevSaldo;
+
+  // Saldo por conta: saldo_inicial + receitas pagas - despesas pagas (entradas não-recorrentes)
+  const accountBalances = useMemo(()=>{
+    if(!accounts.length) return {};
+    return Object.fromEntries(accounts.map(acc=>{
+      const linked=entries.filter(e=>e.accountId===acc.id&&e.recurrence==="none"&&e.status==="pago");
+      const bal=(acc.initialBalance||0)
+        +linked.filter(e=>e.type==="receita").reduce((s,e)=>s+e.amount,0)
+        -linked.filter(e=>e.type==="despesa").reduce((s,e)=>s+e.amount,0);
+      return [acc.id, bal];
+    }));
+  },[accounts,entries]);
 
   // Mini-sparkline: saldo dos últimos 6 meses para o hero card
   const heroSparkData = useMemo(()=>Array.from({length:6},(_,i)=>{
@@ -896,6 +912,21 @@ function MainApp({ fbUser, onLogout }){
           </div>
         </div>
 
+        {/* Account balance pills */}
+        {accounts.length>0&&(
+          <div className="hscroll" style={{display:"flex",gap:8,padding:"0 14px 4px",overflowX:"auto"}}>
+            {accounts.map(acc=>{
+              const bal=accountBalances[acc.id]??acc.initialBalance??0;
+              return(
+                <div key={acc.id} style={{flexShrink:0,background:"var(--card-bg)",border:`1px solid ${acc.color}44`,borderRadius:10,padding:"8px 12px",minWidth:110}}>
+                  <div style={{fontSize:9,color:"var(--text4)",textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:100}}>{acc.name}</div>
+                  <div style={{fontSize:13,fontWeight:800,color:bal>=0?acc.color:"#f87171",letterSpacing:"-0.3px"}}>{fmt(bal)}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* 4 grad cards */}
         <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 14px 10px"}}>
           <GradCard label="Receitas" value={fmt(totRec)} color="#4ade80" bg="rgba(74,222,128,.08)" empty={totRec===0}
@@ -1112,7 +1143,7 @@ function MainApp({ fbUser, onLogout }){
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={saveCards} cardPurchases={cardPurchases} setCardPurchases={saveCardPurchases} cardFaturas={cardFaturas} setCardFaturas={saveCardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={saveDividas} categories={categories} setCategories={saveCategories} nowMonth={NOW} toast={toast}/>}
         {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={saveGoals} budgets={budgets} onSaveBudgets={saveBudgets} todayWidget={todayWidget}/>}
-        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries,skipped=0)=>{saveEntries([...newEntries,...entries]);const sk=skipped>0?` (${skipped} duplicado${skipped!==1?"s":""} ignorado${skipped!==1?"s":""})`:"";toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}${sk}`);}}/>}
+        {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth} onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportPDF={()=>handleExportPDF(selMonth)} onReset={()=>{saveEntries([]);saveDividas([]);saveCards([]);saveCardPurchases([]);saveCardFaturas({});toast("Dados zerados","info");}} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={saveNotifSettings} onRequestPerm={async()=>{const r=await requestNotifPermission();setNotifPerm(r);}} onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)} onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={saveTheme} fbUser={fbUser} onLogout={onLogout} categories={categories} onImportEntries={(newEntries,skipped=0)=>{saveEntries([...newEntries,...entries]);const sk=skipped>0?` (${skipped} duplicado${skipped!==1?"s":""} ignorado${skipped!==1?"s":""})`:"";toast(`✓ ${newEntries.length} lançamento${newEntries.length!==1?"s":""} importado${newEntries.length!==1?"s":""}${sk}`);}} accounts={accounts} onSaveAccounts={saveAccounts}/>}
         {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
       </Suspense>
 
@@ -1316,7 +1347,7 @@ function MainApp({ fbUser, onLogout }){
       )}
 
       {confirmQueue&&<ConfirmModal {...confirmQueue}/>}
-      {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}} cards={cards}/>}
+      {showForm&&<FormModal form={form} setForm={setForm} lockedType={formType} categories={categories} entries={entries} onUpdateCats={saveCategories} onAdd={handleAdd} onClose={()=>{setShowForm(false);setForm(BLANK());}} cards={cards} accounts={accounts}/>}
       {editTarget&&<EditModal entry={editTarget.entry} monthKey={editTarget.monthKey} categories={categories} entries={entries} onUpdateCats={saveCategories} onSave={handleSaveEdit} onClose={()=>setEditTarget(null)}/>}
       {delTarget&&<DeleteModal entry={delTarget} onDelete={handleDelete} onClose={()=>setDelTarget(null)}/>}
       {fatPayTarget&&<FaturaPayModal entry={fatPayTarget} onPay={handlePayFatura} onRevert={handleRevertFatura} onClose={()=>setFatPayTarget(null)}/>}

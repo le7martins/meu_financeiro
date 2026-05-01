@@ -7,8 +7,32 @@ import S from '../styles.js';
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
 function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
 
-export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onExportPDF,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[]}){
+const ACC_TYPES=[
+  {id:"corrente",label:"Conta Corrente",icon:"🏦"},
+  {id:"poupanca",label:"Poupança",icon:"💰"},
+  {id:"dinheiro",label:"Carteira/Dinheiro",icon:"💵"},
+  {id:"investimento",label:"Investimento",icon:"📈"},
+  {id:"outro",label:"Outro",icon:"🔵"},
+];
+const ACC_COLORS=["#60a5fa","#4ade80","#f472b6","#fb923c","#a78bfa","#34d399","#facc15","#38bdf8"];
+
+export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,onExportAll,onExportPDF,onReset,notifPerm,notifSettings,onNotifSettings,onRequestPerm,onBackup,onRestore,theme,onTheme,fbUser,onLogout,onImportEntries,categories=[],accounts=[],onSaveAccounts}){
   const [confirmReset,setConfirmReset]=useState(false);
+  const [showAccForm,setShowAccForm]=useState(false);
+  const blankAcc=()=>({name:'',type:'corrente',color:ACC_COLORS[0],initialBalance:0});
+  const [accDraft,setAccDraft]=useState(blankAcc);
+  const [editAccId,setEditAccId]=useState(null);
+  const [accDisplay,setAccDisplay]=useState('');
+  const handleAccAmt=(e)=>{const d=e.target.value.replace(/\D/g,'');if(!d){setAccDisplay('');setAccDraft(p=>({...p,initialBalance:0}));return;}const n=parseInt(d,10)/100;setAccDisplay(n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));setAccDraft(p=>({...p,initialBalance:n}));};
+  const openNewAcc=()=>{const d=blankAcc();setAccDraft(d);setAccDisplay('');setEditAccId(null);setShowAccForm(true);};
+  const openEditAcc=(acc)=>{setAccDraft({...acc});setAccDisplay(acc.initialBalance>0?acc.initialBalance.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'');setEditAccId(acc.id);setShowAccForm(true);};
+  const saveAcc=()=>{
+    if(!accDraft.name.trim()) return;
+    if(editAccId) onSaveAccounts(accounts.map(a=>a.id===editAccId?{...a,...accDraft}:a));
+    else onSaveAccounts([...accounts,{id:Date.now().toString(),...accDraft}]);
+    setShowAccForm(false);setEditAccId(null);
+  };
+  const deleteAcc=(id)=>onSaveAccounts(accounts.filter(a=>a.id!==id));
   const [confirmLogout,setConfirmLogout]=useState(false);
   const [showImport,setShowImport]=useState(false);
   const [importHeaders,setImportHeaders]=useState([]);
@@ -165,6 +189,66 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
               </div>
             </>)}
           </div>
+        </ProfileSection>
+
+        <ProfileSection title="Contas e carteiras">
+          {accounts.map((acc,i)=>(
+            <div key={acc.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:i<accounts.length-1?"1px solid #0f1825":"none"}}>
+              <div style={{width:34,height:34,borderRadius:9,background:acc.color+"22",border:`1px solid ${acc.color}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16}}>
+                {ACC_TYPES.find(t=>t.id===acc.type)?.icon||"🔵"}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13,fontWeight:600,color:"var(--text1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{acc.name}</div>
+                <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {acc.initialBalance?.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</div>
+              </div>
+              <button onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text3)",cursor:"pointer",padding:"4px",fontSize:14}}>✏️</button>
+              <button onClick={()=>deleteAcc(acc.id)} style={{background:"transparent",border:"none",color:"#f87171",cursor:"pointer",padding:"4px",fontSize:14}}>✕</button>
+            </div>
+          ))}
+          {showAccForm?(
+            <div style={{padding:"14px",borderTop:accounts.length?"1px solid #0f1825":"none"}}>
+              <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>{editAccId?"Editar conta":"Nova conta"}</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                <input style={{width:"100%",boxSizing:"border-box",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:10,padding:"9px 11px",color:"var(--text1)",fontSize:13,outline:"none",fontFamily:"inherit"}}
+                  placeholder="Nome da conta (ex: Nubank, Bradesco...)" value={accDraft.name} onChange={e=>setAccDraft(p=>({...p,name:e.target.value}))}/>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {ACC_TYPES.map(t=>(
+                    <button key={t.id} onClick={()=>setAccDraft(p=>({...p,type:t.id}))}
+                      style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${accDraft.type===t.id?"#8ab4f8":"var(--border)"}`,background:accDraft.type===t.id?"#0d1a2e":"transparent",color:accDraft.type===t.id?"#8ab4f8":"var(--text3)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                      {t.icon} {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Cor</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {ACC_COLORS.map(c=>(
+                      <button key={c} onClick={()=>setAccDraft(p=>({...p,color:c}))}
+                        style={{width:26,height:26,borderRadius:"50%",background:c,border:accDraft.color===c?"3px solid #fff":"2px solid transparent",cursor:"pointer",padding:0,outline:"none"}}/>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Saldo atual (R$)</div>
+                  <input type="text" inputMode="numeric" placeholder="0,00" value={accDisplay} onChange={handleAccAmt}
+                    style={{width:"100%",boxSizing:"border-box",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:10,padding:"9px 11px",color:"var(--text1)",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                </div>
+                <div style={{display:"flex",gap:8,marginTop:2}}>
+                  <button onClick={()=>{setShowAccForm(false);setEditAccId(null);}}
+                    style={{flex:1,padding:"9px",background:"transparent",border:"1px solid var(--border)",borderRadius:10,color:"var(--text3)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Cancelar</button>
+                  <button onClick={saveAcc} disabled={!accDraft.name.trim()}
+                    style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:accDraft.name.trim()?1:0.45}}>
+                    {editAccId?"Salvar alterações":"Adicionar conta"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ):(
+            <button onClick={openNewAcc}
+              style={{width:"100%",padding:"12px 14px",background:"transparent",border:"none",borderTop:accounts.length?"1px solid #0f1825":"none",color:"#8ab4f8",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:16}}>＋</span> Adicionar conta
+            </button>
+          )}
         </ProfileSection>
 
         <ProfileSection title="Exportar dados">
