@@ -7,6 +7,8 @@ import S from '../styles.js';
 export default function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClose}){
   const [desc,setDesc]=useState(entry.description);
   const initAmt=eVal(entry);
+  const origAmt=entry.recurrence==="installment"?(entry.amount/entry.installments):entry.amount;
+  const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
   const [amount,setAmount]=useState(String(initAmt));
   const [displayAmt,setDisplayAmt]=useState(initAmt?initAmt.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'');
   const handleAmtChange=(e)=>{
@@ -40,7 +42,22 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
         <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"#8ab4f8",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label="Descrição"><input style={S.inp} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
-        <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor (R$)"}><input style={S.inp} type="text" inputMode="numeric" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>{entry.recurrence==="installment"&&<div style={{marginTop:5,fontSize:11,color:"var(--text3)"}}>Parcela {entry.installmentNum}/{entry.installments}</div>}</Field>
+        <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor (R$)"}>
+          <input style={S.inp} type="text" inputMode="numeric" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>
+          {entry.isRecurring&&!entry.isDivida&&(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:5}}>
+              <span style={{fontSize:11,color:"var(--text3)"}}>
+                {entry.recurrence==="installment"?`Parcela ${entry.installmentNum}/${entry.installments} · `:"Recorrente · "}
+                valor padrão: <span style={{color:"#8ab4f8",fontWeight:600}}>{origAmt.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</span>
+              </span>
+              {hasAmtOverride&&(
+                <button onClick={()=>{onSave(entry.id,{_resetAmount:true},"this");}} style={{background:"transparent",border:"1px solid rgba(250,204,21,.4)",borderRadius:6,padding:"2px 8px",color:"#facc15",fontSize:10,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+                  Restaurar
+                </button>
+              )}
+            </div>
+          )}
+        </Field>
         <CatSelector cats={filteredCats} selected={category} onSelect={setCategory} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
         <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:52}} placeholder="Alguma anotação..." value={notes} onChange={e=>setNotes(e.target.value)}/></Field>
         <Field label="Tags (opcional)">

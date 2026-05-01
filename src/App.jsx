@@ -491,6 +491,15 @@ function MainApp({ fbUser, onLogout }){
   const handleSaveEdit=useCallback((entryId,changes,scope)=>{
     saveEntries(entries.map(e=>{
       if(e.id!==entryId) return e;
+      // Restore original amount: remove amount key from this month's override
+      if(changes._resetAmount){
+        const ov=e.overrides?.[selMonth];
+        if(!ov) return e;
+        const {amount:_,...rest}=ov;
+        const newOv={...e.overrides};
+        if(Object.keys(rest).length>0) newOv[selMonth]=rest; else delete newOv[selMonth];
+        return {...e,overrides:newOv};
+      }
       if(e.recurrence==="none"||scope==="future"){const baseAmt=(e.recurrence==="installment"&&changes.amount!==undefined)?parseFloat((changes.amount*e.installments).toFixed(2)):(changes.amount??e.amount);return {...e,...changes,amount:baseAmt};}
       return {...e,overrides:{...e.overrides,[selMonth]:changes}};
     }));
@@ -607,6 +616,8 @@ function MainApp({ fbUser, onLogout }){
     const borderColor=entry.type==="receita"?"#4ade8055":entry.isDivida?"#f8717155":entry.isFatura?`${entry.cardColor}55`:"var(--border)";
     const amtColor=entry.type==="receita"?"#4ade80":entry.isDivida?"#f87171":entry.isFatura?entry.cardColor:"var(--text1)";
     const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
+    const origAmt=entry.recurrence==="installment"?entry.amount/entry.installments:entry.amount;
+    const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
     const canSwipe=!entry.isOpenFatura;
     const onTouchStart=(ev)=>{ ev.currentTarget._tx=ev.touches[0].clientX; ev.currentTarget._ty=ev.touches[0].clientY; };
     const onTouchMove=(ev)=>{
@@ -642,8 +653,15 @@ function MainApp({ fbUser, onLogout }){
               {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"#f87171":"#8ab4f8",borderColor:entry.isDivida?"#f8717144":"#1a3a6e",background:entry.isDivida?"rgba(248,113,113,.12)":"#0d1a2e"}}>{entry.recurLabel}</span>}
               <span style={{fontSize:10,color:"var(--text4)"}}>{fmtDate(entry.isRecurring&&entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura?`${selMonth}-${entry.date.split("-")[2]}`:entry.date)}</span>
             </div>
-            <div style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px",marginTop:4}}>
-              {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
+              <span style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
+                {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
+              </span>
+              {hasAmtOverride&&(
+                <span title={`Valor original: ${fmt(origAmt)}`} style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(250,204,21,.12)",border:"1px solid rgba(250,204,21,.3)",color:"#facc15",letterSpacing:"0.03em",cursor:"default"}}>
+                  ⚙ ajustado
+                </span>
+              )}
             </div>
             {entry.recurrence==="installment"&&entry.installments>1&&(()=>{
               const cur=Math.min(entry.installments,Math.max(1,mDiff(entry.date.substring(0,7),selMonth)+1));
