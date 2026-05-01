@@ -2,19 +2,19 @@ import { TODAY } from './utils.js';
 
 // ─── Defaults ────────────────────────────────────────────────
 export const DEFAULT_CATS=[
-  {id:"moradia",name:"Moradia",color:"#6C8EEF",type:"both"},
-  {id:"alimentacao",name:"Alimentação",color:"#EF8C6C",type:"both"},
-  {id:"transporte",name:"Transporte",color:"#6CEF9A",type:"both"},
-  {id:"saude",name:"Saúde",color:"#EF6CA8",type:"both"},
-  {id:"lazer",name:"Lazer",color:"#C46CEF",type:"both"},
-  {id:"educacao",name:"Educação",color:"#EFCE6C",type:"both"},
-  {id:"assinatura",name:"Assinatura",color:"#6CCEEF",type:"both"},
+  {id:"moradia",name:"Moradia",color:"#7b93e8",type:"both"},
+  {id:"alimentacao",name:"Alimentação",color:"#e8825a",type:"both"},
+  {id:"transporte",name:"Transporte",color:"#4dc98a",type:"both"},
+  {id:"saude",name:"Saúde",color:"#e06fa0",type:"both"},
+  {id:"lazer",name:"Lazer",color:"#b06ee8",type:"both"},
+  {id:"educacao",name:"Educação",color:"#e0b84e",type:"both"},
+  {id:"assinatura",name:"Assinatura",color:"#5ab8e0",type:"both"},
   {id:"salario",name:"Salário",color:"#4ade80",type:"receita"},
-  {id:"freelance",name:"Freelance",color:"#a3e635",type:"receita"},
+  {id:"freelance",name:"Freelance",color:"#86d840",type:"receita"},
   {id:"investimento",name:"Investimento",color:"#34d399",type:"receita"},
   {id:"divida",name:"Dívida",color:"#f87171",type:"despesa"},
   {id:"cartao",name:"Cartão",color:"#a78bfa",type:"despesa"},
-  {id:"outro",name:"Outro",color:"#9E9E9E",type:"both"},
+  {id:"outro",name:"Outro",color:"#8a9ab0",type:"both"},
 ];
 export const BLANK=(type="despesa")=>({description:"",amount:"",date:TODAY,type,status:"a_pagar",category:type==="receita"?"salario":"outro",recurrence:"none",installments:2,notes:"",endMonth:"",tags:[]});
 export const PRESET_COLORS=["#6C8EEF","#EF8C6C","#6CEF9A","#EF6CA8","#C46CEF","#EFCE6C","#6CCEEF","#4ade80","#f87171","#facc15","#34d399","#a3e635"];
@@ -34,7 +34,7 @@ export const CSS=`
   ::-webkit-scrollbar-thumb { background: #1a2a40; border-radius: 2px; }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.35); }
   select option { background: #0d1118; }
-  ::placeholder { color: #334; }
+  ::placeholder { color: #637080; }
   .statusToggleBtn:hover { filter: brightness(1.2); transform: scale(1.03); transition: all .15s; }
   .sumAddBtn:hover { filter: brightness(1.3); transform: scale(1.1); transition: all .15s; }
   .arrowBtn:hover { border-color: #1a3a6e !important; color: #8ab4f8 !important; }
@@ -55,15 +55,15 @@ export const CSS=`
   /* ── CSS Variables: dark (default) ── */
   :root {
     --bg:#080c12; --card-bg:#0d1118; --card-bg2:#111820;
-    --border:#111820; --border2:#0d1520; --border3:#0f1825;
-    --text1:#dde; --text2:#ccd; --text3:#445; --text4:#334;
-    --inp-bg:#080c12; --nav-bg:#080c12;
+    --border:#1a2235; --border2:#0d1520; --border3:#131c2c;
+    --text1:#e2e8f0; --text2:#c8d3de; --text3:#8896a8; --text4:#637080;
+    --inp-bg:#0b1018; --nav-bg:#080c12;
   }
 
   /* ── Light mode overrides ── */
   .light-mode { --bg:#f0f4f8; --card-bg:#ffffff; --card-bg2:#e8edf3;
     --border:#d0d8e4; --border2:#c8d2e0; --border3:#dde4ee;
-    --text1:#1a2332; --text2:#2a3444; --text3:#667788; --text4:#889aaa;
+    --text1:#0f172a; --text2:#1e293b; --text3:#475569; --text4:#64748b;
     --inp-bg:#f8fafc; --nav-bg:#ffffff; }
 
   .light-mode { background: var(--bg); color: var(--text1); }

@@ -53,7 +53,7 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     const base=e.date.substring(0,7);
     let item=null;
     if(e.recurrence==="none"){ if(base===monthKey) item={...e,statusForMonth:e.status,isRecurring:false}; }
-    else if(e.recurrence==="fixed"){ if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo 🔄"};} }
+    else if(e.recurrence==="fixed"){ if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo"};} }
     else if(e.recurrence==="weekly"){
       if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){
         const st=e.statusByMonth?.[monthKey]||"a_pagar";
@@ -70,14 +70,14 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
         item={...e,amount:e.amount*2,statusForMonth:st,isRecurring:true,recurLabel:"Quinzenal 📆 (2x)"};
       }
     }
-    else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Trimestral 📅"};} }
-    else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Anual 📅"};} }
+    else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Trim."};} }
+    else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Anual"};} }
     else if(e.recurrence==="installment"){
       const diff=mDiff(base,monthKey);
       if(diff>=0&&diff<e.installments){
         const st=e.statusByMonth?.[monthKey]||"a_pagar";
         const displayAmount=parseFloat((e.amount/e.installments).toFixed(2));
-        item={...e,statusForMonth:st,isRecurring:true,installmentNum:diff+1,recurLabel:`${diff+1}/${e.installments} 📋`,displayAmount};
+        item={...e,statusForMonth:st,isRecurring:true,installmentNum:diff+1,recurLabel:`${diff+1}/${e.installments}×`,displayAmount};
       }
     }
     if(item&&!e.deletedMonths?.includes(monthKey)){
@@ -98,7 +98,7 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
       res.push({id:`divida_${d.id}_${monthKey}`,description:d.name,amount:instVal,displayAmount:instVal,
         date:`${monthKey}-${d.dueDay||"10"}`,type:"despesa",status:isPaid?"pago":"a_pagar",statusForMonth:isPaid?"pago":"a_pagar",
         category:d.category||"outro",recurrence:"installment",isRecurring:true,isDivida:true,dividaId:d.id,
-        installmentNum:diff+1,installments:d.installments,recurLabel:`${diff+1}/${d.installments} 💳`,notes:d.notes||""});
+        installmentNum:diff+1,installments:d.installments,recurLabel:`${diff+1}/${d.installments}×`,notes:d.notes||""});
     }
   }
   for(const card of (cards||[])){
