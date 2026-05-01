@@ -1,4 +1,34 @@
-const CACHE = 'mf-v1';
+// ─── Firebase Messaging (background push) ────────────────────
+importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey:            "AIzaSyBGTj0GO5afkhAvZgT03mWAJqvkil8vnIA",
+  authDomain:        "meu-financeiro-13919.firebaseapp.com",
+  projectId:         "meu-financeiro-13919",
+  storageBucket:     "meu-financeiro-13919.firebasestorage.app",
+  messagingSenderId: "350978430463",
+  appId:             "1:350978430463:web:f27515f6fd9d3f35e243ca",
+});
+
+const messaging = firebase.messaging();
+
+// Notificação recebida com app fechado/background
+messaging.onBackgroundMessage(payload => {
+  const { title, body } = payload.notification || {};
+  if (!title) return;
+  self.registration.showNotification(title, {
+    body,
+    icon:    '/meu_financeiro/icon-192.png',
+    badge:   '/meu_financeiro/icon-192.png',
+    vibrate: [200, 100, 200],
+    tag:     payload.data?.tag || 'mf-notif',
+    data:    payload.data || {},
+  });
+});
+
+// ─── Cache / PWA ─────────────────────────────────────────────
+const CACHE = 'mf-v2';
 const SHELL = ['/meu_financeiro/', '/meu_financeiro/index.html'];
 
 self.addEventListener('install', e => {
@@ -7,7 +37,8 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -15,26 +46,26 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request).then(r => r || caches.match('/meu_financeiro/')))
+    fetch(e.request).catch(() =>
+      caches.match(e.request).then(r => r || caches.match('/meu_financeiro/'))
+    )
   );
 });
 
-// Exibe notificação disparada pelo app principal
+// Mensagem do app principal (notificação manual)
 self.addEventListener('message', e => {
   if (e.data?.type === 'NOTIFY') {
     const { title, body, tag } = e.data;
     self.registration.showNotification(title, {
-      body,
-      tag,
-      icon: '/meu_financeiro/icon-192.png',
-      badge: '/meu_financeiro/icon-192.png',
+      body, tag,
+      icon:    '/meu_financeiro/icon-192.png',
+      badge:   '/meu_financeiro/icon-192.png',
       vibrate: [200, 100, 200],
-      renotify: false,
     });
   }
 });
 
-// Clique na notificação abre/foca o app
+// Clique na notificação → abre/foca o app
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil(

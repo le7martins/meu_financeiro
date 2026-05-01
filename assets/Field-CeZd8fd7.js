@@ -1,0 +1,1 @@
+import{t as e}from"./vendor-react-Df7-t4pi.js";import{t}from"./styles-D6ZbsmDI.js";var n=e();function r({label:e,children:r,style:i}){return(0,n.jsxs)(`div`,{style:{marginBottom:13,...i},children:[(0,n.jsx)(`label`,{style:t.lbl,children:e}),r]})}export{r as t};

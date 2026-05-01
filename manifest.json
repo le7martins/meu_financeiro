@@ -1,6 +1,6 @@
 {
-  "name": "Meu Financeiro",
-  "short_name": "Financeiro",
+  "name": "CashUp",
+  "short_name": "CashUp",
   "description": "Controle de finanças pessoais",
   "start_url": "/meu_financeiro/",
   "scope": "/meu_financeiro/",
