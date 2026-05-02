@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   signInWithPopup, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, updateProfile,
-  sendPasswordResetEmail, signInAnonymously,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 import { seedDemo } from './demoData';
@@ -83,15 +83,11 @@ export default function LoginScreen({ onLogin }) {
     } finally { setBusy(false); }
   }
 
-  async function handleDemo() {
-    setError(''); setBusy(true);
-    try {
-      const r = await signInAnonymously(auth);
-      seedDemo(r.user.uid);
-      onLogin(r.user);
-    } catch(e) {
-      setError('Não foi possível iniciar o modo demo.');
-    } finally { setBusy(false); }
+  function handleDemo() {
+    const uid = 'demo_' + Date.now();
+    seedDemo(uid);
+    // Fake fbUser — bypasses Firebase auth entirely
+    onLogin({ uid, isAnonymous:true, displayName:'Conta Demo', email:null, providerData:[], _isDemo:true });
   }
 
   async function handleSubmit(e) {

@@ -50,7 +50,16 @@ function useToast() {
 // ─── App (auth gate) ─────────────────────────────────────────
 function App(){
   const [fbUser, setFbUser] = useState(undefined);
-  useEffect(()=>onAuthStateChanged(auth, u=>{ setFbUser(u??null); if(u) saveUserProfile(u); }),[]);
+  useEffect(()=>{
+    const unsub = onAuthStateChanged(auth, u=>{
+      setFbUser(prev=>{
+        if(prev?._isDemo) return prev; // keep demo user — don't let Firebase override it
+        if(u) saveUserProfile(u);
+        return u??null;
+      });
+    });
+    return unsub;
+  },[]);
   if(fbUser===undefined) return(
     <div style={{position:'fixed',inset:0,background:'#080c12',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:64,height:64,borderRadius:16,animation:'lp 1.4s ease-in-out infinite',objectFit:"cover"}}/>
@@ -58,6 +67,12 @@ function App(){
   );
   if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
   const handleLogout = () => {
+    if(fbUser._isDemo){
+      // Demo mode: just clear state and demo localStorage data
+      Object.keys(localStorage).filter(k=>k.startsWith(`mf2_${fbUser.uid}`)).forEach(k=>localStorage.removeItem(k));
+      setFbUser(null);
+      return;
+    }
     signOut(auth);
     // Clear per-user localStorage cache so next user starts fresh
     Object.keys(localStorage).filter(k=>k.startsWith("mf2_")).forEach(k=>localStorage.removeItem(k));
@@ -825,8 +840,14 @@ function MainApp({ fbUser, onLogout }){
           <div><div style={S.appName}>CashUp</div><div style={S.appSub}>Controle seus lançamentos</div></div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {/* Demo badge */}
+          {fbUser._isDemo&&(
+            <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:6,background:"rgba(250,204,21,.1)",border:"1px solid #facc1533"}}>
+              <span style={{fontSize:9,fontWeight:700,color:"#facc15"}}>DEMO</span>
+            </div>
+          )}
           {/* Sync status indicator */}
-          {syncStatus!=="idle"&&(
+          {!fbUser._isDemo&&syncStatus!=="idle"&&(
             <div title={syncStatus==="saving"?"Salvando...":syncStatus==="saved"?"Salvo na nuvem":"Offline — dados locais"} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:6,background:syncStatus==="offline"?"rgba(248,113,113,.1)":syncStatus==="saved"?"rgba(74,222,128,.1)":"rgba(138,180,248,.1)",border:`1px solid ${syncStatus==="offline"?"#f8717133":syncStatus==="saved"?"#4ade8033":"#8ab4f833"}`,transition:"all .3s"}}>
               {syncStatus==="saving"&&<div style={{width:7,height:7,borderRadius:"50%",background:"#8ab4f8",animation:"pulse 1s ease-in-out infinite"}}/>}
               {syncStatus==="saved"&&<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
