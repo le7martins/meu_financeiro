@@ -2,9 +2,10 @@ import { useState } from 'react';
 import {
   signInWithPopup, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, updateProfile,
-  sendPasswordResetEmail,
+  sendPasswordResetEmail, signInAnonymously,
 } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
+import { seedDemo } from './demoData';
 
 const S = {
   root: { position:'fixed', inset:0, background:'#080c12', display:'flex', flexDirection:'column',
@@ -82,6 +83,17 @@ export default function LoginScreen({ onLogin }) {
     } finally { setBusy(false); }
   }
 
+  async function handleDemo() {
+    setError(''); setBusy(true);
+    try {
+      const r = await signInAnonymously(auth);
+      seedDemo(r.user.uid);
+      onLogin(r.user);
+    } catch(e) {
+      setError('Não foi possível iniciar o modo demo.');
+    } finally { setBusy(false); }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError(''); setInfo(''); setBusy(true);
@@ -131,10 +143,16 @@ export default function LoginScreen({ onLogin }) {
           {busy ? 'Aguarde...' : 'Continuar com Google'}
         </button>
 
+        {/* Demo button */}
+        <button style={{...S.btn(false), border:'1px solid #facc1533', color:'#facc15', background:'rgba(250,204,21,.06)', display:'flex', alignItems:'center', justifyContent:'center', gap:8}} onClick={handleDemo} disabled={busy}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          {busy ? 'Aguarde...' : 'Experimentar sem cadastro (demo)'}
+        </button>
+
         {/* Divider */}
         <div style={S.divider}>
           <div style={S.divLine}/>
-          <span style={S.divText}>ou</span>
+          <span style={S.divText}>ou entre com sua conta</span>
           <div style={S.divLine}/>
         </div>
 
