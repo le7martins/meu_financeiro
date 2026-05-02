@@ -20,7 +20,7 @@ messaging.onBackgroundMessage(payload => {
   self.registration.showNotification(title, {
     body,
     icon:    '/meu_financeiro/icon-192.png',
-    badge:   '/meu_financeiro/icon-192.png',
+    badge:   '/meu_financeiro/badge-96.png',
     vibrate: [200, 100, 200],
     tag:     payload.data?.tag || 'mf-notif',
     data:    payload.data || {},
@@ -28,8 +28,8 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // ─── Cache / PWA ─────────────────────────────────────────────
-const CACHE = 'mf-v2';
-const SHELL = ['/meu_financeiro/', '/meu_financeiro/index.html'];
+const CACHE = 'mf-v3';
+const SHELL = ['/meu_financeiro/', '/meu_financeiro/index.html', '/meu_financeiro/badge-96.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -59,7 +59,7 @@ self.addEventListener('message', e => {
     self.registration.showNotification(title, {
       body, tag,
       icon:    '/meu_financeiro/icon-192.png',
-      badge:   '/meu_financeiro/icon-192.png',
+      badge:   '/meu_financeiro/badge-96.png',
       vibrate: [200, 100, 200],
     });
   }
