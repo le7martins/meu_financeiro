@@ -56,8 +56,9 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
     setEditPurch(null);toast("✓ Compra atualizada");
   };
   const handlePayFat=(fat,amount)=>{
-    const full=amount>=fat.total;
-    setCardFaturas({...cardFaturas,[fat.key]:{paid:full,paidAmount:amount,paidDate:TODAY,partial:!full}});
+    const totalPaid=parseFloat(((fat.paidAmount||0)+amount).toFixed(2));
+    const full=totalPaid>=fat.total;
+    setCardFaturas({...cardFaturas,[fat.key]:{paid:full,paidAmount:totalPaid,paidDate:TODAY,partial:!full}});
     setPartialFatTarget(null);
     toast(full?"✓ Fatura paga":"Pagamento parcial registrado");
   };
@@ -159,8 +160,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                   {selFat.total>0&&(
                     <div style={{textAlign:"right"}}>
                       <div style={{fontSize:16,fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
-                      <div style={{fontSize:9,marginTop:1,color:selFat.paid?"#4ade80":selFat.open?"#facc15":"#fb923c",fontWeight:600}}>
-                        {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":"⏳ a pagar"}
+                      <div style={{fontSize:9,marginTop:1,color:selFat.paid?"#4ade80":selFat.open?"#facc15":selFat.partial?"#facc15":"#fb923c",fontWeight:600}}>
+                        {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":selFat.partial?`✓ R$${(selFat.paidAmount||0).toFixed(2)} pago`:"⏳ a pagar"}
                       </div>
                     </div>
                   )}
@@ -193,7 +194,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                 {!selFat.open&&selFat.total>0&&!selFat.paid&&(
                   <button onClick={()=>setPartialFatTarget({...selFat,card})}
                     style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,border:`1px solid ${card.color}44`,borderRadius:10,color:card.color,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                    Pagar fatura — {fmt(selFat.total)}
+                    {selFat.partial?`Pagar restante — ${fmt(parseFloat((selFat.total-selFat.paidAmount).toFixed(2)))}`:`Pagar fatura — ${fmt(selFat.total)}`}
                   </button>
                 )}
                 {selFat.paid&&(

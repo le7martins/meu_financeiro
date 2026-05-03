@@ -117,10 +117,12 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
           cardColor:card.color,cardName:card.name});
       } else {
         // Fechada: mostra com data de vencimento real (ex: 10/06 para fatura de Mai)
-        res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
+        const remainingAmount=fat.partial?parseFloat((fat.total-fat.paidAmount).toFixed(2)):fat.total;
+        res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:remainingAmount,
           date:fat.dueDate,type:"despesa",status:fat.paid?"pago":"a_pagar",statusForMonth:fat.paid?"pago":"a_pagar",
           category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:false,
           faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,
+          paidAmount:fat.paidAmount,partial:fat.partial,
           cardColor:card.color,cardName:card.name});
       }
     }
