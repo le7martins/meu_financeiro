@@ -9,7 +9,7 @@ export function getBillingMonth(purchaseDate,closeDay) {
 }
 export function getFaturaDueDate(billingMonth,dueDay){ const nm=addM(billingMonth,1); return `${nm}-${String(dueDay).padStart(2,"0")}`; }
 export function getFaturaCloseDate(billingMonth,closeDay){ return `${billingMonth}-${String(closeDay).padStart(2,"0")}`; }
-export function isFaturaOpen(billingMonth,closeDay){ return TODAY<=getFaturaCloseDate(billingMonth,closeDay); }
+export function isFaturaOpen(billingMonth,closeDay){ return TODAY<getFaturaCloseDate(billingMonth,closeDay); }
 export function getPurchaseInstallmentsForBilling(purchase,targetBillingMonth,closeDay) {
   const baseBilling=getBillingMonth(purchase.purchaseDate,closeDay);
   const diff=mDiff(baseBilling,targetBillingMonth);
@@ -29,7 +29,7 @@ export function buildFatura(card,purchases,cardFaturas,billingMonth) {
   const payRecord=(cardFaturas||{})[key]||null;
   const closeDate=getFaturaCloseDate(billingMonth,card.closeDay);
   const dueDate=getFaturaDueDate(billingMonth,card.dueDay);
-  const open=TODAY<=closeDate;
+  const open=TODAY<closeDate;
   const paid=payRecord?.paid||false;
   const paidAmount=payRecord?.paidAmount||0;
   const partial=payRecord?.partial||false;
