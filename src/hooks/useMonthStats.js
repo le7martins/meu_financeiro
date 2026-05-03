@@ -76,7 +76,7 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
         if (seen.has(key)) return;
         seen.add(key);
         if (days < 0)       overdue.push({ ...e, _mk: m, _due: due, _days: days });
-        else if (days <= 30) upcoming.push({ ...e, _mk: m, _due: due, _days: days });
+        else if (days <= 30 || (e.isFatura && !e.isOpenFatura)) upcoming.push({ ...e, _mk: m, _due: due, _days: days });
       });
     }
     return {
