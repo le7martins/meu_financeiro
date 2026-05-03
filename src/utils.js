@@ -12,6 +12,7 @@ export const addM     = (k,n) => { const [y,m]=k.split("-").map(Number),d=new Da
 export const daysUntil = (ds) => { if(!ds)return null; return Math.ceil((new Date(ds+"T12:00:00")-new Date(TODAY+"T12:00:00"))/86400000); };
 export const dueBadge  = (entry,mk) => {
   if(entry.statusForMonth!=="a_pagar") return null;
+  if(entry.isOpenFatura) return null;
   const due = entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura ? `${mk}-${entry.date.split("-")[2]}` : entry.date;
   const days = daysUntil(due);
   if(days===null) return null;
