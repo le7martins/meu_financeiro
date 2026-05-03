@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import BarSVG from '../components/BarSVG.jsx';
 import DonutSVG from '../components/DonutSVG.jsx';
 import Leg from '../components/Leg.jsx';
@@ -18,6 +18,10 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
   const [catView,setCatView]=useState("despesa");
   const [cmpA,setCmpA]=useState(nowMonth);
   const [cmpB,setCmpB]=useState(addM(nowMonth,-1));
+  const [projMonths,setProjMonths]=useState(6);
+  const [histMeses,setHistMeses]=useState(6);
+  const [relMes,setRelMes]=useState(nowMonth);
+  const [gerandoRel,setGerandoRel]=useState(false);
 
   const getCat  =(id)=>(categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id});
   const catColor=(id)=>getCat(id).color;
@@ -53,13 +57,13 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
     return{rec,dep,saldo:rec-dep};
   },[entries,dividas,cards,cardPurchases,cardFaturas,range]);
 
-  const projData=useMemo(()=>Array.from({length:6},(_,i)=>{
+  const projData=useMemo(()=>Array.from({length:projMonths},(_,i)=>{
     const m=addM(nowMonth,i+1);
     const me=mData(m);
     const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
     const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
     return{month:mShort(m),receitas:+rec.toFixed(2),despesas:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2)};
-  }),[entries,dividas,cards,cardPurchases,cardFaturas,nowMonth]);
+  }),[entries,dividas,cards,cardPurchases,cardFaturas,nowMonth,projMonths]);
 
   const projCumData=useMemo(()=>{
     const nowMe=mData(nowMonth);
@@ -70,6 +74,14 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
       return{...d,cumulative:running};
     });
   },[projData,accumSaldo,nowMonth,entries,dividas,cards,cardPurchases,cardFaturas]);
+
+  const histData=useMemo(()=>Array.from({length:histMeses},(_,i)=>{
+    const m=addM(nowMonth,i-histMeses+1);
+    const me=mData(m);
+    const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+    const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+    return{month:mShort(m),receitas:+rec.toFixed(2),despesas:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2),isCurrent:m===nowMonth};
+  }),[entries,dividas,cards,cardPurchases,cardFaturas,nowMonth,histMeses]);
 
   const insights=useMemo(()=>{
     if(range.length<2) return null;
@@ -111,6 +123,97 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
     entry.total=+tot.toFixed(2);
     return entry;
   }),[cards,cardPurchases,cardFaturas,range]);
+
+  const gerarRelatorio=useCallback(async()=>{
+    setGerandoRel(true);
+    try{
+      const me=mData(relMes);
+      const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+      const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+      const saldo=rec-dep;
+      const pago=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="pago").reduce((s,e)=>s+eVal(e),0);
+      const pend=dep-pago;
+      const catMap={};
+      me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
+      const cats=Object.entries(catMap).map(([id,v])=>({name:catName(id),value:v,color:catColor(id)})).sort((a,b)=>b.value-a.value).slice(0,6);
+
+      const W=390,PAD=24;
+      const catH=cats.length*38+14;
+      const H=106+80+28+catH+70+36;
+      const cv=document.createElement('canvas');
+      cv.width=W*2;cv.height=H*2;
+      const ctx=cv.getContext('2d');
+      ctx.scale(2,2);
+
+      const rr=(x,y,w,h,r=8)=>{
+        ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+        ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
+        ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+      };
+
+      // Fundo
+      ctx.fillStyle='#080c12';ctx.fillRect(0,0,W,H);
+      // Barra topo verde
+      ctx.fillStyle='#4ade80';ctx.fillRect(0,0,W,4);
+
+      // Logo
+      ctx.fillStyle='#4ade80';ctx.font='bold 20px system-ui,sans-serif';ctx.fillText('CashUp',PAD,38);
+      ctx.fillStyle='#556';ctx.font='11px system-ui,sans-serif';ctx.fillText('Relatório Mensal',PAD,54);
+      // Mês
+      ctx.fillStyle='#dde';ctx.font='bold 24px system-ui,sans-serif';ctx.fillText(mLabel(relMes),PAD,86);
+
+      // Cards resumo
+      const cW3=(W-PAD*2-8)/3;
+      [{l:'Receitas',v:rec,c:'#4ade80'},{l:'Despesas',v:dep,c:'#fb923c'},{l:'Saldo',v:saldo,c:saldo>=0?'#4ade80':'#f87171'}].forEach(({l,v,c},i)=>{
+        const x=PAD+i*(cW3+4),y=106,ch=64;
+        ctx.fillStyle='#0d1118';rr(x,y,cW3,ch);ctx.fill();
+        ctx.strokeStyle='#1a3a6e44';ctx.lineWidth=1;rr(x,y,cW3,ch);ctx.stroke();
+        ctx.fillStyle='#556';ctx.font='9px system-ui,sans-serif';ctx.fillText(l,x+8,y+16);
+        ctx.fillStyle=c;ctx.font='bold 11px system-ui,sans-serif';
+        const vs=fmt(v);ctx.fillText(vs,x+8,y+44);
+      });
+
+      // Categorias
+      let cy=106+64+24;
+      ctx.fillStyle='#556';ctx.font='9px system-ui,sans-serif';ctx.fillText('DESPESAS POR CATEGORIA',PAD,cy);
+      cy+=14;
+      const barW=W-PAD*2;const maxC=cats[0]?.value||1;
+      cats.forEach(({name,value,color})=>{
+        ctx.fillStyle='#ccd';ctx.font='11px system-ui,sans-serif';ctx.fillText(name,PAD,cy+10);
+        const vs=fmt(value);ctx.fillStyle=color;ctx.font='bold 10px system-ui,sans-serif';
+        ctx.fillText(vs,W-PAD-ctx.measureText(vs).width,cy+10);
+        ctx.fillStyle='#1a2840';rr(PAD,cy+14,barW,7,3);ctx.fill();
+        const fw=Math.max(7,(value/maxC)*barW);ctx.fillStyle=color;rr(PAD,cy+14,fw,7,3);ctx.fill();
+        cy+=38;
+      });
+
+      // Status pagamentos
+      cy+=4;
+      ctx.fillStyle='#556';ctx.font='9px system-ui,sans-serif';ctx.fillText('STATUS DE PAGAMENTOS',PAD,cy);
+      cy+=12;
+      ctx.fillStyle='#1a2840';rr(PAD,cy,barW,10,5);ctx.fill();
+      if(dep>0){const pw=Math.max(10,(pago/dep)*barW);ctx.fillStyle='#4ade80';rr(PAD,cy,pw,10,5);ctx.fill();}
+      cy+=22;
+      ctx.fillStyle='#4ade80';ctx.font='10px system-ui,sans-serif';ctx.fillText(`✓ Pago: ${fmt(pago)}`,PAD,cy);
+      ctx.fillStyle='#fb923c';ctx.fillText(`⏳ Pendente: ${fmt(pend)}`,PAD+140,cy);
+
+      // Rodapé
+      cy=H-16;
+      ctx.fillStyle='#334';ctx.font='9px system-ui,sans-serif';
+      ctx.fillText(`Gerado em ${new Date().toLocaleDateString('pt-BR')} · CashUp`,PAD,cy);
+
+      const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
+      const file=new File([blob],`cashup-${relMes}.png`,{type:'image/png'});
+      if(navigator.canShare?.({files:[file]})){
+        await navigator.share({files:[file],title:`Relatório CashUp – ${mLabel(relMes)}`});
+      } else {
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');a.href=url;a.download=`cashup-${relMes}.png`;a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+      }
+    } catch(e){ if(e?.name!=='AbortError') console.error(e); }
+    setGerandoRel(false);
+  },[relMes,entries,dividas,cards,cardPurchases,cardFaturas,categories]);
 
   return(
     <div style={{paddingBottom:80,paddingTop:4}}>
@@ -161,7 +264,7 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
       </div>)}
 
       <div style={{display:"flex",gap:6,padding:"0 14px 12px",flexWrap:"wrap"}}>
-        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"],["anual","📅 Anual"]].map(([t,l])=>(
+        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["historico","📊 Histórico"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"],["anual","📅 Anual"]].map(([t,l])=>(
           <button key={t} onClick={()=>setChartType(t)} className="fTab" style={{...S.fTab,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
         ))}
       </div>
@@ -204,6 +307,89 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
               </div>
             </>)
           }
+        </div>)}
+
+        {/* ── Feature 7: Histórico mês a mês ─────────────────── */}
+        {chartType==="historico"&&(<div style={S.chartBox}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <div style={S.chartTitle}>Histórico Mensal</div>
+            <div style={{display:"flex",gap:5}}>
+              {[["6","6M"],["12","12M"]].map(([v,l])=>(
+                <button key={v} onClick={()=>setHistMeses(parseInt(v))} className="fTab"
+                  style={{...S.fTab,...(histMeses===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",fontSize:10}}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <BarSVG data={histData} type="barras"/>
+          <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:10}}>
+            <Leg color="#4ade80" label="Receitas"/><Leg color="#fb923c" label="Despesas"/>
+          </div>
+          {histData.length>=2&&(()=>{
+            const totR=histData.reduce((s,d)=>s+d.receitas,0);
+            const totD=histData.reduce((s,d)=>s+d.despesas,0);
+            const avgR=totR/histData.length;
+            const avgD=totD/histData.length;
+            const best=histData.reduce((mx,d)=>d.saldo>mx.saldo?d:mx,histData[0]);
+            return(
+              <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:6}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+                  {[{l:`Média receita/${histMeses}M`,v:avgR,c:"#4ade80"},{l:`Média despesa/${histMeses}M`,v:avgD,c:"#fb923c"},{l:`Melhor saldo`,v:best.saldo,c:best.saldo>=0?"#4ade80":"#f87171"}].map(({l,v,c})=>(
+                    <div key={l} style={{background:"var(--bg)",border:"1px solid var(--border2)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                      <div style={{fontSize:8,color:"var(--text4)",marginBottom:3,lineHeight:1.3}}>{l}</div>
+                      <div style={{fontSize:11,fontWeight:700,color:c}}>{fmtShort(v)}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:6}}>
+                  {histData.map((d,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:d.isCurrent?"var(--card-bg)":"transparent",border:d.isCurrent?"1px solid var(--border2)":"none"}}>
+                      <span style={{fontSize:10,color:d.isCurrent?"var(--text1)":"var(--text3)",fontWeight:d.isCurrent?700:400,width:28,flexShrink:0}}>{d.month}</span>
+                      <span style={{fontSize:10,color:"#4ade8088",flex:1}}>↑{fmtShort(d.receitas)}</span>
+                      <span style={{fontSize:10,color:"#fb923c88",flex:1}}>↓{fmtShort(d.despesas)}</span>
+                      <span style={{fontSize:10,fontWeight:600,color:d.saldo>=0?"#4ade80":"#f87171",width:54,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmtShort(d.saldo)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>)}
+
+        {/* ── Feature 4: Projeção de saldo ───────────────────── */}
+        {chartType==="projecao"&&(<div style={S.chartBox}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+            <div style={S.chartTitle}>Projeção de Saldo</div>
+            <div style={{display:"flex",gap:5}}>
+              {[["3","3M"],["6","6M"],["12","12M"]].map(([v,l])=>(
+                <button key={v} onClick={()=>setProjMonths(parseInt(v))} className="fTab"
+                  style={{...S.fTab,...(projMonths===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",fontSize:10}}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Baseado em lançamentos fixos, parcelados, dívidas e faturas</div>
+          <BarSVG data={projData} type="barras"/>
+          {projCumData.length>0&&(
+            <div style={{margin:"14px 0 10px",background:projCumData[projCumData.length-1].cumulative>=0?"rgba(74,222,128,.08)":"rgba(248,113,113,.08)",border:`1px solid ${projCumData[projCumData.length-1].cumulative>=0?"#4ade8033":"#f8717133"}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style={{fontSize:10,color:"var(--text3)"}}>Saldo acumulado em {projCumData[projCumData.length-1].month}</div><div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>baseado nos últimos dados disponíveis</div></div>
+              <div style={{fontSize:18,fontWeight:800,color:projCumData[projCumData.length-1].cumulative>=0?"#4ade80":"#f87171"}}>{fmt(projCumData[projCumData.length-1].cumulative)}</div>
+            </div>
+          )}
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {projCumData.map((d,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
+                <div style={{fontSize:12,fontWeight:600,color:"#8ab4f8",width:28,flexShrink:0}}>{d.month}</div>
+                <div style={{fontSize:10,color:"#4ade80",flex:1}}>↑{fmt(d.receitas)}</div>
+                <div style={{fontSize:10,color:"#fb923c",flex:1}}>↓{fmt(d.despesas)}</div>
+                <div style={{fontSize:11,fontWeight:600,color:d.saldo>=0?"#4ade80":"#f87171",width:60,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmt(d.saldo)}</div>
+                <div style={{width:1,height:14,background:"var(--border2)",flexShrink:0}}/>
+                <div style={{fontSize:11,fontWeight:700,color:d.cumulative>=0?"#4ade80":"#f87171",width:64,textAlign:"right"}}>{fmt(d.cumulative)}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"flex-end",gap:12,marginTop:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#8ab4f8"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Saldo mensal</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#4ade80"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Acumulado</span></div>
+          </div>
         </div>)}
 
         {chartType==="comparar"&&(<div style={S.chartBox}>
@@ -266,34 +452,6 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
           )}
         </div>)}
 
-        {chartType==="projecao"&&(<div style={S.chartBox}>
-          <div style={S.chartTitle}>Projeção — Próximos 6 meses</div>
-          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Baseado em lançamentos fixos, parcelados, dívidas e faturas</div>
-          <BarSVG data={projData} type="barras"/>
-          {projCumData.length>0&&(
-            <div style={{margin:"14px 0 10px",background:projCumData[projCumData.length-1].cumulative>=0?"rgba(74,222,128,.08)":"rgba(248,113,113,.08)",border:`1px solid ${projCumData[projCumData.length-1].cumulative>=0?"#4ade8033":"#f8717133"}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style={{fontSize:10,color:"var(--text3)"}}>Saldo acumulado em {projCumData[projCumData.length-1].month}</div><div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>baseado nos últimos dados disponíveis</div></div>
-              <div style={{fontSize:18,fontWeight:800,color:projCumData[projCumData.length-1].cumulative>=0?"#4ade80":"#f87171"}}>{fmt(projCumData[projCumData.length-1].cumulative)}</div>
-            </div>
-          )}
-          <div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {projCumData.map((d,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#8ab4f8",width:28,flexShrink:0}}>{d.month}</div>
-                <div style={{fontSize:10,color:"#4ade80",flex:1}}>↑{fmt(d.receitas)}</div>
-                <div style={{fontSize:10,color:"#fb923c",flex:1}}>↓{fmt(d.despesas)}</div>
-                <div style={{fontSize:11,fontWeight:600,color:d.saldo>=0?"#4ade80":"#f87171",width:60,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmt(d.saldo)}</div>
-                <div style={{width:1,height:14,background:"var(--border2)",flexShrink:0}}/>
-                <div style={{fontSize:11,fontWeight:700,color:d.cumulative>=0?"#4ade80":"#f87171",width:64,textAlign:"right"}}>{fmt(d.cumulative)}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:12,marginTop:8}}>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#8ab4f8"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Saldo mensal</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#4ade80"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Acumulado</span></div>
-          </div>
-        </div>)}
-
         {chartType==="cartoes"&&(<div>
           {cards.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Nenhum cartão cadastrado</div>}
           {cards.length>0&&cardPurchases.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Nenhuma compra lançada nos cartões</div>}
@@ -322,7 +480,6 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                 })}
               </div>
             </div>
-
             <div style={S.chartBox}>
               <div style={S.chartTitle}>Gastos por categoria</div>
               <div style={{fontSize:10,color:"var(--text3)",marginBottom:10}}>Total gasto nos cartões: <strong style={{color:"#fb923c"}}>{fmt(cardCatData.total)}</strong></div>
@@ -344,7 +501,6 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                 </>)
               }
             </div>
-
             <div style={{...S.chartBox,marginTop:10}}>
               <div style={S.chartTitle}>Total por cartão</div>
               <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8}}>
@@ -395,8 +551,6 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                   <button onClick={()=>{const y=parseInt(year)+1;setSpecMonth(`${y}-01`);}} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 8px",fontSize:12}}>›</button>
                 </div>
               </div>
-
-              {/* Totais anuais */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
                 {[{l:"Receitas",v:totRec,c:"#4ade80"},{l:"Despesas",v:totDep,c:"#fb923c"},{l:"Saldo",v:totSaldo,c:totSaldo>=0?"#4ade80":"#f87171"}].map(({l,v,c})=>(
                   <div key={l} style={{background:"var(--bg)",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
@@ -405,8 +559,6 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                   </div>
                 ))}
               </div>
-
-              {/* Tabela meses */}
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 {rows.map(({m,rec,dep,saldo},i)=>{
                   const recPct=maxVal>0?(rec/maxVal)*100:0;
@@ -441,6 +593,50 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             </div>
           );
         })()}
+
+        {/* ── Feature 8: Relatório compartilhável ────────────── */}
+        <div style={{...S.chartBox,marginTop:chartType==="anual"?10:0}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+            <div>
+              <div style={S.chartTitle}>Relatório Mensal</div>
+              <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>Gera imagem para compartilhar</div>
+            </div>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="1.5" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </div>
+          <div style={{marginBottom:14}}>
+            <label style={{...S.lbl,marginBottom:6}}>Mês do relatório</label>
+            <MonthPicker value={relMes} onChange={setRelMes} now={nowMonth}/>
+          </div>
+          {(()=>{
+            const me=mData(relMes);
+            const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
+            const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
+            const pago=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="pago").reduce((s,e)=>s+eVal(e),0);
+            const catMap={};
+            me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
+            const topCat=Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0];
+            return(
+              <div style={{background:"var(--bg)",border:"1px solid var(--border2)",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+                <div style={{fontSize:10,color:"var(--text3)",marginBottom:8,fontWeight:600}}>{mLabel(relMes)}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  <div><div style={{fontSize:9,color:"var(--text4)"}}>Receitas</div><div style={{fontSize:13,fontWeight:700,color:"#4ade80"}}>{fmt(rec)}</div></div>
+                  <div><div style={{fontSize:9,color:"var(--text4)"}}>Despesas</div><div style={{fontSize:13,fontWeight:700,color:"#fb923c"}}>{fmt(dep)}</div></div>
+                  <div><div style={{fontSize:9,color:"var(--text4)"}}>Saldo</div><div style={{fontSize:13,fontWeight:700,color:rec-dep>=0?"#4ade80":"#f87171"}}>{fmt(rec-dep)}</div></div>
+                  <div><div style={{fontSize:9,color:"var(--text4)"}}>% Pago</div><div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{dep>0?((pago/dep)*100).toFixed(0):0}%</div></div>
+                </div>
+                {topCat&&<div style={{fontSize:10,color:"var(--text3)"}}>Maior gasto: <span style={{color:catColor(topCat[0]),fontWeight:600}}>{catName(topCat[0])} ({fmt(topCat[1])})</span></div>}
+              </div>
+            );
+          })()}
+          <button onClick={gerarRelatorio} disabled={gerandoRel}
+            style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:gerandoRel?"wait":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:gerandoRel?0.6:1}}>
+            {gerandoRel?(
+              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>Gerando...</>
+            ):(
+              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Gerar e Compartilhar</>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
