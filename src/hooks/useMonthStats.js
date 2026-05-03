@@ -65,7 +65,7 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
   const { overdueDue, upcomingDue } = useMemo(() => {
     const overdue = [], upcoming = [];
     const seen = new Set();
-    for (let i = 0; i <= 2; i++) {
+    for (let i = -1; i <= 2; i++) {
       const m = addM(NOW, i);
       const me = getMonthEntries(entries, dividas, m, cards, cardPurchases, cardFaturas);
       me.filter(e => e.statusForMonth === 'a_pagar').forEach(e => {

@@ -106,18 +106,17 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     for(const bm of allBillings){
       const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm);
       if(fat.total<=0) continue;
+      // Fatura sempre aparece no mês de faturamento (billing month)
+      if(bm!==monthKey) continue;
       if(fat.open){
-        // Fatura ainda aberta → mostra no mês de fechamento (billing month)
-        if(bm!==monthKey) continue;
+        // Aberta: mostra com data de fechamento (valor ainda em aberto)
         res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
           date:fat.closeDate,type:"despesa",status:"a_pagar",statusForMonth:"a_pagar",
           category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:true,
           faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,
           cardColor:card.color,cardName:card.name});
       } else {
-        // Fatura fechada → mostra no mês de vencimento
-        const dueMk=fat.dueDate.substring(0,7);
-        if(dueMk!==monthKey) continue;
+        // Fechada: mostra com data de vencimento real (ex: 10/06 para fatura de Mai)
         res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
           date:fat.dueDate,type:"despesa",status:fat.paid?"pago":"a_pagar",statusForMonth:fat.paid?"pago":"a_pagar",
           category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:false,
@@ -148,11 +147,13 @@ export function fireNotification(title,body,tag) {
 export function checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,settings) {
   if(!settings.enabled||Notification.permission!=="granted") return 0;
   const NOW=getNow();
+  const PREV=addM(NOW,-1);
   const NEXT=addM(NOW,1);
   const mkDate=(e,m)=>(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
+  const mePrev=getMonthEntries(entries,dividas,PREV,cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:PREV}));
   const meNow =getMonthEntries(entries,dividas,NOW, cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NOW}));
   const meNext=getMonthEntries(entries,dividas,NEXT,cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NEXT}));
-  const me=[...meNow,...meNext];
+  const me=[...mePrev,...meNow,...meNext];
   const pendingExp=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="a_pagar");
   const pendingInc=settings.incomeAlert!==false?me.filter(e=>e.type==="receita"&&e.statusForMonth==="a_pagar"):[];
   const overdue=[],dueToday=[],dueSoon=[],incToday=[],incSoon=[];
