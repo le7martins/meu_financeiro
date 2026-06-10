@@ -1,6 +1,12 @@
 // ─── PDF Report Generator (sem dependências externas) ────────────────────────
 // Gera um HTML estilizado e abre a janela de impressão do browser (Save as PDF)
 
+const escHtml = (s) => String(s)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;');
+
 export function generateMonthPDF({ entries, monthKey, categories, mLabel, fmt, fmtDate, eVal, getMonthEntries, dividas, cards, cardPurchases, cardFaturas }) {
   const me = getMonthEntries(entries, dividas, monthKey, cards, cardPurchases, cardFaturas);
   const getCatName = (id) => (categories.find(c => c.id === id) || { name: id }).name;
@@ -29,7 +35,7 @@ export function generateMonthPDF({ entries, monthKey, categories, mLabel, fmt, f
     return `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:12px;color:#374151;font-weight:600;">${c.name}</span>
+          <span style="font-size:12px;color:#374151;font-weight:600;">${escHtml(c.name)}</span>
           <span style="font-size:12px;color:#6b7280;">${fmt(c.value)}</span>
         </div>
         <div style="height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;">
@@ -40,8 +46,8 @@ export function generateMonthPDF({ entries, monthKey, categories, mLabel, fmt, f
 
   const renderRows = (list) => list.map(e => `
     <tr>
-      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#111827;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.description}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280;">${getCatName(e.category)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#111827;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(e.description)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280;">${escHtml(getCatName(e.category))}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280;">${fmtDate(e.date)}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;font-weight:700;color:${e.type === 'receita' ? '#16a34a' : '#dc2626'};text-align:right;">${e.type === 'receita' ? '+' : ''}${fmt(eVal(e))}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;text-align:center;">

@@ -1,5 +1,5 @@
-import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc } from 'firebase/firestore';
+import { getToken, deleteToken, onMessage } from 'firebase/messaging';
+import { doc, updateDoc, deleteField } from 'firebase/firestore';
 import { messaging, db } from './firebase';
 
 // VAPID key do Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
@@ -17,6 +17,16 @@ export async function registerFCMToken(uid) {
   } catch (e) {
     console.warn('[FCM] Falha ao registrar token:', e.message);
     return null;
+  }
+}
+
+export async function deregisterFCMToken(uid) {
+  if (!messaging) return;
+  try {
+    await deleteToken(messaging);
+    await updateDoc(doc(db, 'userProfiles', uid), { fcmToken: deleteField(), fcmUpdated: deleteField() });
+  } catch (e) {
+    console.warn('[FCM] Falha ao remover token:', e.message);
   }
 }
 

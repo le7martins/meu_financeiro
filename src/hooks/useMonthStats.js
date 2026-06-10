@@ -4,6 +4,8 @@ import { addM, daysUntil, eVal } from '../utils.js';
 
 export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, NOW }) {
   const accumCache = useRef({});
+  // Rastreia a identidade dos dados (não do selMonth) para invalidar o cache ao editar
+  const prevDataRef = useRef(null);
 
   const monthEntries = useMemo(
     () => getMonthEntries(entries, dividas, selMonth, cards, cardPurchases, cardFaturas),
@@ -16,6 +18,12 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
   const totPago = useMemo(() => monthEntries.filter(e => e.statusForMonth === 'pago' && e.type === 'despesa').reduce((s, e) => s + eVal(e), 0), [monthEntries]);
 
   const accumSaldoResult = useMemo(() => {
+    // Limpa o cache quando os dados financeiros mudam (não apenas o selMonth)
+    const dataKey = [entries, dividas, cards, cardPurchases, cardFaturas];
+    if (prevDataRef.current === null || dataKey.some((d, i) => d !== prevDataRef.current[i])) {
+      accumCache.current = {};
+      prevDataRef.current = dataKey;
+    }
     const allDates = [...entries.map(e => e.date.substring(0, 7)), ...dividas.map(d => d.startMonth)];
     if (!allDates.length) return null;
     const earliest = allDates.reduce((mn, m) => m < mn ? m : mn, selMonth);

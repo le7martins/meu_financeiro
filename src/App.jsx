@@ -3,7 +3,7 @@ import { useMonthStats } from './hooks/useMonthStats.js';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
 import { loadUserData, saveData, subscribeData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
-import { registerFCMToken, onForegroundMessage } from './fcm';
+import { registerFCMToken, onForegroundMessage, deregisterFCMToken } from './fcm';
 import LoginScreen from './LoginScreen';
 import { fmt, fmtShort, fmtDate, TODAY, MNAMES, mLabel, mShort, getNow, mDiff, addM, daysUntil, dueBadge, eVal, loadLS, saveLS } from './utils.js';
 import { DEFAULT_CATS, BLANK, PRESET_COLORS, CARD_COLORS, NOTIF_KEY, NOTIF_LAST_KEY, defaultNotifSettings } from './constants.js';
@@ -66,13 +66,15 @@ function App(){
     </div>
   );
   if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if(fbUser._isDemo){
       // Demo mode: just clear state and demo localStorage data
       Object.keys(localStorage).filter(k=>k.startsWith(`mf2_${fbUser.uid}`)).forEach(k=>localStorage.removeItem(k));
       setFbUser(null);
       return;
     }
+    // Remove FCM token antes de sair para parar notificações no dispositivo
+    await deregisterFCMToken(fbUser.uid).catch(()=>{});
     signOut(auth);
     // Clear per-user localStorage cache so next user starts fresh
     Object.keys(localStorage).filter(k=>k.startsWith("mf2_")).forEach(k=>localStorage.removeItem(k));
@@ -408,7 +410,7 @@ function MainApp({ fbUser, onLogout }){
     else if(sortBy==="status") list=[...list].sort((a,b)=>a.statusForMonth==="a_pagar"?-1:1);
     else list=[...list].sort((a,b)=>a.date.localeCompare(b.date));
     return list;
-  },[monthEntries,filter,filterCat,search,sortBy]);
+  },[monthEntries,filter,filterCat,filterTag,search,sortBy]);
 
   const grouped=useMemo(()=>{
     if(!groupBy) return null;
@@ -569,10 +571,12 @@ function MainApp({ fbUser, onLogout }){
     toast(isFullyPaid?"✓ Fatura paga":"Pagamento parcial registrado");
   },[cardFaturas,saveCardFaturas,toast]);
 
-  const handleRevertFatura=useCallback((faturaKey)=>{
+  const handleRevertFatura=useCallback(async(faturaKey)=>{
+    const ok=await showConfirm({title:"Estornar pagamento?",message:"O pagamento registrado será revertido e a fatura voltará como pendente.",confirmLabel:"Estornar",danger:true});
+    if(!ok) return;
     const nf={...cardFaturas};delete nf[faturaKey];
     saveCardFaturas(nf);toast("↩ Pagamento estornado","info");
-  },[cardFaturas,saveCardFaturas,toast]);
+  },[cardFaturas,saveCardFaturas,toast,showConfirm]);
 
   const handleBackup=useCallback(()=>{
     const data={version:1,exportedAt:new Date().toISOString(),entries,dividas,cards,cardPurchases,cardFaturas,categories};

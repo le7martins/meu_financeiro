@@ -2,7 +2,8 @@
 export const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
 export const fmtShort = (v) => Math.abs(v)>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v.toFixed(0)}`;
 export const fmtDate  = (d) => { const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`; };
-export const TODAY    = new Date().toISOString().split("T")[0];
+const _d = new Date();
+export const TODAY = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
 export const MNAMES   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 export const mLabel   = (k) => { const [y,m]=k.split("-"); return `${MNAMES[+m-1]} ${y}`; };
 export const mShort   = (k) => MNAMES[+k.split("-")[1]-1];
