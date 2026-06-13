@@ -402,7 +402,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                   </div>
                   {!isComplete&&(
                     <CurrencyInput
-                      key={goal.id+goal.currentAmount}
+                      key={goal.id}
                       value={goal.currentAmount}
                       onChange={v=>updateGoalAmount(goal.id,v)}
                       placeholder="Guardado hoje (R$)"

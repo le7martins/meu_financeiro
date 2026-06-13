@@ -273,7 +273,7 @@ function MainApp({ fbUser, onLogout }){
   // Apply CSS vars directly on <html> — guarantees cascade regardless of <style> tag position
   const applyTheme = useCallback((t)=>{
     const root=document.documentElement;
-    const dark=t!=='light';
+    const dark=t==='system'?window.matchMedia('(prefers-color-scheme: dark)').matches:t!=='light';
     const vars=dark?{
       '--text1':'#e2e8f0','--text2':'#cbd5e1','--text3':'#94a3b8','--text4':'#64748b',
       '--bg':'#080c12','--card-bg':'#0d1118','--card-bg2':'#111820',
@@ -299,7 +299,16 @@ function MainApp({ fbUser, onLogout }){
   const NOW=getNow();
 
   // Apply theme on mount and whenever theme changes
-  useEffect(()=>{ applyTheme(theme); },[theme]);
+  useEffect(()=>{ applyTheme(theme); },[theme,applyTheme]);
+
+  // Quando tema é 'system', acompanha mudança de preferência do SO
+  useEffect(()=>{
+    if(theme!=='system') return;
+    const mq=window.matchMedia('(prefers-color-scheme: dark)');
+    const handler=()=>applyTheme('system');
+    mq.addEventListener('change',handler);
+    return ()=>mq.removeEventListener('change',handler);
+  },[theme,applyTheme]);
 
   useEffect(()=>{
     if(!dbReady) return;
@@ -873,15 +882,13 @@ function MainApp({ fbUser, onLogout }){
             style={{display:"flex",alignItems:"center",justifyContent:"center",width:34,height:34,background:showGlobalSearch?"#0d1a2e":"var(--card-bg)",border:`1px solid ${showGlobalSearch?"#8ab4f8":"var(--border)"}`,borderRadius:9,cursor:"pointer",color:showGlobalSearch?"#8ab4f8":"var(--text2)"}}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </button>
-          {/* Theme toggle */}
-          <button onClick={()=>saveTheme(theme==="dark"?"light":"dark")}
-            title={theme==="dark"?"Mudar para tema claro":"Mudar para tema escuro"}
+          {/* Theme toggle — cicla: escuro → claro → automático (sistema) */}
+          <button onClick={()=>saveTheme(theme==="dark"?"light":theme==="light"?"system":"dark")}
+            title={theme==="dark"?"Mudar para tema claro":theme==="light"?"Usar tema do sistema":"Mudar para tema escuro"}
             style={{display:"flex",alignItems:"center",justifyContent:"center",width:34,height:34,background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:9,cursor:"pointer",fontFamily:"inherit",color:"var(--text2)"}}>
-            {theme==="dark"?(
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            ):(
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-            )}
+            {theme==="dark"&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>}
+            {theme==="light"&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>}
+            {theme==="system"&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polyline points="8 21 12 17 16 21"/></svg>}
           </button>
         </div>
       </header>
@@ -1074,10 +1081,10 @@ function MainApp({ fbUser, onLogout }){
             </button>
             {showOverdue&&(
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {overdueDue.map((e,i)=>{
+                {overdueDue.map((e)=>{
                   const delay=Math.abs(e._days);
                   return(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(248,113,113,.06)",border:"1.5px solid #f8717133",borderRadius:10,padding:"9px 11px"}}>
+                    <div key={e.id} style={{display:"flex",alignItems:"center",gap:6,background:"rgba(248,113,113,.06)",border:"1.5px solid #f8717133",borderRadius:10,padding:"9px 11px"}}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
@@ -1109,11 +1116,11 @@ function MainApp({ fbUser, onLogout }){
             </button>
             {showUpcoming&&(
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                {upcomingDue.map((e,i)=>{
+                {upcomingDue.map((e)=>{
                   const dayColor=e._days===0?"#fb923c":e._days<=3?"#facc15":"#8ab4f8";
                   const dayLabel=e._days===0?"Hoje":`${e._days}d`;
                   return(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px"}}>
+                    <div key={e.id} style={{display:"flex",alignItems:"center",gap:6,background:e._days===0?"rgba(251,146,60,.07)":"var(--card-bg)",border:`1.5px solid ${dayColor}33`,borderRadius:10,padding:"9px 11px"}}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:12,color:"var(--text1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>

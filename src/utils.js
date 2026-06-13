@@ -1,6 +1,6 @@
 // ─── Utils: formatação, datas e localStorage ─────────────────
 export const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
-export const fmtShort = (v) => Math.abs(v)>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v.toFixed(0)}`;
+export const fmtShort = (v) => { const a=Math.abs(v),s=v<0?'-':''; return a>=1000?`${s}R$${(a/1000).toFixed(1)}k`:`${s}R$${a.toFixed(0)}`; };
 export const fmtDate  = (d) => { const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`; };
 const _d = new Date();
 export const TODAY = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;

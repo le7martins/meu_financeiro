@@ -4,6 +4,10 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   base: '/meu_financeiro/',
+  test: {
+    globals: true,
+    environment: 'node',
+  },
   build: {
     outDir: 'dist',
     rollupOptions: {

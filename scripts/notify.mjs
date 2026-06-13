@@ -27,6 +27,11 @@ const addM = (k, n) => {
   const d = new Date(y, m - 1 + n, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
+const mDiff = (a, b) => {
+  const [ay, am] = a.split('-').map(Number);
+  const [by, bm] = b.split('-').map(Number);
+  return (by - ay) * 12 + (bm - am);
+};
 
 async function getUserData(uid) {
   const types = ['entries', 'dividas', 'settings'];
@@ -50,9 +55,19 @@ function getUpcoming(entries = [], dividas = [], settings = {}) {
     for (const e of allEntries) {
       if (e.type !== 'despesa') continue;
       const base = e.date.substring(0, 7);
+      const diff = mDiff(base, mk);
       let active = false;
-      if (e.recurrence === 'none') active = base === mk;
-      else if (e.recurrence === 'fixed') active = base <= mk && (!e.endMonth || mk <= e.endMonth);
+      if (e.recurrence === 'none') {
+        active = base === mk;
+      } else if (e.recurrence === 'fixed' || e.recurrence === 'weekly' || e.recurrence === 'biweekly') {
+        active = diff >= 0 && (!e.endMonth || mk <= e.endMonth);
+      } else if (e.recurrence === 'quarterly') {
+        active = diff >= 0 && diff % 3 === 0 && (!e.endMonth || mk <= e.endMonth);
+      } else if (e.recurrence === 'annual') {
+        active = diff >= 0 && diff % 12 === 0 && (!e.endMonth || mk <= e.endMonth);
+      } else if (e.recurrence === 'installment') {
+        active = diff >= 0 && diff < (e.installments || 1);
+      }
       if (!active) continue;
       const status = e.statusByMonth?.[mk] || e.status || 'a_pagar';
       if (status !== 'a_pagar') continue;
