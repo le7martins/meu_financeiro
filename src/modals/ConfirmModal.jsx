@@ -29,7 +29,7 @@ export default function ConfirmModal({
 
   return (
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={S.modal} className="modal-in">
+      <div style={S.modal} className="modal-in" role="dialog" aria-modal="true" aria-label={title}>
         <div style={S.modalHandle}/>
 
         {/* Ícone */}

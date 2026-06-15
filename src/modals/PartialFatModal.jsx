@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CreditCard, AlertTriangle, Check } from 'lucide-react';
 import Field from '../components/Field.jsx';
 import { fmt } from '../utils.js';
 import S from '../styles.js';
@@ -11,13 +12,13 @@ export default function PartialFatModal({ fat, card, onClose, onPay }) {
   const remaining = parseFloat((maxToPay - val).toFixed(2));
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+      <div style={{...S.modal,maxHeight:"auto"}} className="modal-in" role="dialog" aria-modal="true" aria-label="Pagar Fatura">
         <div style={S.modalHandle}/>
         <div style={S.mHeader}>
           <div><div style={S.mTitle}>Pagar Fatura</div>
-            <div style={{fontSize:11,color:card.color,marginTop:2,fontWeight:600}}>💳 {card.name}</div>
+            <div style={{fontSize:11,color:card.color,marginTop:2,fontWeight:600,display:"flex",alignItems:"center",gap:4}}><CreditCard size={12} strokeWidth={2}/>{card.name}</div>
           </div>
-          <button style={S.xBtn} onClick={onClose}>✕</button>
+          <button style={S.xBtn} onClick={onClose} aria-label="Fechar">✕</button>
         </div>
         <div style={{background:"var(--bg)",border:`1px solid ${card.color}22`,borderRadius:12,padding:"12px 14px",marginBottom:14}}>
           <div style={{fontSize:11,color:"var(--text3)",marginBottom:2}}>Total da fatura</div>
@@ -29,13 +30,13 @@ export default function PartialFatModal({ fat, card, onClose, onPay }) {
         </Field>
         {val>0&&val<maxToPay&&(
           <div style={{marginBottom:14,background:"rgba(250,204,21,.08)",border:"1px solid #facc1533",borderRadius:10,padding:"10px 14px"}}>
-            <div style={{fontSize:11,color:"#facc15",fontWeight:600,marginBottom:3}}>⚠️ Pagamento parcial</div>
+            <div style={{fontSize:11,color:"#facc15",fontWeight:600,marginBottom:3,display:"flex",alignItems:"center",gap:4}}><AlertTriangle size={11} strokeWidth={2.5}/>Pagamento parcial</div>
             <div style={{fontSize:12,color:"var(--text2)"}}>Restante <strong style={{color:"#f87171"}}>{fmt(remaining)}</strong> ficará como pendente</div>
           </div>
         )}
         {val>=maxToPay&&(
           <div style={{marginBottom:14,background:"rgba(74,222,128,.08)",border:"1px solid #4ade8033",borderRadius:10,padding:"10px 14px"}}>
-            <div style={{fontSize:12,color:"#4ade80",fontWeight:600}}>✓ Pagamento integral</div>
+            <div style={{fontSize:12,color:"#4ade80",fontWeight:600,display:"flex",alignItems:"center",gap:4}}><Check size={13} strokeWidth={2.5}/>Pagamento integral</div>
           </div>
         )}
         <div style={{display:"flex",gap:8}}>

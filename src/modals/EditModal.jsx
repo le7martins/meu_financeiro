@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import CatSelector from '../components/CatSelector.jsx';
 import Field from '../components/Field.jsx';
+import { Calendar, CalendarDays } from 'lucide-react';
 import { eVal, mLabel } from '../utils.js';
 import S from '../styles.js';
 
@@ -38,9 +39,9 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
   const save=(scope)=>onSave(entry.id,{description:desc,amount:parseFloat(amount)||eVal(entry),category,status:resolvedStatus,notes,tags},scope);
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={S.modal} className="modal-in">
+      <div style={S.modal} className="modal-in" role="dialog" aria-modal="true" aria-label="Editar Lançamento">
         <div style={S.modalHandle}/>
-        <div style={S.mHeader}><div><div style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"#8ab4f8",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
+        <div style={S.mHeader}><div><div style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:10,color:"var(--text3)",marginTop:2,display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:isDespesa?"#f97316":"#34d399",display:"inline-block",flexShrink:0}}/>{isDespesa?"Despesa":"Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"#8ab4f8",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button style={S.xBtn} onClick={onClose} aria-label="Fechar">✕</button></div>
         <Field label="Descrição"><input style={S.inp} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
         <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor (R$)"}>
           <input style={S.inp} type="text" inputMode="numeric" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>
@@ -64,8 +65,8 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
           {tags.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>{tags.map(t=><button key={t} onClick={()=>setTags(p=>p.filter(x=>x!==t))} style={{fontSize:10,padding:"2px 7px",borderRadius:5,background:"rgba(138,180,248,.15)",border:"1px solid #8ab4f833",color:"#8ab4f8",cursor:"pointer",fontFamily:"inherit"}}>#{t} ✕</button>)}</div>}
           <input style={S.inp} placeholder="Adicionar tag (Enter ou vírgula)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
         </Field>
-        <Field label="Status"><div style={{display:"flex",gap:8}}>{(isDespesa?[["a_pagar","⏳ A Pagar","#fb923c"],["pago","✓ Pago","#4ade80"]]:[["a_pagar","⏳ A Receber","#fb923c"],["pago","✓ Recebido","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>setStatus(s)} style={{...S.typeBtn,...(resolvedStatus===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>
-        {entry.isRecurring?(<div style={{marginTop:4}}><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Aplicar em</div><div style={{display:"flex",gap:8}}><button onClick={()=>save("this")} style={{...S.scopeBtn,flex:1,borderColor:"#1a3a6e",color:"#8ab4f8",background:"#0d1a2e"}}><span style={{fontSize:16}}>📅</span><div><div style={{fontWeight:700,fontSize:12}}>Só este mês</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{mLabel(monthKey)}</div></div></button><button onClick={()=>save("future")} style={{...S.scopeBtn,flex:1,borderColor:ac+"44",color:ac,background:ac+"12"}}><span style={{fontSize:16}}>📆</span><div><div style={{fontWeight:700,fontSize:12}}>Este e próximos</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>a partir de {mLabel(monthKey)}</div></div></button></div></div>):(<button onClick={()=>save("this")} className="submitBtn" style={{...S.submitBtn,marginTop:4}}>Salvar alterações</button>)}
+        <Field label="Status"><div style={{display:"flex",gap:8}}>{(isDespesa?[["a_pagar","A Pagar","#fb923c"],["pago","Pago","#4ade80"]]:[["a_pagar","A Receber","#fb923c"],["pago","Recebido","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>setStatus(s)} style={{...S.typeBtn,...(resolvedStatus===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>
+        {entry.isRecurring?(<div style={{marginTop:4}}><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Aplicar em</div><div style={{display:"flex",gap:8}}><button onClick={()=>save("this")} style={{...S.scopeBtn,flex:1,borderColor:"#1a3a6e",color:"#8ab4f8",background:"#0d1a2e"}}><Calendar size={18} strokeWidth={1.75} style={{flexShrink:0}}/><div><div style={{fontWeight:700,fontSize:12}}>Só este mês</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{mLabel(monthKey)}</div></div></button><button onClick={()=>save("future")} style={{...S.scopeBtn,flex:1,borderColor:ac+"44",color:ac,background:ac+"12"}}><CalendarDays size={18} strokeWidth={1.75} style={{flexShrink:0}}/><div><div style={{fontWeight:700,fontSize:12}}>Este e próximos</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>a partir de {mLabel(monthKey)}</div></div></button></div></div>):(<button onClick={()=>save("this")} className="submitBtn" style={{...S.submitBtn,marginTop:4}}>Salvar alterações</button>)}
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Target, Building2, CheckCircle2, AlertTriangle, Clock, Info, BarChart3 } from 'lucide-react';
 import HealthBar from '../components/HealthBar.jsx';
 import { getMonthEntries } from '../logic.js';
 import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort } from '../utils.js';
@@ -95,7 +96,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   if (pendente > 0 && rec > 0 && (pendente/rec) > 0.3) score -= 10;
   score = Math.max(0, Math.min(100, score));
   const scoreColor = score>=80?"#4ade80":score>=60?"#facc15":"#f87171";
-  const scoreLabel = score>=80?"Saudável 💚":score>=60?"Atenção ⚠️":"Crítico 🚨";
+  const scoreLabel = score>=80?"Saudável":score>=60?"Atenção":"Crítico";
 
   // All categories with spending this month
   const catMap = {};
@@ -281,7 +282,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
         {/* Financial goals */}
         <div style={{background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e",borderRadius:14,padding:"14px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:12}}>🎯 Metas financeiras</div>
+          <div style={{fontSize:12,fontWeight:700,color:"#8ab4f8",marginBottom:12,display:"flex",alignItems:"center",gap:6}}><Target size={14} strokeWidth={2}/>Metas financeiras</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div>
               <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Meta de renda mensal (R$)</div>
@@ -311,7 +312,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
         {/* Emergency reserve */}
         <div style={{background:"rgba(74,222,128,.05)",border:"1px solid #4ade8033",borderRadius:14,padding:"14px"}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#4ade80",marginBottom:4}}>🏦 Reserva de Emergência</div>
+          <div style={{fontSize:12,fontWeight:700,color:"#4ade80",marginBottom:4,display:"flex",alignItems:"center",gap:6}}><Building2 size={14} strokeWidth={2}/>Reserva de Emergência</div>
           <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>
             Recomendado: 3–6× despesas fixas
             {fixos>0&&<span style={{color:"#4ade8099",fontWeight:600}}> ({fmt(fixos*3)} – {fmt(fixos*6)})</span>}
@@ -352,7 +353,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
         {/* Savings goals with target date */}
         <div style={{background:"rgba(167,139,250,.06)",border:"1px solid #a78bfa33",borderRadius:14,padding:"14px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:goalsList.length>0||showGoalForm?12:0}}>
-            <div style={{fontSize:12,fontWeight:700,color:"#a78bfa"}}>🏁 Objetivos de poupança</div>
+            <div style={{fontSize:12,fontWeight:700,color:"#a78bfa",display:"flex",alignItems:"center",gap:6}}><CheckCircle2 size={14} strokeWidth={2}/>Objetivos de poupança</div>
             {!showGoalForm&&<button onClick={()=>{setGoalDraft(blankDraft());setShowGoalForm(true);}}
               style={{fontSize:11,fontWeight:700,color:"#a78bfa",background:"rgba(167,139,250,.12)",border:"1px solid #a78bfa33",borderRadius:7,padding:"4px 10px",cursor:"pointer",fontFamily:"inherit"}}>
               + Novo
@@ -380,7 +381,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                     <div>
                       <div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{goal.name}</div>
                       <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
-                        {isComplete?"🎉 Concluído!":isOverdue?`⚠️ Prazo vencido (${mLabel(goal.targetMonth)})`:`Até ${mLabel(goal.targetMonth)} · ${monthsLeft} ${monthsLeft===1?"mês":"meses"}`}
+                        {isComplete?<span style={{display:"inline-flex",alignItems:"center",gap:3,color:"#34d399"}}><CheckCircle2 size={11} strokeWidth={2}/>Concluído</span>:isOverdue?<span style={{display:"inline-flex",alignItems:"center",gap:3,color:"#f87171"}}><AlertTriangle size={11} strokeWidth={2.5}/>Prazo vencido ({mLabel(goal.targetMonth)})</span>:`Até ${mLabel(goal.targetMonth)} · ${monthsLeft} ${monthsLeft===1?"mês":"meses"}`}
                       </div>
                     </div>
                     <button onClick={()=>removeGoal(goal.id)}
@@ -465,8 +466,8 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
         {budgetList.length>0&&(
           <div style={{background:"var(--card-bg)",border:`1px solid ${hasBudgetOverrun?"#f8717133":"var(--border)"}`,borderRadius:14,padding:"14px"}}>
             <SectionTitle color={hasBudgetOverrun?"#f87171":"#8ab4f8"}
-              extra={hasBudgetOverrun&&<span style={{fontSize:9,background:"#f8717122",color:"#f87171",border:"1px solid #f8717144",borderRadius:5,padding:"2px 7px",fontWeight:700}}>⚠️ Orçamento estourado</span>}>
-              💰 Orçamento por Categoria
+              extra={hasBudgetOverrun&&<span style={{fontSize:9,background:"#f8717122",color:"#f87171",border:"1px solid #f8717144",borderRadius:5,padding:"2px 7px",fontWeight:700,display:"inline-flex",alignItems:"center",gap:3}}><AlertTriangle size={10} strokeWidth={2.5}/>Orçamento estourado</span>}>
+              Orçamento por Categoria
             </SectionTitle>
 
             {/* Summary totals row */}
@@ -532,9 +533,9 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                         <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
                           <span style={{fontSize:9,color:barColor,fontWeight:600}}>
                             {overrun
-                              ?`⚠️ +${fmt(c.value-budget)} acima`
+                              ?<span style={{display:"inline-flex",alignItems:"center",gap:2}}><AlertTriangle size={9} strokeWidth={2.5}/>{`+${fmt(c.value-budget)} acima`}</span>
                               :pctUsed>80
-                              ?`⏳ ${fmt(budget-c.value)} restante`
+                              ?<span style={{display:"inline-flex",alignItems:"center",gap:2}}><Clock size={9} strokeWidth={2}/>{`${fmt(budget-c.value)} restante`}</span>
                               :`${(100-pctUsed).toFixed(0)}% livre`}
                           </span>
                           <span style={{fontSize:9,color:"var(--text4)"}}>{pctUsed.toFixed(0)}%</span>
@@ -573,7 +574,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
             {/* Add budget hint when no budgets set */}
             {Object.keys(budgets).filter(k=>budgets[k]>0).length===0&&(
               <div style={{marginTop:8,fontSize:11,color:"var(--text3)",textAlign:"center",lineHeight:1.5}}>
-                💡 Defina limites de orçamento para cada categoria e receba alertas quando ultrapassar
+                <span style={{display:"inline-flex",alignItems:"center",gap:5,justifyContent:"center"}}><Info size={12} color="var(--text3)" strokeWidth={2}/>Defina limites de orçamento para cada categoria e receba alertas quando ultrapassar</span>
               </div>
             )}
           </div>
@@ -589,7 +590,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           const catsEnv=categories.filter(c=>budgets[c.id]>0).map(c=>({...c,budget:budgets[c.id],spent:catMap[c.id]||0})).sort((a,b)=>b.budget-a.budget);
           return(
             <div style={{background:"rgba(250,204,21,.05)",border:"1px solid #facc1533",borderRadius:14,padding:"14px"}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#facc15",marginBottom:12}}>📋 Planejamento do mês</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#facc15",marginBottom:12,display:"flex",alignItems:"center",gap:6}}><BarChart3 size={14} strokeWidth={2}/>Planejamento do mês</div>
               <div style={{marginBottom:14}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
                   <span style={{fontSize:10,color:"var(--text3)"}}>Envelopes alocados{incomeTarget>0?` / renda${goals.monthly>0?" meta":""}`:""}</span>
@@ -599,8 +600,8 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                   <div style={{height:"100%",width:`${allocPct}%`,background:over?"linear-gradient(90deg,#f87171,#ef4444)":"linear-gradient(90deg,#facc15,#f59e0b)",borderRadius:4,transition:"width .6s"}}/>
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <span style={{fontSize:10,color:over?"#f87171":"var(--text2)",fontWeight:600}}>
-                    {over?`⚠️ +${fmt(totalAllocated-incomeTarget)} acima da renda`:`${fmt(Math.abs(unallocated))} ${unallocated>=0?"livre":"excedido"}`}
+                  <span style={{fontSize:10,color:over?"#f87171":"var(--text2)",fontWeight:600,display:"flex",alignItems:"center",gap:3}}>
+                    {over?<><AlertTriangle size={10} strokeWidth={2.5}/>{`+${fmt(totalAllocated-incomeTarget)} acima da renda`}</>:`${fmt(Math.abs(unallocated))} ${unallocated>=0?"livre":"excedido"}`}
                   </span>
                   {incomeTarget>0&&<span style={{fontSize:10,color:"var(--text3)"}}>{fmt(totalAllocated)} de {fmt(incomeTarget)}</span>}
                 </div>
@@ -640,7 +641,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
         {/* Empty state */}
         {rec===0&&dep===0&&(
           <div style={{textAlign:"center",padding:"24px 0",background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14}}>
-            <div style={{fontSize:36,marginBottom:8}}>📊</div>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><BarChart3 size={36} color="var(--text3)" strokeWidth={1.25}/></div>
             <div style={{fontSize:13,fontWeight:700,color:"var(--text2)",marginBottom:4}}>Sem dados este mês</div>
             <div style={{fontSize:11,color:"var(--text3)",lineHeight:1.5}}>Adicione receitas e despesas na aba Contas para ver sua saúde financeira aqui.</div>
           </div>

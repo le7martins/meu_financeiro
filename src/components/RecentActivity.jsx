@@ -1,3 +1,4 @@
+import { Check, Clock } from 'lucide-react';
 import { fmt, eVal } from '../utils.js';
 
 export default function RecentActivity({ entries, catColor, catName }) {
@@ -19,8 +20,8 @@ export default function RecentActivity({ entries, catColor, catName }) {
             <div style={{fontSize:12,fontWeight:700,color:e.type==="receita"?"#4ade80":e.isDivida?"#f87171":"var(--text1)",flexShrink:0}}>
               {e.type==="receita"?"+":"-"}{fmt(eVal(e))}
             </div>
-            <div style={{fontSize:9,padding:"2px 6px",borderRadius:4,background:e.statusForMonth==="pago"?"rgba(74,222,128,.12)":"rgba(251,146,60,.12)",color:e.statusForMonth==="pago"?"#4ade80":"#fb923c",fontWeight:700}}>
-              {e.statusForMonth==="pago"?"✓":"⏳"}
+            <div style={{width:20,height:20,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",background:e.statusForMonth==="pago"?"rgba(52,211,153,.12)":"rgba(249,115,22,.12)",color:e.statusForMonth==="pago"?"#34d399":"#f97316",flexShrink:0}}>
+              {e.statusForMonth==="pago"?<Check size={11} strokeWidth={2.5}/>:<Clock size={11} strokeWidth={2}/>}
             </div>
           </div>
         ))}

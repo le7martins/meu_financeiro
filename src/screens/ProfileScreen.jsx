@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { Building2, PiggyBank, Wallet, TrendingUp, MoreHorizontal, User, Bell, Pencil, KeyRound, LogOut, FileText, Download, Archive, Upload, HardDrive, FolderOpen, Trash2, Smartphone, AlertTriangle, Info, ArrowLeftRight } from 'lucide-react';
 import Toggle from '../components/Toggle.jsx';
 import { mLabel } from '../utils.js';
 import S from '../styles.js';
 
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
-function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
+function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><div style={{width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:danger?"#f87171":"var(--text3)"}}>{icon}</div><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
 
 const ACC_TYPES=[
-  {id:"corrente",label:"Conta Corrente",icon:"🏦"},
-  {id:"poupanca",label:"Poupança",icon:"💰"},
-  {id:"dinheiro",label:"Carteira/Dinheiro",icon:"💵"},
-  {id:"investimento",label:"Investimento",icon:"📈"},
-  {id:"outro",label:"Outro",icon:"🔵"},
+  {id:"corrente",label:"Conta Corrente",icon:<Building2 size={16} strokeWidth={1.75}/>},
+  {id:"poupanca",label:"Poupança",icon:<PiggyBank size={16} strokeWidth={1.75}/>},
+  {id:"dinheiro",label:"Carteira/Dinheiro",icon:<Wallet size={16} strokeWidth={1.75}/>},
+  {id:"investimento",label:"Investimento",icon:<TrendingUp size={16} strokeWidth={1.75}/>},
+  {id:"outro",label:"Outro",icon:<MoreHorizontal size={16} strokeWidth={1.75}/>},
 ];
 const ACC_COLORS=["#60a5fa","#4ade80","#f472b6","#fb923c","#a78bfa","#34d399","#facc15","#38bdf8"];
 
@@ -140,7 +141,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 16px 20px",borderBottom:"1px solid var(--border2)"}}>
         {photoURL
           ? <img src={photoURL} alt="" style={{width:72,height:72,borderRadius:"50%",border:"2px solid #1a3a6e",marginBottom:12,objectFit:"cover"}}/>
-          : <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"2px solid #1a3a6e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:12}}>👤</div>
+          : <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"2px solid #1a3a6e",display:"flex",alignItems:"center",justifyContent:"center",marginBottom:12}}><User size={30} color="#8ab4f8" strokeWidth={1.75}/></div>
         }
         <div style={{fontSize:15,fontWeight:700,color:"var(--text1)",marginBottom:3}}>{displayName}</div>
         <div style={{fontSize:11,color:"var(--text3)",marginBottom:2}}>{fbUser?.email}</div>
@@ -149,10 +150,10 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       <div style={{padding:"16px 14px",display:"flex",flexDirection:"column",gap:12}}>
 
         <ProfileSection title="Conta">
-          <ProfileItem icon="✏️" label="Alterar nome" sub={displayName} onClick={()=>{setNewName(displayName);setEditName(true);}}/>
-          {isEmailProvider&&<ProfileItem icon="🔑" label="Alterar senha" sub="Trocar senha da conta" onClick={()=>{setEditPass(true);setCurPass('');setNewPass('');setPassErr('');}}/>}
+          <ProfileItem icon={<Pencil size={16} strokeWidth={2}/>} label="Alterar nome" sub={displayName} onClick={()=>{setNewName(displayName);setEditName(true);}}/>
+          {isEmailProvider&&<ProfileItem icon={<KeyRound size={16} strokeWidth={2}/>} label="Alterar senha" sub="Trocar senha da conta" onClick={()=>{setEditPass(true);setCurPass('');setNewPass('');setPassErr('');}}/>}
           {!confirmLogout
-            ? <ProfileItem icon="🚪" label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)} danger/>
+            ? <ProfileItem icon={<LogOut size={16} strokeWidth={2}/>} label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)} danger/>
             : <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                 <span style={{fontSize:13,color:"var(--text1)"}}>Confirmar saída?</span>
                 <div style={{display:"flex",gap:8}}>
@@ -166,7 +167,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ProfileSection title="Notificações">
           <div style={{padding:"13px 14px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>🔔 Alertas de vencimento e recebimento</div><div style={{fontSize:11,color:permColor,marginTop:2}}>{permLabel}</div></div>
+              <div><div style={{fontSize:13,fontWeight:600,color:"var(--text1)",display:"flex",alignItems:"center",gap:6}}><Bell size={14} strokeWidth={2} color="var(--text3)"/>Alertas de vencimento e recebimento</div><div style={{fontSize:11,color:permColor,marginTop:2}}>{permLabel}</div></div>
               {notifPerm==="granted"
                 ?<Toggle checked={notifSettings.enabled} onChange={v=>onNotifSettings({...notifSettings,enabled:v})}/>
                 :notifPerm!=="unsupported"&&<button onClick={onRequestPerm} style={{padding:"6px 12px",background:"#1a3a6e",border:"1px solid #2a4a8e",borderRadius:8,color:"#8ab4f8",fontSize:11,fontWeight:700,cursor:"pointer"}}>Permitir</button>}
@@ -203,7 +204,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                 <div style={{fontSize:13,fontWeight:600,color:"var(--text1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{acc.name}</div>
                 <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {acc.initialBalance?.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</div>
               </div>
-              <button onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text3)",cursor:"pointer",padding:"4px",fontSize:14}}>✏️</button>
+              <button onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text3)",cursor:"pointer",padding:"4px",display:"flex",alignItems:"center"}}><Pencil size={14} strokeWidth={2}/></button>
               <button onClick={()=>deleteAcc(acc.id)} style={{background:"transparent",border:"none",color:"#f87171",cursor:"pointer",padding:"4px",fontSize:14}}>✕</button>
             </div>
           ))}
@@ -254,8 +255,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ProfileSection>
 
         <ProfileSection title="Exportar dados">
-          <ProfileItem icon="📄" label="Relatório PDF do mês" sub={`Resumo visual de ${mLabel(selMonth)}`} onClick={onExportPDF}/>
-          <ProfileItem icon="📅" label="Exportar mês atual" sub={`CSV com lançamentos de ${mLabel(selMonth)}`} onClick={onExportMonth}/>
+          <ProfileItem icon={<FileText size={16} strokeWidth={2}/>} label="Relatório PDF do mês" sub={`Resumo visual de ${mLabel(selMonth)}`} onClick={onExportPDF}/>
+          <ProfileItem icon={<Download size={16} strokeWidth={2}/>} label="Exportar mês atual" sub={`CSV com lançamentos de ${mLabel(selMonth)}`} onClick={onExportMonth}/>
           <div style={{padding:"12px 14px",borderTop:"1px solid #0f1825"}}>
             <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:9}}>Exportar período</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
@@ -273,19 +274,19 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
               Exportar período selecionado
             </button>
           </div>
-          <ProfileItem icon="📦" label="Exportar tudo" sub="Todos os lançamentos em CSV" onClick={onExportAll} last/>
+          <ProfileItem icon={<Archive size={16} strokeWidth={2}/>} label="Exportar tudo" sub="Todos os lançamentos em CSV" onClick={onExportAll} last/>
         </ProfileSection>
 
         <ProfileSection title="Importar dados">
           <input ref={el=>{importRef.current=el;}} type="file" accept=".csv,.txt" style={{display:'none'}} onChange={handleCSVFile}/>
-          <ProfileItem icon="📥" label="Importar extrato CSV" sub="Importa lançamentos de extrato bancário em CSV" onClick={()=>importRef.current?.click()} last/>
+          <ProfileItem icon={<Upload size={16} strokeWidth={2}/>} label="Importar extrato CSV" sub="Importa lançamentos de extrato bancário em CSV" onClick={()=>importRef.current?.click()} last/>
         </ProfileSection>
 
         <ProfileSection title="Backup e Restauração">
-          <ProfileItem icon="💾" label="Fazer backup" sub="Salva todos os dados em arquivo JSON" onClick={onBackup}/>
+          <ProfileItem icon={<HardDrive size={16} strokeWidth={2}/>} label="Fazer backup" sub="Salva todos os dados em arquivo JSON" onClick={onBackup}/>
           <div style={{padding:"0 14px"}}>
             <label style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 0",borderTop:"1px solid #0f1825",cursor:"pointer"}}>
-              <span style={{fontSize:18,flexShrink:0}}>📂</span>
+              <div style={{width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"var(--text3)"}}><FolderOpen size={16} strokeWidth={2}/></div>
               <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>Restaurar backup</div><div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>Importa dados de um arquivo JSON</div></div>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               <input type="file" accept=".json" onChange={onRestore} style={{display:"none"}}/>
@@ -294,18 +295,18 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ProfileSection>
 
         <ProfileSection title="Dados">
-          <ProfileItem icon="🗑️" label="Zerar todos os dados" sub="Remove todos os lançamentos e dívidas" onClick={()=>setConfirmReset(true)} danger last/>
+          <ProfileItem icon={<Trash2 size={16} strokeWidth={2}/>} label="Zerar todos os dados" sub="Remove todos os lançamentos e dívidas" onClick={()=>setConfirmReset(true)} danger last/>
         </ProfileSection>
 
         <ProfileSection title="Aparência">
           <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>{theme==="dark"?"🌙 Modo escuro":"☀️ Modo claro"}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>Alterna entre escuro e claro</div></div>
+            <div><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>{theme==="dark"?"Modo escuro":"Modo claro"}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>Alterna entre escuro e claro</div></div>
             <Toggle checked={theme==="light"} onChange={v=>onTheme(v?"light":"dark")}/>
           </div>
         </ProfileSection>
 
         <ProfileSection title="Sobre">
-          <ProfileItem icon="📱" label="CashUp" sub="Versão 1.3.0" last/>
+          <ProfileItem icon={<Smartphone size={16} strokeWidth={2}/>} label="CashUp" sub="Versão 1.3.0" last/>
         </ProfileSection>
       </div>
 
@@ -331,7 +332,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
             <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
               <div><label style={S.lbl}>Senha atual</label><input style={S.inp} type="password" placeholder="••••••••" value={curPass} onChange={e=>setCurPass(e.target.value)}/></div>
               <div><label style={S.lbl}>Nova senha</label><input style={S.inp} type="password" placeholder="Mínimo 6 caracteres" value={newPass} onChange={e=>setNewPass(e.target.value)}/></div>
-              {passErr&&<div style={{fontSize:12,color:"#f87171"}}>⚠️ {passErr}</div>}
+              {passErr&&<div style={{fontSize:12,color:"#f87171",display:"flex",alignItems:"center",gap:5}}><AlertTriangle size={13} strokeWidth={2.5}/>{passErr}</div>}
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setEditPass(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,cursor:"pointer"}}>Cancelar</button>
@@ -348,7 +349,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
           <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
             <div style={S.mHeader}><div style={S.mTitle}>Zerar dados</div><button style={S.xBtn} onClick={()=>setConfirmReset(false)}>✕</button></div>
             <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"14px",marginBottom:20,textAlign:"center"}}>
-              <div style={{fontSize:28,marginBottom:8}}>⚠️</div>
+              <div style={{display:"flex",justifyContent:"center",marginBottom:8}}><AlertTriangle size={28} color="#f87171" strokeWidth={1.75}/></div>
               <div style={{fontSize:13,fontWeight:700,color:"var(--text1)",marginBottom:6}}>Tem certeza?</div>
               <div style={{fontSize:12,color:"#f87171",lineHeight:1.5}}>Isso removerá {entries.length} lançamento{entries.length!==1?"s":""} e {(dividas||[]).length} dívida{(dividas||[]).length!==1?"s":""} permanentemente.</div>
             </div>
@@ -366,7 +367,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
             <div style={S.mHeader}><div><div style={S.mTitle}>Importar CSV</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{importRows.length} linhas detectadas</div></div><button style={S.xBtn} onClick={()=>setShowImport(false)}>✕</button></div>
             <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Mapear colunas</div>
             <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-              {[['date','📅 Data'],['desc','📝 Descrição'],['amount','💰 Valor'],['category','🏷️ Categoria (opcional)']].map(([key,label])=>(
+              {[['date','Data'],['desc','Descrição'],['amount','Valor (R$)'],['category','Categoria (opc.)']].map(([key,label])=>(
                 <div key={key} style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0}}>{label}</span>
                   <select value={importMap[key]} onChange={e=>setImportMap(p=>({...p,[key]:e.target.value}))}
@@ -378,7 +379,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
               ))}
               {/* Tipo forçado */}
               <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0}}>🔀 Tipo</span>
+                <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0,display:"flex",alignItems:"center",gap:4}}><ArrowLeftRight size={12} strokeWidth={2}/>Tipo</span>
                 <div style={{display:"flex",gap:6,flex:1}}>
                   {[['','Auto (por sinal)'],['despesa','Forçar Despesa'],['receita','Forçar Receita']].map(([v,l])=>(
                     <button key={v} onClick={()=>setImportMap(p=>({...p,type:v}))}
@@ -406,7 +407,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
               })}
             </div>
             <div style={{marginBottom:14,background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e44",borderRadius:8,padding:"8px 12px",fontSize:10,color:"var(--text3)"}}>
-              💡 Valores negativos → Despesa · Positivos → Receita · Categoria: mapeada automaticamente por nome
+              <span style={{display:"flex",alignItems:"center",gap:5}}><Info size={12} color="var(--text3)" strokeWidth={2}/>Valores negativos → Despesa · Positivos → Receita · Categoria mapeada por nome</span>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setShowImport(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>

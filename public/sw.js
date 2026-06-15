@@ -28,11 +28,22 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // ─── Cache / PWA ─────────────────────────────────────────────
-const CACHE = 'mf-v3';
-const SHELL = ['/meu_financeiro/', '/meu_financeiro/index.html', '/meu_financeiro/badge-96.png'];
+const CACHE = 'mf-v4';
+const SHELL = [
+  '/meu_financeiro/',
+  '/meu_financeiro/index.html',
+  '/meu_financeiro/manifest.webmanifest',
+  '/meu_financeiro/icon-192.png',
+  '/meu_financeiro/icon-512.png',
+  '/meu_financeiro/badge-96.png',
+];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => c.addAll(SHELL.filter(u => !u.endsWith('.png') || u.includes('badge'))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
@@ -43,13 +54,36 @@ self.addEventListener('activate', e => {
   );
 });
 
+// Cache-first for same-origin assets, network-first for navigations
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).catch(() =>
-      caches.match(e.request).then(r => r || caches.match('/meu_financeiro/'))
-    )
-  );
+  const url = new URL(e.request.url);
+  const isSameOrigin = url.origin === self.location.origin;
+  const isNavigation = e.request.mode === 'navigate';
+
+  if (isNavigation) {
+    e.respondWith(
+      fetch(e.request).catch(() =>
+        caches.match('/meu_financeiro/index.html').then(r => r || caches.match('/meu_financeiro/'))
+      )
+    );
+    return;
+  }
+
+  if (isSameOrigin) {
+    e.respondWith(
+      caches.match(e.request).then(cached => {
+        const network = fetch(e.request).then(res => {
+          if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          return res;
+        });
+        return cached || network;
+      })
+    );
+    return;
+  }
+
+  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
 
 // Mensagem do app principal (notificação manual)

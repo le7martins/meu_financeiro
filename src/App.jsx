@@ -23,6 +23,8 @@ import EditModal from './modals/EditModal.jsx';
 import DeleteModal from './modals/DeleteModal.jsx';
 import PartialFatModal from './modals/PartialFatModal.jsx';
 import ConfirmModal from './modals/ConfirmModal.jsx';
+import { AlertTriangle, CheckCircle2, Info, Sparkles, XCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import EntryCard from './components/EntryCard.jsx';
 import GradCard from './components/GradCard.jsx';
 import SumCard from './components/SumCard.jsx';
 import Field from './components/Field.jsx';
@@ -435,9 +437,9 @@ function MainApp({ fbUser, onLogout }){
     return [...set].sort();
   },[monthEntries]);
 
-  const getCat  =(id)=>categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id};
-  const catColor=(id)=>getCat(id).color;
-  const catName =(id)=>getCat(id).name;
+  const getCat   = useCallback((id)=>categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id}, [categories]);
+  const catColor = useCallback((id)=>getCat(id).color, [getCat]);
+  const catName  = useCallback((id)=>getCat(id).name,  [getCat]);
 
   // ─── Keyboard shortcuts ───────────────────────────────────────
   useEffect(()=>{
@@ -672,117 +674,16 @@ function MainApp({ fbUser, onLogout }){
     ["pago","Pagos",monthEntries.filter(e=>e.statusForMonth==="pago").length],
   ];
 
-  const renderCard=(entry)=>{
-    const badge=dueBadge(entry,selMonth);
-    const paidDt=entry.isRecurring?entry.paidDateByMonth?.[selMonth]:entry.paidDate;
-    const borderColor=entry.type==="receita"?"#4ade8055":entry.isDivida?"#f8717155":entry.isFatura?`${entry.cardColor}55`:"var(--border)";
-    const amtColor=entry.type==="receita"?"#4ade80":entry.isDivida?"#f87171":entry.isFatura?entry.cardColor:"var(--text1)";
-    const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
-    const origAmt=entry.recurrence==="installment"?entry.amount/entry.installments:entry.amount;
-    const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
-    const canSwipe=!entry.isOpenFatura;
-    const onTouchStart=(ev)=>{ ev.currentTarget._tx=ev.touches[0].clientX; ev.currentTarget._ty=ev.touches[0].clientY; };
-    const onTouchMove=(ev)=>{
-      if(!canSwipe) return;
-      const dx=ev.touches[0].clientX-(ev.currentTarget._tx||0);
-      const dy=ev.touches[0].clientY-(ev.currentTarget._ty||0);
-      if(Math.abs(dx)<Math.abs(dy)) return;
-      ev.currentTarget.style.transform=`translateX(${dx*0.35}px)`;
-      ev.currentTarget.style.transition='none';
-      const pct=Math.min(Math.abs(dx)/80,1);
-      ev.currentTarget.style.opacity=String(1-pct*0.25);
-    };
-    const onTouchEnd=(ev)=>{
-      ev.currentTarget.style.transform='';
-      ev.currentTarget.style.transition='transform .2s,opacity .2s';
-      ev.currentTarget.style.opacity='';
-      setTimeout(()=>{ if(ev.currentTarget) ev.currentTarget.style.transition=''; },220);
-      if(!canSwipe) return;
-      const dx=ev.changedTouches[0].clientX-(ev.currentTarget._tx||0);
-      const dy=ev.changedTouches[0].clientY-(ev.currentTarget._ty||0);
-      if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.5) handleToggle(entry);
-    };
-    return(
-      <div key={`${entry.id}-${selMonth}`} className="eCard"
-        style={{...S.card,borderLeft:`3px solid ${borderColor}`,...openStyle}}
-        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
-        <div style={S.cardL}>
-          <div style={{width:8,height:8,borderRadius:"50%",background:entry.isFatura?entry.cardColor:catColor(entry.category),flexShrink:0,marginTop:3}}/>
-          <div style={{minWidth:0,flex:1}}>
-            <div style={S.cardTitle}>{entry.description}</div>
-            <div style={S.cardMeta}>
-              {!entry.isFatura&&<span style={{...S.tag,color:catColor(entry.category),borderColor:catColor(entry.category)+"44",background:catColor(entry.category)+"18"}}>{catName(entry.category)}</span>}
-              {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"#f87171":"#8ab4f8",borderColor:entry.isDivida?"#f8717144":"#1a3a6e",background:entry.isDivida?"rgba(248,113,113,.12)":"#0d1a2e"}}>{entry.recurLabel}</span>}
-              <span style={{fontSize:10,color:"var(--text4)"}}>{fmtDate(entry.isRecurring&&entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura?`${selMonth}-${entry.date.split("-")[2]}`:entry.date)}</span>
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
-              <span style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
-                {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
-              </span>
-              {hasAmtOverride&&(
-                <span title={`Valor original: ${fmt(origAmt)}`} style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(250,204,21,.12)",border:"1px solid rgba(250,204,21,.3)",color:"#facc15",letterSpacing:"0.03em",cursor:"default"}}>
-                  ⚙ ajustado
-                </span>
-              )}
-              {(()=>{if(entry.type!=="despesa"||!budgets[entry.category])return null;const lim=budgets[entry.category];const spent=catTotals[entry.category]||0;if(spent>lim)return<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(248,113,113,.12)",border:"1px solid rgba(248,113,113,.3)",color:"#f87171",cursor:"default"}}>⚠ estourado</span>;if(spent/lim>=0.8)return<span style={{fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:4,background:"rgba(251,146,60,.12)",border:"1px solid rgba(251,146,60,.3)",color:"#fb923c",cursor:"default"}}>⚡ {((spent/lim)*100).toFixed(0)}%</span>;return null;})()}
-            </div>
-            {entry.recurrence==="installment"&&entry.installments>1&&(()=>{
-              const cur=Math.min(entry.installments,Math.max(1,mDiff(entry.date.substring(0,7),selMonth)+1));
-              const pct=cur/entry.installments;
-              return(
-                <div style={{marginTop:5,display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{flex:1,height:3,background:"var(--border)",borderRadius:2,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${pct*100}%`,background:pct>=1?"#4ade80":"#8ab4f8",borderRadius:2,transition:"width .4s"}}/>
-                  </div>
-                  <span style={{fontSize:9,color:"var(--text4)",flexShrink:0}}>{cur}/{entry.installments}</span>
-                </div>
-              );
-            })()}
-            {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:4,background:badge.bg,color:badge.color}}>{badge.text}</div>}
-            {entry.notes&&<div style={{fontSize:10,color:"var(--text3)",marginTop:3,fontStyle:"italic",display:"flex",alignItems:"flex-start",gap:4}}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:3,flexShrink:0}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>{entry.notes}</span></div>}
-            {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{(entry.tags||[]).map(t=><span key={t} style={{fontSize:9,padding:"1px 6px",borderRadius:4,background:"rgba(138,180,248,.12)",border:"1px solid #8ab4f822",color:"#8ab4f8",fontWeight:600}}>#{t}</span>)}</div>}
-            {entry.isOpenFatura&&<div style={{fontSize:10,color:entry.cardColor,marginTop:3,opacity:0.8,display:"flex",alignItems:"center",gap:4}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:3,flexShrink:0}}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg><span>Fecha em {fmtDate(entry.closeDate)}</span></div>}
-            {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:10,color:"#4ade8066",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
-          </div>
-        </div>
-        <div style={S.cardR}>
-          <div style={{display:"flex",gap:4}}>
-            {!entry.isDivida&&!entry.isFatura&&(
-              <button className="iconBtn" title="Clonar" onClick={()=>handleClone(entry)}
-                style={{...S.iconBtn,background:"rgba(74,222,128,.08)",color:"#4ade80"}}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              </button>
-            )}
-            {!entry.isDivida&&!entry.isFatura&&(
-              <button className="iconBtn" onClick={()=>setEditTarget({entry,monthKey:selMonth})}
-                style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8"}}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-            )}
-            {!entry.isDivida&&!entry.isFatura&&(
-              <button className="iconBtn" onClick={()=>setDelTarget(entry)} style={{...S.iconBtn,background:"rgba(239,68,68,.1)",color:"#f87171"}}>✕</button>
-            )}
-          </div>
-          {entry.isOpenFatura?(
-            <span style={{...S.badge,background:"rgba(138,180,248,.1)",color:"#8ab4f8",border:"1px solid #8ab4f833",padding:"4px 8px",fontSize:10,display:"flex",alignItems:"center",gap:4}}><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:3,flexShrink:0}}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> em aberto</span>
-          ):(
-            <button onClick={()=>handleToggle(entry)} className="statusToggleBtn"
-              title={entry.statusForMonth==="pago"?(entry.type==="receita"?"Clique para marcar como a receber":"Clique para marcar como a pagar"):(entry.type==="receita"?"Clique para marcar como recebido":"Clique para marcar como pago")}
-              style={{display:"flex",alignItems:"center",gap:5,padding:"5px 9px",borderRadius:8,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:10,fontWeight:700,
-                background:entry.statusForMonth==="pago"?"rgba(74,222,128,.18)":"rgba(251,146,60,.15)",
-                color:entry.statusForMonth==="pago"?"#4ade80":"#fb923c",
-                transition:"all .15s"}}>
-              {entry.statusForMonth==="pago"?(
-                <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>{entry.type==="receita"?"Recebido":"Pago"}</>
-              ):(
-                <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{entry.type==="receita"?"A receber":"A pagar"}</>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const renderCard = (entry) => (
+    <EntryCard key={`${entry.id}-${selMonth}`}
+      entry={entry} selMonth={selMonth}
+      catColor={catColor} catName={catName}
+      catTotals={catTotals} budgets={budgets}
+      handleToggle={handleToggle} handleClone={handleClone}
+      onEdit={(e) => setEditTarget({ entry: e, monthKey: selMonth })}
+      onDelete={setDelTarget}
+    />
+  );
 
   // ── Onboarding: mostrado na primeira vez que o usuário acessa ──
   if(showOnboarding){
@@ -801,16 +702,17 @@ function MainApp({ fbUser, onLogout }){
       <style>{CSS}</style>
 
       {/* Toast container — posicionado acima da bottom nav */}
-      <div style={{position:"fixed",bottom:82,left:"50%",transform:"translateX(-50%)",zIndex:999,display:"flex",flexDirection:"column",gap:6,alignItems:"center",pointerEvents:"none",width:"92%",maxWidth:380}}>
+      <div role="status" aria-live="polite" aria-atomic="false" style={{position:"fixed",bottom:82,left:"50%",transform:"translateX(-50%)",zIndex:999,display:"flex",flexDirection:"column",gap:6,alignItems:"center",pointerEvents:"none",width:"92%",maxWidth:380}}>
         {toasts.map(t=>{
-          const icon=t.type==="error"?"❌":t.type==="celebrate"?"🎉":t.type==="info"?"ℹ️":"✅";
+          const ToastIcon=t.type==="error"?XCircle:t.type==="celebrate"?Sparkles:t.type==="info"?Info:CheckCircle2;
+          const icon=<ToastIcon size={16} strokeWidth={2} style={{flexShrink:0}}/>;
           const bg=t.type==="error"?"#2a0d0d":t.type==="celebrate"?"#0d2a1a":t.type==="info"?"#0d1a2e":"#0a2010";
           const border=t.type==="error"?"#f8717155":t.type==="celebrate"?"#4ade8055":t.type==="info"?"#8ab4f855":"#4ade8055";
           const color=t.type==="error"?"#fca5a5":t.type==="celebrate"?"#6ee7b7":t.type==="info"?"#93c5fd":"#4ade80";
           return(
             <div key={t.id} className="toast-in"
               style={{background:bg,border:`1.5px solid ${border}`,color,padding:"11px 14px",borderRadius:12,fontSize:13,fontWeight:600,boxShadow:"0 8px 24px rgba(0,0,0,.6)",display:"flex",alignItems:"center",gap:8,width:"100%",pointerEvents:t.actionLabel?"auto":"none"}}>
-              <span style={{fontSize:16,flexShrink:0}}>{icon}</span>
+              {icon}
               <span style={{flex:1}}>{t.msg}</span>
               {t.actionLabel&&t.onAction&&(
                 <button onClick={()=>{t.onAction();dismiss(t.id);}}
@@ -823,27 +725,15 @@ function MainApp({ fbUser, onLogout }){
         })}
       </div>
 
-      {/* Confetti celebration overlay */}
+      {/* Goal achievement micro-animation */}
       {showCelebrate&&(
-        <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1000,overflow:"hidden"}}>
-          {Array.from({length:30},(_,i)=>{
-            const colors=["#4ade80","#facc15","#8ab4f8","#f87171","#a78bfa","#fb923c"];
-            const c=colors[i%colors.length];
-            const left=Math.random()*100;
-            const delay=Math.random()*1.5;
-            const dur=2+Math.random()*2;
-            const size=6+Math.random()*8;
-            const rot=Math.random()*360;
-            return(
-              <div key={i} style={{
-                position:"absolute",top:-20,left:`${left}%`,
-                width:size,height:size,borderRadius:Math.random()>0.5?"50%":2,
-                background:c,opacity:0.9,
-                animation:`confettiFall ${dur}s ${delay}s ease-in forwards`,
-                transform:`rotate(${rot}deg)`,
-              }}/>
-            );
-          })}
+        <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12,animation:"goalPop .5s cubic-bezier(.34,1.56,.64,1) forwards"}}>
+            <div style={{width:72,height:72,borderRadius:"50%",background:"rgba(52,211,153,.15)",border:"2px solid rgba(52,211,153,.4)",display:"flex",alignItems:"center",justifyContent:"center",animation:"goalGlow 1.2s ease-in-out 3"}}>
+              <CheckCircle2 size={36} color="#34d399" strokeWidth={1.75}/>
+            </div>
+            <div style={{fontSize:15,fontWeight:700,color:"#34d399",textShadow:"0 0 20px rgba(52,211,153,.4)"}}>Meta concluída!</div>
+          </div>
         </div>
       )}
 
@@ -1273,7 +1163,7 @@ function MainApp({ fbUser, onLogout }){
                   <text x="55" y="68" textAnchor="middle" fill="#94a3b8" fontSize="10">pontos</text>
                 </svg>
               </div>
-              <div style={{fontSize:17,fontWeight:700,color:healthScore.color}}>{healthScore.level==="Saudável"?"Saudável 💚":healthScore.level==="Atenção"?"Atenção ⚠️":"Crítico 🚨"}</div>
+              <div style={{fontSize:17,fontWeight:700,color:healthScore.color}}>{healthScore.level}</div>
             </div>
             {/* Barra progresso */}
             <div style={{height:6,background:"var(--bg)",borderRadius:3,marginBottom:16,overflow:"hidden"}}>
@@ -1311,12 +1201,12 @@ function MainApp({ fbUser, onLogout }){
         <button className="navDesktopOnly navAddReceita"
           onClick={()=>{setFormType("receita");setForm(BLANK("receita"));setShowForm(true);}}
           style={{display:"none",alignItems:"center",gap:10,padding:"10px 14px",background:"#0d2a1a",border:"1.5px solid #4ade8066",borderRadius:10,color:"#4ade80",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:2}}>
-          <span style={{fontSize:15}}>📈</span><span>+ Receita</span>
+          <TrendingUp size={16} strokeWidth={2}/><span>+ Receita</span>
         </button>
         <button className="navDesktopOnly navAddDespesa"
           onClick={()=>{setFormType("despesa");setForm(BLANK("despesa"));setShowForm(true);}}
           style={{display:"none",alignItems:"center",gap:10,padding:"10px 14px",background:"#1a1208",border:"1.5px solid #fb923c66",borderRadius:10,color:"#fb923c",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",marginBottom:10}}>
-          <span style={{fontSize:15}}>📉</span><span>+ Despesa</span>
+          <TrendingDown size={16} strokeWidth={2}/><span>+ Despesa</span>
         </button>
 
         {[
@@ -1365,9 +1255,9 @@ function MainApp({ fbUser, onLogout }){
       {showMoreNav&&(
         <div className="appMoreMenu" style={{position:"fixed",bottom:68,right:8,background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:14,padding:6,zIndex:51,boxShadow:"0 8px 32px rgba(0,0,0,.7)",minWidth:150}}>
           {[
-            ["saude","💊 Saúde"],
-            ["perfil","👤 Perfil"],
-            ...(fbUser.email===ADMIN_EMAIL?[["admin","🛡 Admin"]]:[] ),
+            ["saude","Saúde"],
+            ["perfil","Perfil"],
+            ...(fbUser.email===ADMIN_EMAIL?[["admin","Admin"]]:[] ),
           ].map(([tab,label])=>(
             <button key={tab} onClick={()=>{setActiveTab(tab);setShowMoreNav(false);}}
               style={{display:"flex",alignItems:"center",gap:8,width:"100%",padding:"11px 14px",background:activeTab===tab?"#111820":"transparent",border:"none",borderRadius:9,color:activeTab===tab?"#8ab4f8":"#ccd",fontSize:13,fontWeight:activeTab===tab?700:500,cursor:"pointer",textAlign:"left"}}>
@@ -1586,9 +1476,11 @@ const CSS=`
   }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
-  @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
   @keyframes heroGlow { 0%,100%{box-shadow:0 0 0 rgba(74,222,128,0)} 50%{box-shadow:0 0 24px rgba(74,222,128,.15)} }
+  @keyframes goalPop { 0%{transform:scale(.85);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
+  @keyframes goalGlow { 0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} 50%{box-shadow:0 0 0 8px rgba(52,211,153,.18)} }
   .celebrate-glow { animation: heroGlow 2s ease-in-out 3; }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 4px; }
   -webkit-tap-highlight-color: transparent;
 
   /* ── CSS Variables: dark (default) ── */

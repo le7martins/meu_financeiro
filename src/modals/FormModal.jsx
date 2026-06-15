@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import CatSelector from '../components/CatSelector.jsx';
 import Field from '../components/Field.jsx';
 import MonthPicker from '../components/MonthPicker.jsx';
+import { AlertTriangle, Info, CreditCard } from 'lucide-react';
 import { fmt } from '../utils.js';
 import S from '../styles.js';
 
@@ -58,12 +59,12 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
 
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={S.modal} className="modal-in">
+      <div style={S.modal} className="modal-in" role="dialog" aria-modal="true" aria-label={type==="receita"?"Nova Receita":"Nova Despesa"}>
         <div style={S.modalHandle}/>
         <div style={S.mHeader}>
           <div>
             <div style={S.mTitle}>Novo Lançamento</div>
-            <div style={{fontSize:11,color:typeColor,fontWeight:600,marginTop:3}}>{type==="receita"?"🟢 Receita":"🔴 Despesa"}</div>
+            <div style={{fontSize:11,color:typeColor,fontWeight:600,marginTop:3,display:"flex",alignItems:"center",gap:4}}><span style={{width:7,height:7,borderRadius:"50%",background:typeColor,display:"inline-block",flexShrink:0}}/>{type==="receita"?"Receita":"Despesa"}</div>
           </div>
           <button style={S.xBtn} onClick={onClose}>✕</button>
         </div>
@@ -99,27 +100,23 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
               </div>
             )}
           </div>
-          {descErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171"}}>⚠️ {descErr}</div>}
+          {descErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171",display:"flex",alignItems:"center",gap:4}}><AlertTriangle size={12} strokeWidth={2.5}/>{descErr}</div>}
         </Field>
 
         <div style={{display:"flex",gap:10}}>
           <Field label={<>Valor (R$) <span style={{color:"#f87171"}}>*</span></>} style={{flex:1}}>
             <input style={{...S.inp,borderColor:amtErr?"#f87171":"var(--border,#111820)"}} type="text" inputMode="numeric" placeholder="0,00" value={displayAmt} onChange={handleAmtChange} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
-            {amtErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171"}}>⚠️ {amtErr}</div>}
+            {amtErr&&<div style={{marginTop:4,fontSize:11,color:"#f87171",display:"flex",alignItems:"center",gap:4}}><AlertTriangle size={12} strokeWidth={2.5}/>{amtErr}</div>}
           </Field>
           <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
         </div>
 
         <Field label="Recorrência">
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo 🔄"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado 📋"]].map(([r,l])=>(<button key={r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado"]].map(([r,l])=>(<button key={r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
           {form.recurrence==="installment"&&(<div style={{marginTop:10}}><label style={{...S.lbl,marginBottom:5}}>Nº de parcelas</label><input style={{...S.inp,width:90}} type="number" min={2} max={60} value={form.installments} onChange={e=>set("installments",e.target.value)}/>{form.amount&&form.installments>1&&(<div style={{marginTop:8,background:"var(--bg)",border:"1px solid #1a3a6e44",borderRadius:9,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}><span style={{fontSize:11,color:"var(--text3)"}}>Total</span><span style={{fontSize:12,fontWeight:700,color:"#8ab4f8"}}>{fmt(parseFloat(form.amount))}</span><span style={{fontSize:11,color:"var(--text4)"}}>→</span><span style={{fontSize:11,color:"var(--text3)"}}>{form.installments}x de</span><span style={{fontSize:14,fontWeight:700,color:"#4ade80"}}>{fmt(parseFloat(form.amount)/parseInt(form.installments))}</span></div>)}</div>)}
           {(["fixed","weekly","biweekly","quarterly","annual"].includes(form.recurrence))&&(<div style={{marginTop:10}}>
             <div style={{fontSize:11,color:"var(--text3)",background:"var(--bg)",borderRadius:8,padding:"8px 10px",border:"1px solid var(--border)",marginBottom:8}}>
-              {form.recurrence==="fixed"&&"💡 Aparece todo mês a partir da data"}
-              {form.recurrence==="weekly"&&"💡 Aparece toda semana (4-5x por mês)"}
-              {form.recurrence==="biweekly"&&"💡 Aparece a cada 15 dias (2x por mês)"}
-              {form.recurrence==="quarterly"&&"💡 Aparece a cada 3 meses"}
-              {form.recurrence==="annual"&&"💡 Aparece uma vez por ano"}
+              <span style={{display:"flex",alignItems:"center",gap:5}}><Info size={12} style={{flexShrink:0}} color="var(--text3)"/>{form.recurrence==="fixed"?"Aparece todo mês a partir da data":form.recurrence==="weekly"?"Aparece toda semana (4–5× por mês)":form.recurrence==="biweekly"?"Aparece a cada 15 dias (2× por mês)":form.recurrence==="quarterly"?"Aparece a cada 3 meses":"Aparece uma vez por ano"}</span>
             </div>
             <label style={{...S.lbl,marginBottom:5}}>Encerrar em (opcional)</label>
             <MonthPicker value={form.endMonth||""} onChange={v=>set("endMonth",v)} now={new Date().toISOString().substring(0,7)} nullable/>
@@ -147,9 +144,9 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           <input style={S.inp} placeholder="Ex: viagem, fixo, mercado... (Enter para adicionar)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
         </Field>
 
-        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>💰 Saldo</button>{cards.map(c=>(<button key={c.id} onClick={()=>set("payWith",c.id)} style={{...S.chipBtn,...(form.payWith===c.id?{background:c.color+"33",border:`1px solid ${c.color}88`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:11,color:"var(--text3)",background:"var(--bg)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão</div>}</Field>}
+        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>Saldo</button>{cards.map(c=>(<button key={c.id} onClick={()=>set("payWith",c.id)} style={{...S.chipBtn,...(form.payWith===c.id?{background:c.color+"33",border:`1px solid ${c.color}88`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:11,color:"var(--text3)",background:"var(--bg)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)",display:"flex",alignItems:"center",gap:5}}><CreditCard size={11} color="var(--text3)"/>Lançado diretamente na fatura do cartão</div>}</Field>}
 
-        {(type!=="despesa"||!cards.length||form.payWith==="saldo")&&<Field label="Status"><div style={{display:"flex",gap:8}}>{(type==="receita"?[["a_pagar","⏳ A Receber","#fb923c"],["pago","✓ Recebido","#4ade80"]]:[["a_pagar","⏳ A Pagar","#fb923c"],["pago","✓ Pago","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>}
+        {(type!=="despesa"||!cards.length||form.payWith==="saldo")&&<Field label="Status"><div style={{display:"flex",gap:8}}>{(type==="receita"?[["a_pagar","A Receber","#fb923c"],["pago","Recebido","#4ade80"]]:[["a_pagar","A Pagar","#fb923c"],["pago","Pago","#4ade80"]]).map(([s,l,c])=>(<button key={s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:c+"20",border:`1px solid ${c}44`,color:c}:{})}}>{l}</button>))}</div></Field>}
 
         <button onClick={()=>{setTouched({description:true,amount:true});if(isValid)onAdd();}} className="submitBtn"
           style={{...S.submitBtn,opacity:isValid?1:0.45,cursor:isValid?"pointer":"not-allowed",background:type==="receita"?"linear-gradient(135deg,#1a4a2e,#0d2a1a)":"linear-gradient(135deg,#1a3a6e,#0d2247)",borderColor:type==="receita"?"#4ade8033":"#2a4a8e44",color:typeColor}}>

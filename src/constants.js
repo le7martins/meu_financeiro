@@ -50,6 +50,9 @@ export const CSS=`
   @keyframes toastIn { from { opacity:0; transform: translateY(-12px) scale(0.9); } to { opacity:1; transform: translateY(0) scale(1); } }
   @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes celebrate { 0%{background-position:0%} 100%{background-position:100%} }
+  @keyframes goalPop { 0%{transform:scale(.85);opacity:0} 60%{transform:scale(1.06)} 100%{transform:scale(1);opacity:1} }
+  @keyframes goalGlow { 0%,100%{box-shadow:0 0 0 0 rgba(52,211,153,0)} 50%{box-shadow:0 0 0 8px rgba(52,211,153,.18)} }
+  button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 4px; }
   -webkit-tap-highlight-color: transparent;
 
   /* ── CSS Variables: dark (default) ── */
