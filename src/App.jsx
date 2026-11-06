@@ -5,9 +5,10 @@ import { auth } from './firebase';
 import { loadUserData, saveData, subscribeData, hasCloudData, saveUserProfile, ADMIN_EMAIL } from './db';
 import { registerFCMToken, onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
-import { fmt, fmtShort, fmtDate, TODAY, MNAMES, mLabel, mShort, getNow, mDiff, addM, daysUntil, dueBadge, eVal, loadLS, saveLS } from './utils.js';
+import { fmt, fmtShort, fmtDate, todayISO, newId, MNAMES, mLabel, mShort, getNow, mDiff, addM, daysUntil, dueBadge, dueDateFor, eVal, loadLS, saveLS } from './utils.js';
 import { DEFAULT_CATS, BLANK, PRESET_COLORS, CARD_COLORS, NOTIF_KEY, NOTIF_LAST_KEY, defaultNotifSettings } from './constants.js';
-import { getBillingMonth, getFaturaDueDate, getFaturaCloseDate, isFaturaOpen, getPurchaseInstallmentsForBilling, buildFatura, getCardBillingMonths, getMonthEntries, requestNotifPermission, fireNotification, checkAndNotify } from './logic.js';
+import { getBillingMonth, getFaturaDueDate, getFaturaCloseDate, isFaturaOpen, getPurchaseInstallmentsForBilling, buildFatura, getCardBillingMonths, getMonthEntries } from './logic.js';
+import { requestNotifPermission, fireNotification, checkAndNotify } from './notifications.js';
 import S from './styles.js';
 import { generateMonthPDF } from './pdfReport.js';
 const ChartScreen      = lazy(() => import('./screens/ChartScreen.jsx'));
@@ -303,7 +304,7 @@ function MainApp({ fbUser, onLogout }){
     if(!dbReady) return;
     if(notifSettings.enabled&&Notification.permission==="granted"){
       const lastCheck=loadLS(k("notif_last"),null);
-      if(lastCheck!==TODAY) setTimeout(()=>{checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings);saveLS(k("notif_last"),TODAY);},1500);
+      if(lastCheck!==todayISO()) setTimeout(()=>{checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings);saveLS(k("notif_last"),todayISO());},1500);
     }
   },[dbReady]);
 
@@ -408,7 +409,7 @@ function MainApp({ fbUser, onLogout }){
     else if(sortBy==="status") list=[...list].sort((a,b)=>a.statusForMonth==="a_pagar"?-1:1);
     else list=[...list].sort((a,b)=>a.date.localeCompare(b.date));
     return list;
-  },[monthEntries,filter,filterCat,search,sortBy]);
+  },[monthEntries,filter,filterCat,filterTag,search,sortBy]);
 
   const grouped=useMemo(()=>{
     if(!groupBy) return null;
@@ -492,7 +493,7 @@ function MainApp({ fbUser, onLogout }){
       return;
     }
     const newSt=entry.statusForMonth==="pago"?"a_pagar":"pago";
-    const paidDt=newSt==="pago"?TODAY:null;
+    const paidDt=newSt==="pago"?todayISO():null;
     saveEntries(entries.map(e=>{
       if(e.id!==entry.id) return e;
       if(!entry.isRecurring) return {...e,status:newSt,paidDate:paidDt};
@@ -513,7 +514,7 @@ function MainApp({ fbUser, onLogout }){
     if(form.type==="despesa"&&form.payWith&&form.payWith!=="saldo"){
       const card=cards.find(c=>c.id===form.payWith);
       if(card){
-        const purchase={id:Date.now().toString(),cardId:card.id,description:form.description.trim(),amount:parseFloat(form.amount)||0,purchaseDate:form.date,category:form.category,installments:1,notes:form.notes||""};
+        const purchase={id:newId(),cardId:card.id,description:form.description.trim(),amount:parseFloat(form.amount)||0,purchaseDate:form.date,category:form.category,installments:1,notes:form.notes||""};
         saveCardPurchases([purchase,...cardPurchases]);setForm(BLANK());setShowForm(false);
         toast(`✓ Lançado na fatura de ${card.name}`);
         return;
@@ -524,7 +525,7 @@ function MainApp({ fbUser, onLogout }){
       const ok=await showConfirm({title:"Lançamento duplicado?",message:`"${dup.description}" já existe em ${fmtDate(dup.date)} (${fmt(parseFloat(dup.amount))}).`,detail:"Deseja adicionar mesmo assim?",confirmLabel:"Adicionar mesmo assim",danger:false});
       if(!ok) return;
     }
-    const entry={id:Date.now().toString(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),...(form.endMonth?{endMonth:form.endMonth}:{}),statusByMonth:{},overrides:{}};
+    const entry={id:newId(),description:form.description.trim(),amount:parseFloat(form.amount),date:form.date,type:form.type,status:form.status,category:form.category,recurrence:form.recurrence,notes:form.notes,...(form.recurrence==="installment"?{installments:parseInt(form.installments)}:{}),...(form.endMonth?{endMonth:form.endMonth}:{}),statusByMonth:{},overrides:{}};
     saveEntries([entry,...entries]);setForm(BLANK());setShowForm(false);
     toast(`✓ ${form.type==="receita"?"Receita":"Despesa"} adicionada`);
   },[form,cards,entries,cardPurchases,saveCardPurchases,saveEntries,toast]);
@@ -549,7 +550,7 @@ function MainApp({ fbUser, onLogout }){
 
   const handleClone=useCallback((entry)=>{
     setFormType(entry.type);
-    setForm({description:entry.description,amount:String(eVal(entry)),date:TODAY,type:entry.type,status:"a_pagar",category:entry.category,recurrence:"none",installments:2,notes:entry.notes||"",endMonth:"",tags:entry.tags||[]});
+    setForm({description:entry.description,amount:String(eVal(entry)),date:todayISO(),type:entry.type,status:"a_pagar",category:entry.category,recurrence:"none",installments:2,notes:entry.notes||"",endMonth:"",tags:entry.tags||[]});
     setShowForm(true);
   },[]);
 
@@ -564,7 +565,7 @@ function MainApp({ fbUser, onLogout }){
   const handlePayFatura=useCallback((entry,amount,partial)=>{
     const cur=cardFaturas[entry.faturaKey]||{};
     const isFullyPaid=!partial||amount>=entry.amount;
-    saveCardFaturas({...cardFaturas,[entry.faturaKey]:{...cur,paid:isFullyPaid,paidAmount:amount,paidDate:TODAY,partial:partial&&!isFullyPaid}});
+    saveCardFaturas({...cardFaturas,[entry.faturaKey]:{...cur,paid:isFullyPaid,paidAmount:amount,paidDate:todayISO(),partial:partial&&!isFullyPaid}});
     setFatPayTarget(null);
     toast(isFullyPaid?"✓ Fatura paga":"Pagamento parcial registrado");
   },[cardFaturas,saveCardFaturas,toast]);
@@ -577,7 +578,7 @@ function MainApp({ fbUser, onLogout }){
   const handleBackup=useCallback(()=>{
     const data={version:1,exportedAt:new Date().toISOString(),entries,dividas,cards,cardPurchases,cardFaturas,categories};
     const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));
-    Object.assign(document.createElement("a"),{href:url,download:`meu-financeiro-backup-${TODAY}.json`}).click();
+    Object.assign(document.createElement("a"),{href:url,download:`meu-financeiro-backup-${todayISO()}.json`}).click();
     URL.revokeObjectURL(url);toast("💾 Backup salvo");
   },[entries,dividas,cards,cardPurchases,cardFaturas,categories,toast]);
 
@@ -700,7 +701,7 @@ function MainApp({ fbUser, onLogout }){
             <div style={S.cardMeta}>
               {!entry.isFatura&&<span style={{...S.tag,color:catColor(entry.category),borderColor:catColor(entry.category)+"44",background:catColor(entry.category)+"18"}}>{catName(entry.category)}</span>}
               {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"#f87171":"#8ab4f8",borderColor:entry.isDivida?"#f8717144":"#1a3a6e",background:entry.isDivida?"rgba(248,113,113,.12)":"#0d1a2e"}}>{entry.recurLabel}</span>}
-              <span style={{fontSize:10,color:"var(--text4)"}}>{fmtDate(entry.isRecurring&&entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura?`${selMonth}-${entry.date.split("-")[2]}`:entry.date)}</span>
+              <span style={{fontSize:10,color:"var(--text4)"}}>{fmtDate(dueDateFor(entry,selMonth))}</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
               <span style={{fontSize:14,fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
@@ -1662,8 +1663,8 @@ const CSS=`
   .light-mode [style*="background:linear-gradient(90deg,#0a2a1a,#0d3520,#0a2a1a)"] { background: linear-gradient(90deg,#f0fdf4,#dcfce7,#f0fdf4) !important; }
 
   /* ── Border overrides ── */
-  .light-mode [style*="borderBottom:\"1px solid #0d1520\""], .light-mode [style*="borderBottom:\"1px solid #0f1825\""],
-  .light-mode [style*="borderBottom:\"1px solid #111820\""] { border-bottom-color: #e5e7eb !important; }
+  .light-mode [style*="borderBottom:"1px solid #0d1520""], .light-mode [style*="borderBottom:"1px solid #0f1825""],
+  .light-mode [style*="borderBottom:"1px solid #111820""] { border-bottom-color: #e5e7eb !important; }
   .light-mode [style*="border-bottom: 1px solid #0f1825"] { border-bottom-color: #e5e7eb !important; }
 
   /* Cards (entry rows) */
@@ -1841,7 +1842,7 @@ const CSS=`
   [data-theme="light"] [style*="background:linear-gradient(90deg,#0a2a1a"] { background: linear-gradient(90deg,#f0fdf4,#dcfce7,#f0fdf4) !important; }
 
   /* Border-top dividers */
-  [data-theme="light"] [style*="borderTop:\"1px solid rgba(255,255,255,.08)\""] { border-top-color: rgba(0,0,0,.08) !important; }
+  [data-theme="light"] [style*="borderTop:"1px solid rgba(255,255,255,.08)""] { border-top-color: rgba(0,0,0,.08) !important; }
 
   /* White text on now-light backgrounds */
   [data-theme="light"] [style*="color:#fff"] { color: #111827 !important; }
@@ -1872,12 +1873,12 @@ const CSS=`
   [data-theme="light"] [style*="background:#0d1118"][style*="border"][style*="borderRadius:10"] { background: #ffffff !important; }
 
   /* Section separators (borderBottom dark) */
-  [data-theme="light"] [style*="borderBottom:\"1px solid #0d1520\""] { border-bottom-color: #e5e7eb !important; }
-  [data-theme="light"] [style*="borderBottom:\"1px solid #0f1825\""] { border-bottom-color: #e5e7eb !important; }
-  [data-theme="light"] [style*="borderBottom:\"1px solid #111820\""] { border-bottom-color: #e5e7eb !important; }
+  [data-theme="light"] [style*="borderBottom:"1px solid #0d1520""] { border-bottom-color: #e5e7eb !important; }
+  [data-theme="light"] [style*="borderBottom:"1px solid #0f1825""] { border-bottom-color: #e5e7eb !important; }
+  [data-theme="light"] [style*="borderBottom:"1px solid #111820""] { border-bottom-color: #e5e7eb !important; }
 
   /* SumCard */
-  [data-theme="light"] [style*="background:#0d1118"][style*="border:\"1px solid #111820\""] { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
+  [data-theme="light"] [style*="background:#0d1118"][style*="border:"1px solid #111820""] { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
 
   /* Progress bar track */
   [data-theme="light"] [style*="height:5px"][style*="background:#080c12"],
@@ -1886,11 +1887,11 @@ const CSS=`
   [data-theme="light"] [style*="height:4"][style*="background:#080c12"] { background: #e5e7eb !important; }
 
   /* Modal cancel/close buttons */
-  [data-theme="light"] [style*="background:#111820"][style*="border:\"1px solid #1a2840\""] { background: #f3f4f6 !important; border-color: #e5e7eb !important; color: #374151 !important; }
+  [data-theme="light"] [style*="background:#111820"][style*="border:"1px solid #1a2840""] { background: #f3f4f6 !important; border-color: #e5e7eb !important; color: #374151 !important; }
   [data-theme="light"] .xBtn { background: #f3f4f6 !important; color: #374151 !important; }
 
   /* Installment preview box */
-  [data-theme="light"] [style*="background:#080c12"][style*="border:\"1px solid #1a3a6e44\""] { background: #eff6ff !important; border-color: #bfdbfe !important; }
+  [data-theme="light"] [style*="background:#080c12"][style*="border:"1px solid #1a3a6e44""] { background: #eff6ff !important; border-color: #bfdbfe !important; }
 
   /* Nav active background */
   [data-theme="light"] .navBtnActive { background: #f3f4f6 !important; }
@@ -1942,11 +1943,11 @@ const CSS=`
   /* ── Saúde screen ── */
   .light-mode [style*="background:linear-gradient(135deg,#0d1118,#111820)"] { background: #f9fafb !important; }
   .light-mode [style*="background:rgba(138,180,248,.06)"] { background: #eff6ff !important; border-color: #bfdbfe !important; }
-  .light-mode [style*="border:\"1px solid #1a3a6e\""] { border-color: #bfdbfe !important; }
+  .light-mode [style*="border:"1px solid #1a3a6e""] { border-color: #bfdbfe !important; }
 
   /* ── Profile screen ── */
   .light-mode [style*="background:#0d1118"][style*="borderRadius:13"] { background: #ffffff !important; border-color: #e5e7eb !important; }
-  .light-mode [style*="borderBottom:\"none\""] { border-bottom: none; }
+  .light-mode [style*="borderBottom:"none""] { border-bottom: none; }
   .light-mode [style*="borderBottom"][style*="#0f1825"] { border-bottom-color: #e5e7eb !important; }
 
   /* ── Modal backgrounds ── */
@@ -1955,7 +1956,7 @@ const CSS=`
   .light-mode [style*="background:#080c12"][style*="borderRadius:8"] { background: #f9fafb !important; }
   .light-mode [style*="background:#080c12"][style*="borderRadius:9"] { background: #f9fafb !important; }
   .light-mode [style*="background:#080c12"][style*="borderRadius:10"] { background: #f9fafb !important; }
-  .light-mode [style*="background:\"#111820\""] { background: #f3f4f6 !important; }
+  .light-mode [style*="background:"#111820""] { background: #f3f4f6 !important; }
 
   /* ── Upcoming due buttons ── */
   .light-mode [style*="background:#0d1118"][style*="border"][style*="borderRadius:10"] { background: #ffffff !important; }

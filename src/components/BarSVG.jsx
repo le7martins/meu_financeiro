@@ -3,6 +3,8 @@ import { fmtShort, fmt } from '../utils.js';
 
 export default function BarSVG({ data, type, faded }) {
   const [tip, setTip] = useState(null);
+  const handleEnter = useCallback((di, d, x) => setTip({ di, d, x }), []);
+  const handleLeave = useCallback(() => setTip(null), []);
   const W=320, H=180, PL=44, PB=24, PT=10, PR=8;
   const cW=W-PL-PR, cH=H-PB-PT;
   if (!data || data.length === 0) return null;
@@ -59,8 +61,6 @@ export default function BarSVG({ data, type, faded }) {
     );
   };
 
-  const handleEnter = useCallback((di, d, x) => setTip({ di, d, x }), []);
-  const handleLeave = useCallback(() => setTip(null), []);
 
   return (
     <div style={{ position:"relative", width:"100%" }}

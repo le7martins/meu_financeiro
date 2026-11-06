@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import Field from '../components/Field.jsx';
 import MonthPicker from '../components/MonthPicker.jsx';
-import { getNow, mLabel, mShort, addM, fmt } from '../utils.js';
+import { getNow, mLabel, mShort, addM, fmt, newId } from '../utils.js';
 import S from '../styles.js';
 
 // ─── Masked currency input ────────────────────────────────────
@@ -36,7 +36,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
   const handleSave=()=>{
     if(!dform.name.trim()||!dform.totalAmount) return;
     if(editId) setDividas(dividas.map(d=>d.id!==editId?d:{...d,...dform,totalAmount:parseFloat(dform.totalAmount),installments:parseInt(dform.installments)}));
-    else setDividas([...dividas,{...dform,id:Date.now().toString(),totalAmount:parseFloat(dform.totalAmount),installments:parseInt(dform.installments),paidMonths:[]}]);
+    else setDividas([...dividas,{...dform,id:newId(),totalAmount:parseFloat(dform.totalAmount),installments:parseInt(dform.installments),paidMonths:[]}]);
     setDform(BLANK_D);setShowForm(false);setEditId(null);
     toast(editId?"✓ Dívida atualizada":"✓ Dívida cadastrada");
   };
