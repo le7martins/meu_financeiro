@@ -1,7 +1,7 @@
 // CSS global do app (inclui overrides de tema claro e layout responsivo).
 export const CSS=`
   @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   .hscroll::-webkit-scrollbar { display: none; }
   ::-webkit-scrollbar { width: 3px; }
   body { background: var(--bg); }
@@ -78,9 +78,6 @@ export const CSS=`
       border-radius: 10px !important;
       margin-bottom: 2px;
     }
-    /* [style*="#8ab4f8"] é legado (não casa após o React serializar cores em rgb());
-       o caminho suportado é aria-current="page" no navBtn ativo. */
-    .appBottomNav .navBtn[style*="#8ab4f8"],
     .appBottomNav .navBtn[aria-current="page"] {
       border-left-color: var(--accent) !important;
       background: var(--card-bg) !important;
@@ -109,7 +106,7 @@ export const CSS=`
       animation: fadeIn .22s ease-out !important;
     }
     /* Toast moves to top-right */
-    .appRoot > div[style*="position: fixed"][style*="bottom: 82"] {
+    .appRoot > .toastStack {
       bottom: auto !important;
       top: 24px !important;
       right: 24px !important;
@@ -131,7 +128,6 @@ export const CSS=`
   @keyframes confettiFall { 0%{transform:translateY(-20px) rotate(0deg);opacity:1} 100%{transform:translateY(100vh) rotate(720deg);opacity:0} }
   @keyframes heroGlow { 0%,100%{box-shadow:0 0 0 rgba(74,222,128,0)} 50%{box-shadow:0 0 24px rgba(74,222,128,.15)} }
   .celebrate-glow { animation: heroGlow 2s ease-in-out 3; }
-  -webkit-tap-highlight-color: transparent;
 
   /* ══════════════════════════════════════════════════════════════
      DESIGN TOKENS — fonte única de cor/escala do app.
@@ -382,49 +378,7 @@ export const CSS=`
   .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
   .light-mode input[type=date]::-webkit-calendar-picker-indicator { filter: none !important; }
   .light-mode select option { background: #ffffff; color: #111827; }
-  /* Override select dropdown arrow to use dark color in light mode */
-  .light-mode select[style*="background-image"], .light-mode [style*="backgroundImage"][style*="889"] {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important; }
 
-  /* ── Text color overrides ── */
-  /* Primary text (#dde / #ccd → dark) */
-  .light-mode [style*="color:#dde"], .light-mode [style*="color: #dde"] { color: #111827 !important; }
-  .light-mode [style*="color:#ccd"], .light-mode [style*="color: #ccd"] { color: #374151 !important; }
-  /* Secondary/muted text (#445 / #334 / #556 → gray) */
-  .light-mode [style*="color:#445"], .light-mode [style*="color: #445"] { color: #6b7280 !important; }
-  .light-mode [style*="color:#334"], .light-mode [style*="color: #334"] { color: #9ca3af !important; }
-  .light-mode [style*="color:#556"], .light-mode [style*="color: #556"] { color: #6b7280 !important; }
-  /* White text → dark */
-  .light-mode [style*="color:#fff"], .light-mode [style*="color: #fff"],
-  .light-mode [style*="color:white"] { color: #111827 !important; }
-  .light-mode [style*='color:"#fff"'] { color: #111827 !important; }
-  /* rgba(255,255,255,...) text → dark */
-  .light-mode [style*="color:rgba(255,255,255,.6)"] { color: #6b7280 !important; }
-  .light-mode [style*="color:rgba(255,255,255,.35)"] { color: #9ca3af !important; }
-
-  /* ── Background overrides for dark panels ── */
-  .light-mode [style*="background:#0d1118"], .light-mode [style*="background: #0d1118"] { background: #ffffff !important; }
-  .light-mode [style*="background:#080c12"], .light-mode [style*="background: #080c12"] { background: #f9fafb !important; }
-  .light-mode [style*="background:#111820"], .light-mode [style*="background: #111820"] { background: #f3f4f6 !important; }
-  .light-mode [style*="background:#0f1825"], .light-mode [style*="background: #0f1825"] { background: #f3f4f6 !important; }
-  .light-mode [style*="background:#0d1520"], .light-mode [style*="background: #0d1520"] { background: #f9fafb !important; }
-  .light-mode [style*="background:#1a1208"], .light-mode [style*="background: #1a1208"] { background: #fff7ed !important; }
-  .light-mode [style*="background:#0d2a1a"], .light-mode [style*="background: #0d2a1a"] { background: #f0fdf4 !important; }
-  .light-mode [style*="background:#0a2a1a"], .light-mode [style*="background: #0a2a1a"] { background: #f0fdf4 !important; }
-  .light-mode [style*="background:#0d1a2e"], .light-mode [style*="background: #0d1a2e"] { background: #eff6ff !important; }
-  .light-mode [style*="background:#1a3a6e"], .light-mode [style*="background: #1a3a6e"] { background: #dbeafe !important; }
-  .light-mode [style*="background:#0a2010"], .light-mode [style*="background: #0a2010"] { background: #f0fdf4 !important; }
-  .light-mode [style*="background:#0d3520"], .light-mode [style*="background: #0d3520"] { background: #dcfce7 !important; }
-  .light-mode [style*="background:#2a0d0d"], .light-mode [style*="background: #2a0d0d"] { background: #fef2f2 !important; }
-  .light-mode [style*="background:#0d2247"], .light-mode [style*="background: #0d2247"] { background: #eff6ff !important; }
-  .light-mode [style*="background:linear-gradient(135deg,#0d1118,#111820)"] { background: #f9fafb !important; }
-  .light-mode [style*="background:linear-gradient(135deg,#1a3a6e,#0d2247)"] { background: linear-gradient(135deg,#2563eb,#1d4ed8) !important; }
-  .light-mode [style*="background:linear-gradient(90deg,#0a2a1a,#0d3520,#0a2a1a)"] { background: linear-gradient(90deg,#f0fdf4,#dcfce7,#f0fdf4) !important; }
-
-  /* ── Border overrides ── */
-  .light-mode [style*="borderBottom:"1px solid #0d1520""], .light-mode [style*="borderBottom:"1px solid #0f1825""],
-  .light-mode [style*="borderBottom:"1px solid #111820""] { border-bottom-color: #e5e7eb !important; }
-  .light-mode [style*="border-bottom: 1px solid #0f1825"] { border-bottom-color: #e5e7eb !important; }
 
   /* Cards (entry rows) */
   .light-mode .eCard { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
@@ -440,10 +394,7 @@ export const CSS=`
   }
   .light-mode .gradCardValue { color: #111827 !important; }
   .light-mode .gradCardLabel { opacity: 1 !important; font-weight: 700 !important; }
-  .light-mode .gradCardLabel[style*="#4ade80"] { color: #15803d !important; }
-  .light-mode .gradCardLabel[style*="#fb923c"] { color: #c2410c !important; }
-  .light-mode .gradCardLabel[style*="#8ab4f8"] { color: #1d4ed8 !important; }
-  .light-mode .gradCardLabel[style*="#facc15"] { color: #a16207 !important; }
+
 
   /* Sidebar add buttons in light mode */
   .light-mode .navAddReceita { background: #f0fdf4 !important; border-color: #22c55e !important; color: #15803d !important; }
@@ -487,24 +438,11 @@ export const CSS=`
     border-color: #bbf7d0 !important;
     box-shadow: 0 2px 12px rgba(22,163,74,.1) !important;
   }
-  /* Text inside hero card */
-  .light-mode .heroCard [style*="color:rgba(255,255,255,.6)"] { color: #374151 !important; }
-  .light-mode .heroCard [style*="color:rgba(255,255,255,.35)"] { color: #6b7280 !important; }
-  .light-mode .heroCard [style*="color:rgba(255,255,255,.08)"] { border-top-color: rgba(0,0,0,.08) !important; }
-  .light-mode .heroCard [style*="background:rgba(74,222,128,.18)"] { background: rgba(22,163,74,.15) !important; }
 
-  /* Month navigator in light mode */
-  .light-mode [style*="color:#fff"][style*="fontWeight:800"][style*="letterSpacing"] { color: #111827 !important; }
 
   /* Chart boxes */
   .light-mode .chartBox { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 4px rgba(0,0,0,.06) !important; }
-  .light-mode .chartBox [style*="color:#8ab4f8"] { color: #2563eb !important; }
-  .light-mode .chartBox [style*="fill:#8ab4f8"] { fill: #2563eb !important; }
-  .light-mode .chartBox [style*="stroke:#111820"] { stroke: #e5e7eb !important; }
-  .light-mode .chartBox [style*="fill:#0d1118"] { fill: #ffffff !important; }
-  .light-mode .chartBox [style*="fill:#1a2840"] { fill: #e5e7eb !important; }
-  .light-mode .chartBox [style*="background:#080c12"] { background: #f9fafb !important; }
-  .light-mode .chartBox [style*="background:#0d1118"] { background: #f9fafb !important; }
+
 
   /* Toast notifications in light mode */
   .light-mode .toast-in { box-shadow: 0 4px 16px rgba(0,0,0,.15) !important; }
@@ -571,86 +509,8 @@ export const CSS=`
   /* Month label (large white text) */
   [data-theme="light"] .monthLabel { color: #111827 !important; }
 
-  /* Section header titles (#dde text) */
-  [data-theme="light"] [style*="color:#dde"] { color: #111827 !important; }
-  [data-theme="light"] [style*="color:#ccd"] { color: #374151 !important; }
-  [data-theme="light"] [style*="color:#445"] { color: #6b7280 !important; }
-  [data-theme="light"] [style*="color:#334"] { color: #9ca3af !important; }
-  [data-theme="light"] [style*="color:#556"] { color: #6b7280 !important; }
-  [data-theme="light"] [style*="color:#667"] { color: #6b7280 !important; }
-  [data-theme="light"] [style*="color:#222"] { color: #6b7280 !important; }
-
-  /* Dark panel backgrounds */
-  [data-theme="light"] [style*="background:#0d1118"] { background: #ffffff !important; border-color: #e5e7eb !important; }
-  [data-theme="light"] [style*="background:#080c12"] { background: #f9fafb !important; }
-  [data-theme="light"] [style*="background:#111820"] { background: #f3f4f6 !important; }
-  [data-theme="light"] [style*="background:#0f1825"] { background: #f3f4f6 !important; }
-  [data-theme="light"] [style*="background:#0d1520"] { background: #f9fafb !important; }
-  [data-theme="light"] [style*="background:#1a1208"] { background: #fff7ed !important; }
-  [data-theme="light"] [style*="background:#0d2a1a"] { background: #f0fdf4 !important; }
-  [data-theme="light"] [style*="background:#0a2a1a"] { background: #f0fdf4 !important; }
-  [data-theme="light"] [style*="background:#0d1a2e"] { background: #eff6ff !important; }
-  [data-theme="light"] [style*="background:#1a3a6e"] { background: #dbeafe !important; }
-  [data-theme="light"] [style*="background:#0a2010"] { background: #f0fdf4 !important; }
-  [data-theme="light"] [style*="background:#0d3520"] { background: #dcfce7 !important; }
-  [data-theme="light"] [style*="background:#2a0d0d"] { background: #fef2f2 !important; }
-  [data-theme="light"] [style*="background:#0d2247"] { background: #eff6ff !important; }
-  [data-theme="light"] [style*="background:linear-gradient(135deg,#0d1118"] { background: #f9fafb !important; }
-  [data-theme="light"] [style*="background:linear-gradient(135deg,#1a3a6e"] { background: linear-gradient(135deg,#2563eb,#1d4ed8) !important; color: #fff !important; }
-  [data-theme="light"] [style*="background:linear-gradient(135deg,#1a4a2e"] { background: linear-gradient(135deg,#16a34a,#15803d) !important; color: #fff !important; }
-  [data-theme="light"] [style*="background:linear-gradient(90deg,#0a2a1a"] { background: linear-gradient(90deg,#f0fdf4,#dcfce7,#f0fdf4) !important; }
-
-  /* Border-top dividers */
-  [data-theme="light"] [style*="borderTop:"1px solid rgba(255,255,255,.08)""] { border-top-color: rgba(0,0,0,.08) !important; }
-
-  /* White text on now-light backgrounds */
-  [data-theme="light"] [style*="color:#fff"] { color: #111827 !important; }
-  [data-theme="light"] [style*="color: #fff"] { color: #111827 !important; }
-  [data-theme="light"] [style*="color:rgba(255,255,255,.6)"] { color: #6b7280 !important; }
-  [data-theme="light"] [style*="color:rgba(255,255,255,.35)"] { color: #9ca3af !important; }
-
-  /* Exception: white text stays white on colored/gradient buttons */
-  [data-theme="light"] [style*="background:linear-gradient(135deg,#1a3a6e"] [style*="color:#8ab4f8"] { color: #ffffff !important; }
-  [data-theme="light"] [style*="background:linear-gradient(135deg,#1e40af"] { color: #ffffff !important; }
-
-  /* Keep colored accent text (green, red, orange, yellow, blue) — don't override */
-  [data-theme="light"] [style*="color:#4ade80"] { color: #16a34a !important; }
-  [data-theme="light"] [style*="color:#34d399"] { color: #059669 !important; }
-  [data-theme="light"] [style*="color:#f87171"] { color: #dc2626 !important; }
-  [data-theme="light"] [style*="color:#fb923c"] { color: #ea580c !important; }
-  [data-theme="light"] [style*="color:#facc15"] { color: #d97706 !important; }
-  [data-theme="light"] [style*="color:#8ab4f8"] { color: #2563eb !important; }
-  [data-theme="light"] [style*="color:#a78bfa"] { color: #7c3aed !important; }
-
-  /* Card screen dark backgrounds */
-  [data-theme="light"] [style*="background:#0d1118"][style*="borderRadius:18"] { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 2px 8px rgba(0,0,0,.08) !important; }
-
-  /* Health indicator in header */
-  [data-theme="light"] [style*="background:#0d1118"][style*="border"][style*="borderRadius:8"] { background: #f9fafb !important; }
-
-  /* Upcoming due buttons */
-  [data-theme="light"] [style*="background:#0d1118"][style*="border"][style*="borderRadius:10"] { background: #ffffff !important; }
-
-  /* Section separators (borderBottom dark) */
-  [data-theme="light"] [style*="borderBottom:"1px solid #0d1520""] { border-bottom-color: #e5e7eb !important; }
-  [data-theme="light"] [style*="borderBottom:"1px solid #0f1825""] { border-bottom-color: #e5e7eb !important; }
-  [data-theme="light"] [style*="borderBottom:"1px solid #111820""] { border-bottom-color: #e5e7eb !important; }
-
-  /* SumCard */
-  [data-theme="light"] [style*="background:#0d1118"][style*="border:"1px solid #111820""] { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
-
-  /* Progress bar track */
-  [data-theme="light"] [style*="height:5px"][style*="background:#080c12"],
-  [data-theme="light"] [style*="height:5"][style*="background:#080c12"] { background: #e5e7eb !important; }
-  [data-theme="light"] [style*="height:3"][style*="background:#080c12"] { background: #e5e7eb !important; }
-  [data-theme="light"] [style*="height:4"][style*="background:#080c12"] { background: #e5e7eb !important; }
-
-  /* Modal cancel/close buttons */
-  [data-theme="light"] [style*="background:#111820"][style*="border:"1px solid #1a2840""] { background: #f3f4f6 !important; border-color: #e5e7eb !important; color: #374151 !important; }
   [data-theme="light"] .xBtn { background: #f3f4f6 !important; color: #374151 !important; }
 
-  /* Installment preview box */
-  [data-theme="light"] [style*="background:#080c12"][style*="border:"1px solid #1a3a6e44""] { background: #eff6ff !important; border-color: #bfdbfe !important; }
 
   /* Nav active background */
   [data-theme="light"] .navBtnActive { background: #f3f4f6 !important; }
@@ -664,9 +524,6 @@ export const CSS=`
   [data-theme="light"] [stroke="#111820"] { stroke: #e5e7eb !important; }
   [data-theme="light"] [stroke="#64748b"] { stroke: #d1d5db !important; }
 
-  /* SVG chart legend text */
-  [data-theme="light"] .chartBox [style*="color:#445"] { color: #6b7280 !important; }
-  [data-theme="light"] .chartBox [style*="color:#ccd"] { color: #374151 !important; }
 
   /* ── Hero card class-based overrides ── */
   .light-mode .heroSubtext { color: #374151 !important; }
@@ -674,53 +531,6 @@ export const CSS=`
   .light-mode .heroCardFooter { border-top-color: rgba(0,0,0,.08) !important; }
   .light-mode .monthLabel { color: #111827 !important; }
 
-  /* ── Accent colors mapped to light equivalents ── */
-  .light-mode [style*="color:#4ade80"]:not([style*="background"]) { color: #16a34a !important; }
-  .light-mode [style*="color:#34d399"]:not([style*="background"]) { color: #059669 !important; }
-  .light-mode [style*="color:#f87171"]:not([style*="background"]) { color: #dc2626 !important; }
-  .light-mode [style*="color:#fb923c"]:not([style*="background"]) { color: #ea580c !important; }
-  .light-mode [style*="color:#facc15"]:not([style*="background"]) { color: #d97706 !important; }
-  .light-mode [style*="color:#8ab4f8"]:not([style*="background"]) { color: #2563eb !important; }
-  .light-mode [style*="color:#a78bfa"]:not([style*="background"]) { color: #7c3aed !important; }
-
-  /* ── Card title and meta text ── */
-  .light-mode .eCard [style*="color:#dde"] { color: #111827 !important; }
-  .light-mode .eCard [style*="color:#ccd"] { color: #374151 !important; }
-  .light-mode .eCard [style*="color:#445"] { color: #6b7280 !important; }
-  .light-mode .eCard [style*="color:#334"] { color: #9ca3af !important; }
-  .light-mode .eCard [style*="color:#556"] { color: #6b7280 !important; }
-
-  /* ── Section headers ── */
-  .light-mode [style*="borderBottom"][style*="#0d1520"] { border-bottom-color: #e5e7eb !important; }
-  .light-mode [style*="borderBottom"][style*="#0f1825"] { border-bottom-color: #e5e7eb !important; }
-  .light-mode [style*="borderBottom"][style*="#111820"] { border-bottom-color: #e5e7eb !important; }
-
-  /* ── Cartão screen (credit cards) ── */
-  .light-mode [style*="background:#0d1118"][style*="borderRadius:18"] { background: #ffffff !important; }
-  .light-mode [style*="background:#0d1118"][style*="borderRadius:14"] { background: #ffffff !important; border-color: #e5e7eb !important; }
-
-  /* ── Saúde screen ── */
-  .light-mode [style*="background:linear-gradient(135deg,#0d1118,#111820)"] { background: #f9fafb !important; }
-  .light-mode [style*="background:rgba(138,180,248,.06)"] { background: #eff6ff !important; border-color: #bfdbfe !important; }
-  .light-mode [style*="border:"1px solid #1a3a6e""] { border-color: #bfdbfe !important; }
-
-  /* ── Profile screen ── */
-  .light-mode [style*="background:#0d1118"][style*="borderRadius:13"] { background: #ffffff !important; border-color: #e5e7eb !important; }
-  .light-mode [style*="borderBottom:"none""] { border-bottom: none; }
-  .light-mode [style*="borderBottom"][style*="#0f1825"] { border-bottom-color: #e5e7eb !important; }
-
-  /* ── Modal backgrounds ── */
-  .light-mode [style*="background:#080c12"][style*="borderRadius:11"],
-  .light-mode [style*="background:#080c12"][style*="borderRadius:12"] { background: #f9fafb !important; }
-  .light-mode [style*="background:#080c12"][style*="borderRadius:8"] { background: #f9fafb !important; }
-  .light-mode [style*="background:#080c12"][style*="borderRadius:9"] { background: #f9fafb !important; }
-  .light-mode [style*="background:#080c12"][style*="borderRadius:10"] { background: #f9fafb !important; }
-  .light-mode [style*="background:"#111820""] { background: #f3f4f6 !important; }
-
-  /* ── Upcoming due buttons ── */
-  .light-mode [style*="background:#0d1118"][style*="border"][style*="borderRadius:10"] { background: #ffffff !important; }
-  .light-mode [style*="background:rgba(248,113,113,.07)"] { background: #fef2f2 !important; }
-  .light-mode [style*="background:rgba(251,146,60,.07)"] { background: #fff7ed !important; }
 
   /* ── Health score circle track ── */
   .light-mode [stroke="#111820"] { stroke: #e5e7eb !important; }

@@ -2,10 +2,10 @@
 const TOAST_TOKEN = { error: "danger", celebrate: "emerald", info: "info" };
 
 // Pilha de toasts — acima da bottom nav (no desktop, canto superior direito via CSS,
-// que depende de position:fixed + bottom:82 inline neste container).
+// que reposiciona .toastStack no canto superior direito).
 export default function ToastStack({ toasts, dismiss }) {
   return (
-      <div role="status" aria-live="polite" style={{position:"fixed",bottom:82,left:"50%",transform:"translateX(-50%)",zIndex:999,display:"flex",flexDirection:"column",gap:6,alignItems:"center",pointerEvents:"none",width:"92%",maxWidth:380}}>
+      <div className="toastStack" role="status" aria-live="polite" style={{position:"fixed",bottom:82,left:"50%",transform:"translateX(-50%)",zIndex:999,display:"flex",flexDirection:"column",gap:6,alignItems:"center",pointerEvents:"none",width:"92%",maxWidth:380}}>
         {toasts.map(t=>{
           const icon=t.type==="error"?"❌":t.type==="celebrate"?"🎉":t.type==="info"?"ℹ️":"✅";
           const tk=TOAST_TOKEN[t.type]||"success";
