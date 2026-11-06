@@ -18,6 +18,7 @@ import { useToast } from './hooks/useToast.js';
 import { useToday } from './hooks/useToday.js';
 import S from './styles.js';
 import { CSS } from './appCss.js';
+import { applyTheme } from './theme.js';
 import { generateMonthPDF } from './pdfReport.js';
 import HomeScreen, { useHomeUi } from './screens/HomeScreen.jsx';
 import AppHeader from './components/AppHeader.jsx';
@@ -68,6 +69,7 @@ function App(){
   );
   if(!fbUser) return <LoginScreen onLogin={u=>setFbUser(u)}/>;
   const handleLogout = () => {
+    applyTheme("dark"); // tela de login é só no tema escuro
     if(fbUser._isDemo){
       // Demo mode: just clear state and demo localStorage data
       Object.keys(localStorage).filter(k=>k.startsWith(`mf2_${fbUser.uid}`)).forEach(k=>localStorage.removeItem(k));

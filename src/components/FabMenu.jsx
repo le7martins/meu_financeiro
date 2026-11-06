@@ -17,7 +17,7 @@ export default function FabMenu({ open, setOpen, onOpenForm }) {
 
           {/* Bottom-sheet de escolha */}
           {open&&(
-            <div className="fabSheet" id="fabSheet" role="dialog" aria-modal="true" aria-labelledby="fabSheetTitle" style={{position:"fixed",bottom:72,left:0,right:0,zIndex:49,maxWidth:480,margin:"0 auto",padding:"0 12px 12px"}}>
+            <div className="fabSheet" id="fabSheet" role="dialog" aria-labelledby="fabSheetTitle" style={{position:"fixed",bottom:72,left:0,right:0,zIndex:49,maxWidth:480,margin:"0 auto",padding:"0 12px 12px"}}>
               <div style={{background:"var(--surface-raised)",border:"1px solid var(--border)",borderRadius:"var(--radius-2xl)",overflow:"hidden",boxShadow:"var(--shadow-lg)",animation:"slideUp .22s cubic-bezier(.22,1,.36,1)"}}>
                 {/* Handle */}
                 <div aria-hidden="true" style={{display:"flex",justifyContent:"center",paddingTop:10,paddingBottom:6}}>

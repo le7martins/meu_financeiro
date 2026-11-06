@@ -5,7 +5,7 @@ export default function HealthModal({ open, healthScore, selMonth, onClose }) {
   return (<>
       {open&&healthScore&&(
         <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"var(--backdrop-soft)"}} onClick={()=>onClose()}>
-          <div className="modal-in" role="dialog" aria-modal="true" aria-labelledby="healthModalTitle" onClick={e=>e.stopPropagation()}
+          <div className="modal-in" role="dialog" aria-labelledby="healthModalTitle" onClick={e=>e.stopPropagation()}
             style={{background:"var(--surface-raised)",borderTopLeftRadius:22,borderTopRightRadius:22,width:"100%",maxWidth:480,maxHeight:"88vh",overflowY:"auto",padding:"20px 18px 40px",border:"1px solid var(--border)"}}>
             {/* Handle */}
             <div aria-hidden="true" style={{width:36,height:4,borderRadius:2,background:"var(--border)",margin:"0 auto 18px"}}/>

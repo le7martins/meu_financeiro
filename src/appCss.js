@@ -373,8 +373,9 @@ export const CSS=`
 
   /* Inputs, selects, textareas */
   .light-mode input, .light-mode select, .light-mode textarea {
-    background: var(--inp-bg) !important; color: var(--text1) !important;
-    border-color: var(--border) !important; }
+    background: var(--inp-bg) !important; color: var(--text1) !important; }
+  /* Campo inválido: borda vermelha visível em qualquer tema */
+  input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--danger) !important; }
   .light-mode input::placeholder, .light-mode textarea::placeholder { color: var(--text3) !important; }
   .light-mode input[type=date]::-webkit-calendar-picker-indicator { filter: none !important; }
   .light-mode select option { background: #ffffff; color: #111827; }
@@ -547,7 +548,7 @@ export const CSS=`
 
   /* Foco visível só para teclado. Inputs têm outline:none inline → anel via borda+sombra. */
   button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible,
-  [role="button"]:focus-visible, [tabindex]:focus-visible {
+  [role="button"]:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible {
     outline: 2px solid var(--focus-ring) !important;
     outline-offset: 2px;
   }
