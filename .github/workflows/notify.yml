@@ -14,7 +14,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Firebase Admin
         run: npm install firebase-admin --no-save
@@ -55,4 +55,5 @@ jobs:
       - name: Executar script de notificação
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+          TZ: America/Sao_Paulo
         run: node scripts/notify.mjs

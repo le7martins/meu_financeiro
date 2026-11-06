@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import Toggle from '../components/Toggle.jsx';
-import { mLabel } from '../utils.js';
-import S from '../styles.js';
-
-function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
-function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){return(<button onClick={!disabled&&onClick?onClick:undefined} style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid #0f1825",cursor:disabled||!onClick?"default":"pointer",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}><span style={{fontSize:18,flexShrink:0}}>{icon}</span><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:600,color:danger?"#f87171":"var(--text1)"}}>{label}</div>{sub&&<div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>{sub}</div>}</div>{badge&&<span style={{fontSize:9,color:"#8ab4f8",background:"#0d1a2e",border:"1px solid #1a3a6e",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}{!badge&&onClick&&!disabled&&<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}</button>);}
+import { mLabel, newId } from '../utils.js';
+import S, { tint } from "../styles.js";
+import { ModalShell } from "../components/Field.jsx";
+function ProfileSection({title,children}){return(<div role="group" aria-label={title}><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
+function ProfileItem({icon,label,sub,badge,onClick,danger,disabled,last}){
+  const interactive=!!onClick&&!disabled;
+  const Tag=interactive?"button":"div";
+  return(
+    <Tag {...(interactive?{type:"button",onClick}:{"aria-disabled":disabled?true:undefined})} style={{width:"100%",boxSizing:"border-box",display:"flex",alignItems:"center",gap:12,padding:"13px 14px",background:"transparent",border:"none",borderBottom:last?"none":"1px solid var(--border-subtle)",cursor:interactive?"pointer":"default",textAlign:"left",fontFamily:"inherit",opacity:disabled?0.45:1}}>
+      <span aria-hidden="true" style={{fontSize:"var(--fs-3xl)",flexShrink:0}}>{icon}</span>
+      <div style={{flex:1,minWidth:0}}><div style={{fontSize:"var(--fs-base)",fontWeight:600,color:danger?"var(--danger)":"var(--text-1)"}}>{label}</div>{sub&&<div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1}}>{sub}</div>}</div>
+      {badge&&<span style={{fontSize:"var(--fs-2xs)",color:"var(--accent)",background:"var(--accent-surface)",border:"1px solid var(--accent-border)",borderRadius:4,padding:"2px 7px",fontWeight:700}}>{badge}</span>}
+      {!badge&&interactive&&<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>}
+    </Tag>
+  );
+}
 
 const ACC_TYPES=[
   {id:"corrente",label:"Conta Corrente",icon:"🏦"},
@@ -31,7 +42,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const saveAcc=()=>{
     if(!accDraft.name.trim()) return;
     if(editAccId) onSaveAccounts(accounts.map(a=>a.id===editAccId?{...a,...accDraft}:a));
-    else onSaveAccounts([...accounts,{id:Date.now().toString(),...accDraft}]);
+    else onSaveAccounts([...accounts,{id:newId(),...accDraft}]);
     setShowAccForm(false);setEditAccId(null);
   };
   const deleteAcc=(id)=>onSaveAccounts(accounts.filter(a=>a.id!==id));
@@ -49,7 +60,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const [newPass,setNewPass]=useState('');
   const [passLoading,setPassLoading]=useState(false);
   const [passErr,setPassErr]=useState('');
-  const permColor=notifPerm==="granted"?"#4ade80":notifPerm==="denied"?"#f87171":"#facc15";
+  const permColor=notifPerm==="granted"?"var(--success)":notifPerm==="denied"?"var(--danger)":"var(--warning)";
   const permLabel=notifPerm==="granted"?"Ativadas":notifPerm==="denied"?"Bloqueadas pelo browser":notifPerm==="unsupported"?"Não suportado":"Não permitidas";
   const displayName=fbUser?.displayName||fbUser?.email?.split("@")[0]||"Usuário";
   const photoURL=fbUser?.photoURL;
@@ -137,14 +148,14 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
 
   return(
     <div style={{paddingBottom:90,paddingTop:4}}>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 16px 20px",borderBottom:"1px solid var(--border2)"}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"28px 16px 20px",borderBottom:"1px solid var(--border-subtle)"}}>
         {photoURL
-          ? <img src={photoURL} alt="" style={{width:72,height:72,borderRadius:"50%",border:"2px solid #1a3a6e",marginBottom:12,objectFit:"cover"}}/>
-          : <div style={{width:72,height:72,borderRadius:"50%",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"2px solid #1a3a6e",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,marginBottom:12}}>👤</div>
+          ? <img src={photoURL} alt="" style={{width:72,height:72,borderRadius:"50%",border:"2px solid var(--accent-border)",marginBottom:12,objectFit:"cover"}}/>
+          : <div style={{width:72,height:72,borderRadius:"50%",background:"var(--primary-bg)",border:"2px solid var(--accent-border)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"var(--fs-6xl)",marginBottom:12}}>👤</div>
         }
-        <div style={{fontSize:15,fontWeight:700,color:"var(--text1)",marginBottom:3}}>{displayName}</div>
-        <div style={{fontSize:11,color:"var(--text3)",marginBottom:2}}>{fbUser?.email}</div>
-        <div style={{fontSize:11,color:"var(--text3)"}}>{entries.length} lançamentos · {(dividas||[]).length} dívidas</div>
+        <div style={{fontSize:"var(--fs-xl)",fontWeight:700,color:"var(--text-1)",marginBottom:3}}>{displayName}</div>
+        <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginBottom:2}}>{fbUser?.email}</div>
+        <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{entries.length} lançamentos · {(dividas||[]).length} dívidas</div>
       </div>
       <div style={{padding:"16px 14px",display:"flex",flexDirection:"column",gap:12}}>
 
@@ -154,10 +165,10 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
           {!confirmLogout
             ? <ProfileItem icon="🚪" label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)} danger/>
             : <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
-                <span style={{fontSize:13,color:"var(--text1)"}}>Confirmar saída?</span>
+                <span style={{fontSize:"var(--fs-base)",color:"var(--text-1)"}}>Confirmar saída?</span>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={()=>setConfirmLogout(false)} style={{padding:"6px 12px",background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:8,color:"var(--text3)",fontSize:12,cursor:"pointer"}}>Cancelar</button>
-                  <button onClick={onLogout} style={{padding:"6px 12px",background:"#2a1a1a",border:"1px solid #f87171",borderRadius:8,color:"#f87171",fontSize:12,fontWeight:700,cursor:"pointer"}}>Sair</button>
+                  <button type="button" onClick={()=>setConfirmLogout(false)} style={{padding:"6px 12px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--text-3)",fontSize:"var(--fs-md)",cursor:"pointer"}}>Cancelar</button>
+                  <button type="button" onClick={onLogout} style={{padding:"6px 12px",background:"var(--danger-surface)",border:"1px solid var(--danger)",borderRadius:"var(--radius-sm)",color:"var(--danger)",fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer"}}>Sair</button>
                 </div>
               </div>
           }
@@ -166,28 +177,28 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ProfileSection title="Notificações">
           <div style={{padding:"13px 14px"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-              <div><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>🔔 Alertas de vencimento e recebimento</div><div style={{fontSize:11,color:permColor,marginTop:2}}>{permLabel}</div></div>
+              <div><div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)"}}>🔔 Alertas de vencimento e recebimento</div><div style={{fontSize:"var(--fs-sm)",color:permColor,marginTop:2}}>{permLabel}</div></div>
               {notifPerm==="granted"
-                ?<Toggle checked={notifSettings.enabled} onChange={v=>onNotifSettings({...notifSettings,enabled:v})}/>
-                :notifPerm!=="unsupported"&&<button onClick={onRequestPerm} style={{padding:"6px 12px",background:"#1a3a6e",border:"1px solid #2a4a8e",borderRadius:8,color:"#8ab4f8",fontSize:11,fontWeight:700,cursor:"pointer"}}>Permitir</button>}
+                ?<Toggle label="Alertas de vencimento e recebimento" checked={notifSettings.enabled} onChange={v=>onNotifSettings({...notifSettings,enabled:v})}/>
+                :notifPerm!=="unsupported"&&<button type="button" onClick={onRequestPerm} style={{padding:"6px 12px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-sm)",color:"var(--primary-text)",fontSize:"var(--fs-sm)",fontWeight:700,cursor:"pointer"}}>Permitir</button>}
             </div>
             {notifPerm==="granted"&&notifSettings.enabled&&(<>
               <div style={{marginBottom:10}}>
-                <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Avisar com quantos dias de antecedência</div>
+                <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Avisar com quantos dias de antecedência</div>
                 <div style={{display:"flex",gap:6}}>
                   {[1,2,3,5,7].map(d=>(
                     <button key={d} onClick={()=>onNotifSettings({...notifSettings,daysBefore:d})}
-                      style={{flex:1,padding:"7px 0",borderRadius:8,border:`1px solid ${notifSettings.daysBefore===d?"#8ab4f8":"#111820"}`,background:notifSettings.daysBefore===d?"#0d1a2e":"transparent",color:notifSettings.daysBefore===d?"#8ab4f8":"var(--text3)",fontSize:12,fontWeight:700,cursor:"pointer"}}>{d}d</button>
+                      style={{flex:1,padding:"7px 0",borderRadius:"var(--radius-sm)",border:`1px solid ${notifSettings.daysBefore===d?"var(--accent)":"var(--border-subtle)"}`,background:notifSettings.daysBefore===d?"var(--accent-surface)":"transparent",color:notifSettings.daysBefore===d?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer"}}>{d}d</button>
                   ))}
                 </div>
               </div>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
-                <div><div style={{fontSize:12,color:"var(--text1)",fontWeight:600}}>Alertar contas vencidas</div><div style={{fontSize:10,color:"var(--text3)"}}>Notificar sobre pagamentos atrasados</div></div>
-                <Toggle checked={notifSettings.overdueAlert} onChange={v=>onNotifSettings({...notifSettings,overdueAlert:v})}/>
+                <div><div style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600}}>Alertar contas vencidas</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Notificar sobre pagamentos atrasados</div></div>
+                <Toggle label="Alertar contas vencidas" checked={notifSettings.overdueAlert} onChange={v=>onNotifSettings({...notifSettings,overdueAlert:v})}/>
               </div>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <div><div style={{fontSize:12,color:"var(--text1)",fontWeight:600}}>Alertar recebimentos</div><div style={{fontSize:10,color:"var(--text3)"}}>Notificar sobre receitas esperadas</div></div>
-                <Toggle checked={notifSettings.incomeAlert!==false} onChange={v=>onNotifSettings({...notifSettings,incomeAlert:v})}/>
+                <div><div style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600}}>Alertar recebimentos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Notificar sobre receitas esperadas</div></div>
+                <Toggle label="Alertar recebimentos" checked={notifSettings.incomeAlert!==false} onChange={v=>onNotifSettings({...notifSettings,incomeAlert:v})}/>
               </div>
             </>)}
           </div>
@@ -195,59 +206,59 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
 
         <ProfileSection title="Contas e carteiras">
           {accounts.map((acc,i)=>(
-            <div key={acc.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:i<accounts.length-1?"1px solid #0f1825":"none"}}>
-              <div style={{width:34,height:34,borderRadius:9,background:acc.color+"22",border:`1px solid ${acc.color}55`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16}}>
+            <div key={acc.id} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 14px",borderBottom:i<accounts.length-1?"1px solid var(--border-subtle)":"none"}}>
+              <div style={{width:34,height:34,borderRadius:9,background:tint(acc.color,13),border:`1px solid ${tint(acc.color,33)}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:16}}>
                 {ACC_TYPES.find(t=>t.id===acc.type)?.icon||"🔵"}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:600,color:"var(--text1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{acc.name}</div>
-                <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {acc.initialBalance?.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</div>
+                <div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{acc.name}</div>
+                <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {acc.initialBalance?.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</div>
               </div>
-              <button onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text3)",cursor:"pointer",padding:"4px",fontSize:14}}>✏️</button>
-              <button onClick={()=>deleteAcc(acc.id)} style={{background:"transparent",border:"none",color:"#f87171",cursor:"pointer",padding:"4px",fontSize:14}}>✕</button>
+              <button type="button" aria-label={`Editar conta ${acc.name}`} title="Editar conta" onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text-3)",cursor:"pointer",padding:"4px",fontSize:"var(--fs-lg)"}}>✏️</button>
+              <button type="button" aria-label={`Excluir conta ${acc.name}`} title="Excluir conta" onClick={()=>deleteAcc(acc.id)} style={{background:"transparent",border:"none",color:"var(--danger)",cursor:"pointer",padding:"4px",fontSize:"var(--fs-lg)"}}>✕</button>
             </div>
           ))}
           {showAccForm?(
-            <div style={{padding:"14px",borderTop:accounts.length?"1px solid #0f1825":"none"}}>
-              <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>{editAccId?"Editar conta":"Nova conta"}</div>
+            <div style={{padding:"14px",borderTop:accounts.length?"1px solid var(--border-subtle)":"none"}}>
+              <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:10}}>{editAccId?"Editar conta":"Nova conta"}</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                <input style={{width:"100%",boxSizing:"border-box",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:10,padding:"9px 11px",color:"var(--text1)",fontSize:13,outline:"none",fontFamily:"inherit"}}
-                  placeholder="Nome da conta (ex: Nubank, Bradesco...)" value={accDraft.name} onChange={e=>setAccDraft(p=>({...p,name:e.target.value}))}/>
+                <input style={{width:"100%",boxSizing:"border-box",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",padding:"9px 11px",color:"var(--text-1)",fontSize:"var(--fs-base)",outline:"none",fontFamily:"inherit"}}
+                  aria-label="Nome da conta" autoComplete="off" placeholder="Nome da conta (ex: Nubank, Bradesco...)" value={accDraft.name} onChange={e=>setAccDraft(p=>({...p,name:e.target.value}))}/>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {ACC_TYPES.map(t=>(
-                    <button key={t.id} onClick={()=>setAccDraft(p=>({...p,type:t.id}))}
-                      style={{padding:"6px 10px",borderRadius:8,border:`1px solid ${accDraft.type===t.id?"#8ab4f8":"var(--border)"}`,background:accDraft.type===t.id?"#0d1a2e":"transparent",color:accDraft.type===t.id?"#8ab4f8":"var(--text3)",fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                    <button type="button" key={t.id} aria-pressed={accDraft.type===t.id} onClick={()=>setAccDraft(p=>({...p,type:t.id}))}
+                      style={{padding:"6px 10px",borderRadius:"var(--radius-sm)",border:`1px solid ${accDraft.type===t.id?"var(--accent)":"var(--border)"}`,background:accDraft.type===t.id?"var(--accent-surface)":"transparent",color:accDraft.type===t.id?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
                       {t.icon} {t.label}
                     </button>
                   ))}
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Cor</div>
+                  <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Cor</div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                     {ACC_COLORS.map(c=>(
-                      <button key={c} onClick={()=>setAccDraft(p=>({...p,color:c}))}
-                        style={{width:26,height:26,borderRadius:"50%",background:c,border:accDraft.color===c?"3px solid #fff":"2px solid transparent",cursor:"pointer",padding:0,outline:"none"}}/>
+                      <button type="button" key={c} aria-label={`Cor ${c}`} aria-pressed={accDraft.color===c} onClick={()=>setAccDraft(p=>({...p,color:c}))}
+                        style={{width:26,height:26,borderRadius:"50%",background:c,border:accDraft.color===c?"3px solid var(--text-1)":"2px solid transparent",cursor:"pointer",padding:0,outline:"none"}}/>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <div style={{fontSize:10,color:"var(--text3)",marginBottom:5}}>Saldo atual (R$)</div>
-                  <input type="text" inputMode="numeric" placeholder="0,00" value={accDisplay} onChange={handleAccAmt}
-                    style={{width:"100%",boxSizing:"border-box",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:10,padding:"9px 11px",color:"var(--text1)",fontSize:13,outline:"none",fontFamily:"inherit"}}/>
+                  <label htmlFor="acc-saldo" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Saldo atual (R$)</label>
+                  <input id="acc-saldo" type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={accDisplay} onChange={handleAccAmt}
+                    style={{width:"100%",boxSizing:"border-box",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",padding:"9px 11px",color:"var(--text-1)",fontSize:"var(--fs-base)",outline:"none",fontFamily:"inherit"}}/>
                 </div>
                 <div style={{display:"flex",gap:8,marginTop:2}}>
-                  <button onClick={()=>{setShowAccForm(false);setEditAccId(null);}}
-                    style={{flex:1,padding:"9px",background:"transparent",border:"1px solid var(--border)",borderRadius:10,color:"var(--text3)",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Cancelar</button>
-                  <button onClick={saveAcc} disabled={!accDraft.name.trim()}
-                    style={{flex:2,padding:"9px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:accDraft.name.trim()?1:0.45}}>
+                  <button type="button" onClick={()=>{setShowAccForm(false);setEditAccId(null);}}
+                    style={{flex:1,padding:"9px",background:"transparent",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-md)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Cancelar</button>
+                  <button type="button" onClick={saveAcc} disabled={!accDraft.name.trim()}
+                    style={{flex:2,padding:"9px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",color:"var(--primary-text)",borderRadius:"var(--radius-md)",fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:accDraft.name.trim()?1:0.45}}>
                     {editAccId?"Salvar alterações":"Adicionar conta"}
                   </button>
                 </div>
               </div>
             </div>
           ):(
-            <button onClick={openNewAcc}
-              style={{width:"100%",padding:"12px 14px",background:"transparent",border:"none",borderTop:accounts.length?"1px solid #0f1825":"none",color:"#8ab4f8",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8}}>
+            <button type="button" onClick={openNewAcc}
+              style={{width:"100%",padding:"12px 14px",background:"transparent",border:"none",borderTop:accounts.length?"1px solid var(--border-subtle)":"none",color:"var(--accent)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer",textAlign:"left",fontFamily:"inherit",display:"flex",alignItems:"center",gap:8}}>
               <span style={{fontSize:16}}>＋</span> Adicionar conta
             </button>
           )}
@@ -256,20 +267,20 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ProfileSection title="Exportar dados">
           <ProfileItem icon="📄" label="Relatório PDF do mês" sub={`Resumo visual de ${mLabel(selMonth)}`} onClick={onExportPDF}/>
           <ProfileItem icon="📅" label="Exportar mês atual" sub={`CSV com lançamentos de ${mLabel(selMonth)}`} onClick={onExportMonth}/>
-          <div style={{padding:"12px 14px",borderTop:"1px solid #0f1825"}}>
-            <div style={{fontSize:11,fontWeight:700,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:9}}>Exportar período</div>
+          <div style={{padding:"12px 14px",borderTop:"1px solid var(--border-subtle)"}}>
+            <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:9}}>Exportar período</div>
             <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
               <div style={{flex:1}}>
-                <div style={{fontSize:10,color:"var(--text4)",marginBottom:3}}>De</div>
-                <input type="month" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{width:"100%",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+                <label htmlFor="rng-from" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:3}}>De</label>
+                <input id="rng-from" type="month" value={rangeFrom} onChange={e=>setRangeFrom(e.target.value)} style={{width:"100%",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:9,padding:"7px 10px",color:"var(--text-1)",fontSize:"var(--fs-md)",outline:"none",fontFamily:"inherit"}}/>
               </div>
               <div style={{flex:1}}>
-                <div style={{fontSize:10,color:"var(--text4)",marginBottom:3}}>Até</div>
-                <input type="month" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{width:"100%",background:"var(--inp-bg)",border:"1px solid var(--border)",borderRadius:9,padding:"7px 10px",color:"var(--text1)",fontSize:12,outline:"none",fontFamily:"inherit"}}/>
+                <label htmlFor="rng-to" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:3}}>Até</label>
+                <input id="rng-to" type="month" value={rangeTo} onChange={e=>setRangeTo(e.target.value)} style={{width:"100%",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:9,padding:"7px 10px",color:"var(--text-1)",fontSize:"var(--fs-md)",outline:"none",fontFamily:"inherit"}}/>
               </div>
             </div>
             <button disabled={!rangeFrom||!rangeTo||rangeFrom>rangeTo} onClick={()=>onExportRange&&onExportRange(rangeFrom,rangeTo)}
-              style={{width:"100%",padding:"9px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",color:"#8ab4f8",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:rangeFrom&&rangeTo&&rangeFrom<=rangeTo?1:0.45}}>
+              style={{width:"100%",padding:"9px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",color:"var(--primary-text)",borderRadius:"var(--radius-md)",fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer",fontFamily:"inherit",opacity:rangeFrom&&rangeTo&&rangeFrom<=rangeTo?1:0.45}}>
               Exportar período selecionado
             </button>
           </div>
@@ -284,10 +295,10 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ProfileSection title="Backup e Restauração">
           <ProfileItem icon="💾" label="Fazer backup" sub="Salva todos os dados em arquivo JSON" onClick={onBackup}/>
           <div style={{padding:"0 14px"}}>
-            <label style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 0",borderTop:"1px solid #0f1825",cursor:"pointer"}}>
-              <span style={{fontSize:18,flexShrink:0}}>📂</span>
-              <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>Restaurar backup</div><div style={{fontSize:11,color:"var(--text3)",marginTop:1}}>Importa dados de um arquivo JSON</div></div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+            <label style={{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 0",borderTop:"1px solid var(--border-subtle)",cursor:"pointer"}}>
+              <span style={{fontSize:"var(--fs-3xl)",flexShrink:0}}>📂</span>
+              <div style={{flex:1}}><div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)"}}>Restaurar backup</div><div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1}}>Importa dados de um arquivo JSON</div></div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               <input type="file" accept=".json" onChange={onRestore} style={{display:"none"}}/>
             </label>
           </div>
@@ -299,8 +310,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
 
         <ProfileSection title="Aparência">
           <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div><div style={{fontSize:13,fontWeight:600,color:"var(--text1)"}}>{theme==="dark"?"🌙 Modo escuro":"☀️ Modo claro"}</div><div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>Alterna entre escuro e claro</div></div>
-            <Toggle checked={theme==="light"} onChange={v=>onTheme(v?"light":"dark")}/>
+            <div><div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)"}}>{theme==="dark"?"🌙 Modo escuro":"☀️ Modo claro"}</div><div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:2}}>Alterna entre escuro e claro</div></div>
+            <Toggle label="Modo claro" checked={theme==="light"} onChange={v=>onTheme(v?"light":"dark")}/>
           </div>
         </ProfileSection>
 
@@ -310,113 +321,101 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       </div>
 
       {editName&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditName(false)}>
-          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>Alterar nome</div><button style={S.xBtn} onClick={()=>setEditName(false)}>✕</button></div>
-            <input style={{...S.inp,marginBottom:16}} placeholder="Seu nome" value={newName} onChange={e=>setNewName(e.target.value)} autoFocus/>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setEditName(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={handleSaveName} disabled={nameLoading||!newName.trim()} style={{flex:1,padding:"11px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:"pointer",opacity:nameLoading||!newName.trim()?0.5:1}}>
-                {nameLoading?"Salvando...":"Salvar"}
-              </button>
-            </div>
+        <ModalShell title="Alterar nome" onClose={()=>setEditName(false)} compact>
+          <input style={{...S.inp,marginBottom:16}} aria-label="Seu nome" autoComplete="name" placeholder="Seu nome" value={newName} onChange={e=>setNewName(e.target.value)}/>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setEditName(false)} style={{flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",cursor:"pointer"}}>Cancelar</button>
+            <button type="button" onClick={handleSaveName} disabled={nameLoading||!newName.trim()} style={{flex:1,padding:"11px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-md)",color:"var(--primary-text)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer",opacity:nameLoading||!newName.trim()?0.5:1}}>
+              {nameLoading?"Salvando...":"Salvar"}
+            </button>
           </div>
-        </div>
+        </ModalShell>
       )}
 
       {editPass&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPass(false)}>
-          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>Alterar senha</div><button style={S.xBtn} onClick={()=>setEditPass(false)}>✕</button></div>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-              <div><label style={S.lbl}>Senha atual</label><input style={S.inp} type="password" placeholder="••••••••" value={curPass} onChange={e=>setCurPass(e.target.value)}/></div>
-              <div><label style={S.lbl}>Nova senha</label><input style={S.inp} type="password" placeholder="Mínimo 6 caracteres" value={newPass} onChange={e=>setNewPass(e.target.value)}/></div>
-              {passErr&&<div style={{fontSize:12,color:"#f87171"}}>⚠️ {passErr}</div>}
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setEditPass(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={handleSavePass} disabled={passLoading||!curPass||!newPass} style={{flex:1,padding:"11px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:"pointer",opacity:passLoading||!curPass||!newPass?0.5:1}}>
-                {passLoading?"Salvando...":"Salvar"}
-              </button>
-            </div>
+        <ModalShell title="Alterar senha" onClose={()=>setEditPass(false)} compact>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+            <div><label htmlFor="pw-atual" style={S.lbl}>Senha atual</label><input id="pw-atual" style={S.inp} type="password" autoComplete="current-password" placeholder="••••••••" value={curPass} onChange={e=>setCurPass(e.target.value)}/></div>
+            <div><label htmlFor="pw-nova" style={S.lbl}>Nova senha</label><input id="pw-nova" style={{...S.inp,borderColor:passErr?"var(--danger)":"var(--border)"}} type="password" autoComplete="new-password" placeholder="Mínimo 6 caracteres" value={newPass} onChange={e=>setNewPass(e.target.value)} aria-invalid={passErr?true:undefined} aria-describedby={passErr?"pw-err":undefined}/></div>
+            {passErr&&<div id="pw-err" role="alert" style={{fontSize:"var(--fs-md)",color:"var(--danger)"}}>⚠️ {passErr}</div>}
           </div>
-        </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setEditPass(false)} style={{flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",cursor:"pointer"}}>Cancelar</button>
+            <button type="button" onClick={handleSavePass} disabled={passLoading||!curPass||!newPass} style={{flex:1,padding:"11px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-md)",color:"var(--primary-text)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer",opacity:passLoading||!curPass||!newPass?0.5:1}}>
+              {passLoading?"Salvando...":"Salvar"}
+            </button>
+          </div>
+        </ModalShell>
       )}
 
       {confirmReset&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setConfirmReset(false)}>
-          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>Zerar dados</div><button style={S.xBtn} onClick={()=>setConfirmReset(false)}>✕</button></div>
-            <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"14px",marginBottom:20,textAlign:"center"}}>
-              <div style={{fontSize:28,marginBottom:8}}>⚠️</div>
-              <div style={{fontSize:13,fontWeight:700,color:"var(--text1)",marginBottom:6}}>Tem certeza?</div>
-              <div style={{fontSize:12,color:"#f87171",lineHeight:1.5}}>Isso removerá {entries.length} lançamento{entries.length!==1?"s":""} e {(dividas||[]).length} dívida{(dividas||[]).length!==1?"s":""} permanentemente.</div>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setConfirmReset(false)} style={{flex:1,padding:"12px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={()=>{onReset();setConfirmReset(false);}} style={{flex:1,padding:"12px",background:"rgba(239,68,68,.15)",border:"1px solid #f8717144",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>Sim, zerar tudo</button>
-            </div>
+        <ModalShell title="Zerar dados" onClose={()=>setConfirmReset(false)} compact>
+          <div style={{background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:11,padding:"14px",marginBottom:20,textAlign:"center"}}>
+            <div aria-hidden="true" style={{fontSize:"var(--fs-6xl)",marginBottom:8}}>⚠️</div>
+            <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:6}}>Tem certeza?</div>
+            <div style={{fontSize:"var(--fs-md)",color:"var(--danger)",lineHeight:1.5}}>Isso removerá {entries.length} lançamento{entries.length!==1?"s":""} e {(dividas||[]).length} dívida{(dividas||[]).length!==1?"s":""} permanentemente.</div>
           </div>
-        </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setConfirmReset(false)} style={{flex:1,padding:"12px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"}}>Cancelar</button>
+            <button type="button" onClick={()=>{onReset();setConfirmReset(false);}} style={{flex:1,padding:"12px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>Sim, zerar tudo</button>
+          </div>
+        </ModalShell>
       )}
 
       {showImport&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowImport(false)}>
-          <div style={S.modal} className="modal-in">
-            <div style={S.mHeader}><div><div style={S.mTitle}>Importar CSV</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{importRows.length} linhas detectadas</div></div><button style={S.xBtn} onClick={()=>setShowImport(false)}>✕</button></div>
-            <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Mapear colunas</div>
-            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
-              {[['date','📅 Data'],['desc','📝 Descrição'],['amount','💰 Valor'],['category','🏷️ Categoria (opcional)']].map(([key,label])=>(
-                <div key={key} style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0}}>{label}</span>
-                  <select value={importMap[key]} onChange={e=>setImportMap(p=>({...p,[key]:e.target.value}))}
-                    style={{...S.inp,flex:1,marginBottom:0,padding:"6px 10px",fontSize:11}}>
-                    <option value="">— selecionar —</option>
-                    {importHeaders.map(h=><option key={h} value={h}>{h}</option>)}
-                  </select>
-                </div>
-              ))}
-              {/* Tipo forçado */}
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:11,color:"var(--text2)",width:90,flexShrink:0}}>🔀 Tipo</span>
-                <div style={{display:"flex",gap:6,flex:1}}>
-                  {[['','Auto (por sinal)'],['despesa','Forçar Despesa'],['receita','Forçar Receita']].map(([v,l])=>(
-                    <button key={v} onClick={()=>setImportMap(p=>({...p,type:v}))}
-                      style={{flex:1,padding:"5px 0",fontSize:10,borderRadius:6,border:`1px solid ${importMap.type===v?"#8ab4f8":"#1a2840"}`,background:importMap.type===v?"#0d1a2e":"transparent",color:importMap.type===v?"#8ab4f8":"var(--text3)",cursor:"pointer"}}>{l}</button>
-                  ))}
-                </div>
+        <ModalShell title="Importar CSV" subtitle={<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{importRows.length} linhas detectadas</div>} onClose={()=>setShowImport(false)}>
+          <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Mapear colunas</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:14}}>
+            {[['date','📅 Data'],['desc','📝 Descrição'],['amount','💰 Valor'],['category','🏷️ Categoria (opcional)']].map(([key,label])=>(
+              <div key={key} style={{display:"flex",alignItems:"center",gap:8}}>
+                <label htmlFor={`imp-${key}`} style={{fontSize:"var(--fs-sm)",color:"var(--text-2)",width:90,flexShrink:0}}>{label}</label>
+                <select id={`imp-${key}`} value={importMap[key]} onChange={e=>setImportMap(p=>({...p,[key]:e.target.value}))}
+                  style={{...S.inp,flex:1,marginBottom:0,padding:"6px 10px",fontSize:"var(--fs-sm)"}}>
+                  <option value="">— selecionar —</option>
+                  {importHeaders.map(h=><option key={h} value={h}>{h}</option>)}
+                </select>
+              </div>
+            ))}
+            {/* Tipo forçado */}
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span id="imp-tipo-lbl" style={{fontSize:"var(--fs-sm)",color:"var(--text-2)",width:90,flexShrink:0}}>🔀 Tipo</span>
+              <div role="group" aria-labelledby="imp-tipo-lbl" style={{display:"flex",gap:6,flex:1}}>
+                {[['','Auto (por sinal)'],['despesa','Forçar Despesa'],['receita','Forçar Receita']].map(([v,l])=>(
+                  <button type="button" key={v} aria-pressed={importMap.type===v} onClick={()=>setImportMap(p=>({...p,type:v}))}
+                    style={{flex:1,padding:"5px 0",fontSize:"var(--fs-xs)",borderRadius:"var(--radius-xs)",border:`1px solid ${importMap.type===v?"var(--accent)":"var(--border-strong)"}`,background:importMap.type===v?"var(--accent-surface)":"transparent",color:importMap.type===v?"var(--accent)":"var(--text-3)",cursor:"pointer"}}>{l}</button>
+                ))}
               </div>
             </div>
-            <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Prévia (5 primeiras linhas)</div>
-            <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14,maxHeight:160,overflowY:"auto"}}>
-              {importRows.slice(0,5).map((row,i)=>{
-                const dt=importMap.date?parseBRDate(row[importMap.date]):null;
-                const amt=importMap.amount?parseBRNum(row[importMap.amount]):null;
-                const desc=importMap.desc?row[importMap.desc]:'';
-                const catRaw=importMap.category?row[importMap.category]:'';
-                const ok=dt&&amt!==null&&amt!==0;
-                return(
-                  <div key={i} style={{display:"flex",gap:6,background:ok?"var(--bg)":"rgba(248,113,113,.07)",borderRadius:7,padding:"6px 8px",border:`1px solid ${ok?"var(--border2)":"#f8717133"}`,fontSize:10}}>
-                    <span style={{color:"var(--text3)",width:62,flexShrink:0}}>{dt||'— data ?'}</span>
-                    <span style={{flex:1,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc||'—'}</span>
-                    {catRaw&&<span style={{color:"#8ab4f8",flexShrink:0,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis"}}>{catRaw}</span>}
-                    <span style={{fontWeight:700,color:amt===null?'#f87171':amt<0?'#fb923c':'#4ade80',flexShrink:0}}>{amt!==null?`${amt<0?'-':'+'} R$${Math.abs(amt).toFixed(2)}`:'—'}</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{marginBottom:14,background:"rgba(138,180,248,.06)",border:"1px solid #1a3a6e44",borderRadius:8,padding:"8px 12px",fontSize:10,color:"var(--text3)"}}>
-              💡 Valores negativos → Despesa · Positivos → Receita · Categoria: mapeada automaticamente por nome
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setShowImport(false)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={handleConfirmImport} disabled={!importMap.date||!importMap.desc||!importMap.amount}
-                style={{flex:2,padding:"11px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e44",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:"pointer",opacity:(!importMap.date||!importMap.desc||!importMap.amount)?0.4:1}}>
-                Importar {importRows.filter(row=>{const dt=parseBRDate(row[importMap.date]);const amt=parseBRNum(row[importMap.amount]);return dt&&amt!==null&&amt!==0;}).length} lançamentos
-              </button>
-            </div>
           </div>
-        </div>
+          <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:6}}>Prévia (5 primeiras linhas)</div>
+          <div style={{display:"flex",flexDirection:"column",gap:4,marginBottom:14,maxHeight:160,overflowY:"auto"}}>
+            {importRows.slice(0,5).map((row,i)=>{
+              const dt=importMap.date?parseBRDate(row[importMap.date]):null;
+              const amt=importMap.amount?parseBRNum(row[importMap.amount]):null;
+              const desc=importMap.desc?row[importMap.desc]:'';
+              const catRaw=importMap.category?row[importMap.category]:'';
+              const ok=dt&&amt!==null&&amt!==0;
+              return(
+                <div key={i} style={{display:"flex",gap:6,background:ok?"var(--surface-sunken)":"var(--danger-soft)",borderRadius:7,padding:"6px 8px",border:`1px solid ${ok?"var(--border-subtle)":"var(--danger-border)"}`,fontSize:"var(--fs-xs)"}}>
+                  <span style={{color:"var(--text-3)",width:62,flexShrink:0}}>{dt||'— data ?'}</span>
+                  <span style={{flex:1,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc||'—'}</span>
+                  {catRaw&&<span style={{color:"var(--accent)",flexShrink:0,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis"}}>{catRaw}</span>}
+                  <span style={{fontWeight:700,color:amt===null?'var(--danger)':amt<0?'var(--orange)':'var(--success)',flexShrink:0}}>{amt!==null?`${amt<0?'-':'+'} R$${Math.abs(amt).toFixed(2)}`:'—'}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{marginBottom:14,background:"var(--accent-soft)",border:"1px solid var(--accent-border)",borderRadius:"var(--radius-sm)",padding:"8px 12px",fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>
+            💡 Valores negativos → Despesa · Positivos → Receita · Categoria: mapeada automaticamente por nome
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setShowImport(false)} style={{flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"}}>Cancelar</button>
+            <button type="button" onClick={handleConfirmImport} disabled={!importMap.date||!importMap.desc||!importMap.amount}
+              style={{flex:2,padding:"11px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-md)",color:"var(--primary-text)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer",opacity:(!importMap.date||!importMap.desc||!importMap.amount)?0.4:1}}>
+              Importar {importRows.filter(row=>{const dt=parseBRDate(row[importMap.date]);const amt=parseBRNum(row[importMap.amount]);return dt&&amt!==null&&amt!==0;}).length} lançamentos
+            </button>
+          </div>
+        </ModalShell>
       )}
     </div>
   );

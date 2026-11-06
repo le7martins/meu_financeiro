@@ -1,8 +1,31 @@
+import { addM, mDiff, getNow, dateInMonth } from './utils.js';
+
+// Os dados abaixo foram escritos com maio/2026 como "mês atual". Ao semear,
+// todas as datas (valores e chaves "YYYY-MM", "YYYY-MM-DD", "<id>_YYYY-MM")
+// são deslocadas para que esse mês vire o mês corrente — a demo nunca envelhece.
+const DEMO_BASE_MONTH = '2026-05';
+const MONTH_RE = /^(.*_)?(\d{4}-\d{2})(-(\d{2}))?$/;
+
+function shiftDates(val, offset) {
+  const shiftStr = (s) => {
+    const m = typeof s === 'string' && s.match(MONTH_RE);
+    if (!m) return s;
+    const mk = addM(m[2], offset);
+    return (m[1] || '') + (m[4] ? dateInMonth(mk, m[4]) : mk);
+  };
+  if (Array.isArray(val)) return val.map(v => shiftDates(v, offset));
+  if (val && typeof val === 'object') {
+    return Object.fromEntries(Object.entries(val).map(([key, v]) => [shiftStr(key), shiftDates(v, offset)]));
+  }
+  return shiftStr(val);
+}
+
 // Seeds localStorage with demo data for the given uid.
 // Called right before onLogin() so MainApp initializes with pre-populated state.
 export function seedDemo(uid) {
   const k = (key) => `mf2_${uid}_${key}`;
-  const save = (key, val) => localStorage.setItem(k(key), JSON.stringify(val));
+  const offset = mDiff(DEMO_BASE_MONTH, getNow());
+  const save = (key, val) => localStorage.setItem(k(key), JSON.stringify(shiftDates(val, offset)));
 
   // ── Accounts ─────────────────────────────────────────────────
   save('accounts', [
@@ -40,13 +63,13 @@ export function seedDemo(uid) {
       id:'div1', name:'Financiamento Carro',
       totalAmount:36000, installments:60, startMonth:'2023-06',
       category:'transporte', notes:'Honda Civic — Itaú Financiamentos',
-      paidMonths:{},
+      paidMonths:[],
     },
     {
       id:'div2', name:'Empréstimo Pessoal',
       totalAmount:12000, installments:24, startMonth:'2024-06',
       category:'divida', notes:'CEF — taxa 1,8% a.m.',
-      paidMonths:{},
+      paidMonths:[],
     },
   ]);
 
@@ -58,16 +81,16 @@ export function seedDemo(uid) {
 
   // ── Card purchases ───────────────────────────────────────────
   save('cpurchases', [
-    { id:'cp1',  cardId:'c1', description:'iFood Jantar',           amount:87.90,  date:'2026-05-07', category:'alimentacao' },
-    { id:'cp2',  cardId:'c1', description:'Amazon — Livros',        amount:134.70, date:'2026-05-04', category:'educacao'    },
-    { id:'cp3',  cardId:'c1', description:'Zara — Calça jeans',     amount:299.90, date:'2026-04-22', category:'outro'       },
-    { id:'cp4',  cardId:'c1', description:'iFood Almoço',           amount:45.50,  date:'2026-04-17', category:'alimentacao' },
-    { id:'cp5',  cardId:'c1', description:'Netflix',                amount:55.90,  date:'2026-04-18', category:'assinatura'  },
-    { id:'cp6',  cardId:'c2', description:'Supermercado Carrefour', amount:487.30, date:'2026-05-08', category:'alimentacao' },
-    { id:'cp7',  cardId:'c2', description:'Posto Ipiranga',         amount:195.00, date:'2026-05-06', category:'transporte'  },
-    { id:'cp8',  cardId:'c2', description:'Drogasil',               amount:98.40,  date:'2026-05-09', category:'saude'       },
-    { id:'cp9',  cardId:'c2', description:'Renner — Camisetas',     amount:189.90, date:'2026-04-12', category:'outro'       },
-    { id:'cp10', cardId:'c2', description:'Burger King',            amount:62.50,  date:'2026-04-28', category:'alimentacao' },
+    { id:'cp1',  cardId:'c1', description:'iFood Jantar',           amount:87.90,  purchaseDate:'2026-05-07', category:'alimentacao' },
+    { id:'cp2',  cardId:'c1', description:'Amazon — Livros',        amount:134.70, purchaseDate:'2026-05-04', category:'educacao'    },
+    { id:'cp3',  cardId:'c1', description:'Zara — Calça jeans',     amount:299.90, purchaseDate:'2026-04-22', category:'outro'       },
+    { id:'cp4',  cardId:'c1', description:'iFood Almoço',           amount:45.50,  purchaseDate:'2026-04-17', category:'alimentacao' },
+    { id:'cp5',  cardId:'c1', description:'Netflix',                amount:55.90,  purchaseDate:'2026-04-18', category:'assinatura'  },
+    { id:'cp6',  cardId:'c2', description:'Supermercado Carrefour', amount:487.30, purchaseDate:'2026-05-08', category:'alimentacao' },
+    { id:'cp7',  cardId:'c2', description:'Posto Ipiranga',         amount:195.00, purchaseDate:'2026-05-06', category:'transporte'  },
+    { id:'cp8',  cardId:'c2', description:'Drogasil',               amount:98.40,  purchaseDate:'2026-05-09', category:'saude'       },
+    { id:'cp9',  cardId:'c2', description:'Renner — Camisetas',     amount:189.90, purchaseDate:'2026-04-12', category:'outro'       },
+    { id:'cp10', cardId:'c2', description:'Burger King',            amount:62.50,  purchaseDate:'2026-04-28', category:'alimentacao' },
   ]);
 
   // ── Card faturas (April paid) ─────────────────────────────────
@@ -86,13 +109,13 @@ export function seedDemo(uid) {
     {
       id:'e01', description:'Salário CLT', type:'receita',
       amount:6800, date:'2024-01-05', category:'salario',
-      recurrence:'monthly', status:'pago', notes:'Empresa Tecnologia Ltda',
+      recurrence:'fixed', status:'pago', notes:'Empresa Tecnologia Ltda',
       tags:['salário'], statusByMonth:{}, overrides:{}, accountId:'acc1',
     },
     {
       id:'e02', description:'Dividendos FII MXRF11', type:'receita',
       amount:390, date:'2025-01-20', category:'investimento',
-      recurrence:'monthly', status:'pago', notes:'',
+      recurrence:'fixed', status:'pago', notes:'',
       tags:[], statusByMonth:{},
       overrides:{'2026-03':{amount:420},'2026-04':{amount:415},'2026-05':{amount:435}},
       accountId:'acc3',
@@ -120,49 +143,49 @@ export function seedDemo(uid) {
     {
       id:'e10', description:'Aluguel', type:'despesa',
       amount:1850, date:'2024-01-05', category:'moradia',
-      recurrence:'monthly', status:'a_pagar', notes:'Vencimento todo dia 5',
+      recurrence:'fixed', status:'a_pagar', notes:'Vencimento todo dia 5',
       tags:[], statusByMonth:paid6, overrides:{}, accountId:'acc1',
     },
     {
       id:'e11', description:'Condomínio', type:'despesa',
       amount:380, date:'2024-01-10', category:'moradia',
-      recurrence:'monthly', status:'pago', notes:'',
+      recurrence:'fixed', status:'pago', notes:'',
       tags:[], statusByMonth:{}, overrides:{}, accountId:'acc1',
     },
     {
       id:'e12', description:'Internet Vivo Fibra', type:'despesa',
       amount:119.90, date:'2024-01-15', category:'assinatura',
-      recurrence:'monthly', status:'pago', notes:'',
+      recurrence:'fixed', status:'pago', notes:'',
       tags:[], statusByMonth:{}, overrides:{}, accountId:'acc1',
     },
     {
       id:'e13', description:'Netflix', type:'despesa',
       amount:55.90, date:'2024-01-18', category:'assinatura',
-      recurrence:'monthly', status:'pago', notes:'',
+      recurrence:'fixed', status:'pago', notes:'',
       tags:['streaming'], statusByMonth:{}, overrides:{}, accountId:null,
     },
     {
       id:'e14', description:'Spotify Premium', type:'despesa',
       amount:21.90, date:'2024-01-18', category:'assinatura',
-      recurrence:'monthly', status:'pago', notes:'',
+      recurrence:'fixed', status:'pago', notes:'',
       tags:['streaming'], statusByMonth:{}, overrides:{}, accountId:null,
     },
     {
       id:'e15', description:'Academia Smart Fit', type:'despesa',
       amount:99.90, date:'2024-01-20', category:'saude',
-      recurrence:'monthly', status:'pago', notes:'',
+      recurrence:'fixed', status:'pago', notes:'',
       tags:[], statusByMonth:{}, overrides:{}, accountId:null,
     },
     {
       id:'e16', description:'Plano de saúde Unimed', type:'despesa',
       amount:498, date:'2024-01-25', category:'saude',
-      recurrence:'monthly', status:'pago', notes:'Família — 2 dependentes',
+      recurrence:'fixed', status:'pago', notes:'Família — 2 dependentes',
       tags:[], statusByMonth:{}, overrides:{}, accountId:'acc1',
     },
     {
       id:'e17', description:'Seguro Auto', type:'despesa',
       amount:210, date:'2024-01-28', category:'transporte',
-      recurrence:'monthly', status:'pago', notes:'Porto Seguro',
+      recurrence:'fixed', status:'pago', notes:'Porto Seguro',
       tags:[], statusByMonth:{}, overrides:{}, accountId:'acc1',
     },
 

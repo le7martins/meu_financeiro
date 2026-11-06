@@ -1,39 +1,41 @@
-import { TODAY, getNow, addM, mDiff, mLabel, daysUntil, eVal } from './utils.js';
+// Regras de negócio puras (sem DOM/React/Firebase). Usadas pelo app e pelo
+// cron de notificações (scripts/notify.mjs). "Hoje" é sempre injetável.
+import { todayISO, addM, mDiff, mLabel, daysUntil, daysInMonth, dateInMonth, dueDateFor, parseISODate, installmentAmount } from './utils.js';
 
-// ─── Credit Card Utils ────────────────────────────────────────
+// ─── Cartão de crédito ───────────────────────────────────────
 export function getBillingMonth(purchaseDate,closeDay) {
   const [y,m,d]=purchaseDate.split("-").map(Number);
   if(d<=closeDay) return `${y}-${String(m).padStart(2,"0")}`;
   const next=new Date(y,m,1);
   return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}`;
 }
-export function getFaturaDueDate(billingMonth,dueDay){ const nm=addM(billingMonth,1); return `${nm}-${String(dueDay).padStart(2,"0")}`; }
-export function getFaturaCloseDate(billingMonth,closeDay){ return `${billingMonth}-${String(closeDay).padStart(2,"0")}`; }
-export function isFaturaOpen(billingMonth,closeDay){ return TODAY<getFaturaCloseDate(billingMonth,closeDay); }
+export function getFaturaDueDate(billingMonth,dueDay){ return dateInMonth(addM(billingMonth,1),dueDay); }
+export function getFaturaCloseDate(billingMonth,closeDay){ return dateInMonth(billingMonth,closeDay); }
+export function isFaturaOpen(billingMonth,closeDay,today=todayISO()){ return today<getFaturaCloseDate(billingMonth,closeDay); }
 export function getPurchaseInstallmentsForBilling(purchase,targetBillingMonth,closeDay) {
   const baseBilling=getBillingMonth(purchase.purchaseDate,closeDay);
   const diff=mDiff(baseBilling,targetBillingMonth);
   const total=purchase.installments||1;
-  if(diff>=0&&diff<total) return {installmentNum:diff+1,total,amount:parseFloat((purchase.amount/total).toFixed(2))};
+  if(diff>=0&&diff<total) return {installmentNum:diff+1,total,amount:installmentAmount(purchase.amount,total,diff+1)};
   return null;
 }
-export function buildFatura(card,purchases,cardFaturas,billingMonth) {
+export function buildFatura(card,purchases,cardFaturas,billingMonth,today=todayISO()) {
   const items=[];
   for(const p of (purchases||[])){
     if(p.cardId!==card.id) continue;
     const inst=getPurchaseInstallmentsForBilling(p,billingMonth,card.closeDay);
     if(inst) items.push({...p,...inst});
   }
-  const total=items.reduce((s,i)=>s+i.amount,0);
+  const total=Math.round(items.reduce((s,i)=>s+i.amount,0)*100)/100;
   const key=`${card.id}_${billingMonth}`;
   const payRecord=(cardFaturas||{})[key]||null;
   const closeDate=getFaturaCloseDate(billingMonth,card.closeDay);
   const dueDate=getFaturaDueDate(billingMonth,card.dueDay);
-  const open=TODAY<closeDate;
+  const open=today<closeDate;
   const paid=payRecord?.paid||false;
   const paidAmount=payRecord?.paidAmount||0;
   const partial=payRecord?.partial||false;
-  return {card,billingMonth,items,total:parseFloat(total.toFixed(2)),closeDate,dueDate,open,paid,paidAmount,partial,key};
+  return {card,billingMonth,items,total,closeDate,dueDate,open,paid,paidAmount,partial,key};
 }
 export function getCardBillingMonths(card,purchases) {
   const months=new Set();
@@ -45,46 +47,50 @@ export function getCardBillingMonths(card,purchases) {
   return [...months].sort();
 }
 
-// ─── Entry computation ───────────────────────────────────────
-export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,cardFaturas) {
+// ─── Recorrência ─────────────────────────────────────────────
+// Quantas vezes um lançamento a cada `stepDays` dias, iniciado em `startDate`,
+// ocorre no mês `monthKey`.
+export function countOccurrencesInMonth(startDate,monthKey,stepDays) {
+  const start=parseISODate(startDate);
+  const [y,m]=monthKey.split("-").map(Number);
+  let n=0;
+  for(let d=1;d<=daysInMonth(monthKey);d++){
+    const diff=Math.round((new Date(y,m-1,d)-start)/86400000);
+    if(diff>=0&&diff%stepDays===0) n++;
+  }
+  return n;
+}
+
+// ─── Lançamentos do mês ──────────────────────────────────────
+export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,cardFaturas,today=todayISO()) {
   const res=[];
-  for(const e of entries){
+  for(const e of (entries||[])){
     if(e.deletedFrom&&monthKey>=e.deletedFrom) continue;
     const base=e.date.substring(0,7);
+    const inRange=base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth);
+    const st=()=>e.statusByMonth?.[monthKey]||"a_pagar";
     let item=null;
     if(e.recurrence==="none"){ if(base===monthKey) item={...e,statusForMonth:e.status,isRecurring:false}; }
-    else if(e.recurrence==="fixed"){ if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Fixo"};} }
-    else if(e.recurrence==="weekly"){
-      if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){
-        const st=e.statusByMonth?.[monthKey]||"a_pagar";
-        // Conta ocorrências semanais no mês (aprox: semanas do mês que caem no dia da semana)
-        const [y,m]=monthKey.split("-").map(Number);
-        const daysInMonth=new Date(y,m,0).getDate();
-        const occurrences=Math.floor(daysInMonth/7)+(new Date(y,m,0).getDay()>=(new Date(e.date).getDay())?1:0);
-        item={...e,amount:e.amount*Math.max(occurrences,4),statusForMonth:st,isRecurring:true,recurLabel:`Semanal 📆 (${Math.max(occurrences,4)}x)`};
+    else if(e.recurrence==="fixed"){ if(inRange) item={...e,statusForMonth:st(),isRecurring:true,recurLabel:"Fixo"}; }
+    else if(e.recurrence==="weekly"||e.recurrence==="biweekly"){
+      if(inRange){
+        const weekly=e.recurrence==="weekly";
+        const n=countOccurrencesInMonth(e.date,monthKey,weekly?7:14);
+        if(n>0) item={...e,amount:Math.round(e.amount*n*100)/100,statusForMonth:st(),isRecurring:true,recurLabel:`${weekly?"Semanal":"Quinzenal"} 📆 (${n}x)`};
       }
     }
-    else if(e.recurrence==="biweekly"){
-      if(base<=monthKey&&(!e.endMonth||monthKey<=e.endMonth)){
-        const st=e.statusByMonth?.[monthKey]||"a_pagar";
-        item={...e,amount:e.amount*2,statusForMonth:st,isRecurring:true,recurLabel:"Quinzenal 📆 (2x)"};
-      }
-    }
-    else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Trim."};} }
-    else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&(!e.endMonth||monthKey<=e.endMonth)){const st=e.statusByMonth?.[monthKey]||"a_pagar";item={...e,statusForMonth:st,isRecurring:true,recurLabel:"Anual"};} }
+    else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&inRange) item={...e,statusForMonth:st(),isRecurring:true,recurLabel:"Trim."}; }
+    else if(e.recurrence==="annual"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%12===0&&inRange) item={...e,statusForMonth:st(),isRecurring:true,recurLabel:"Anual"}; }
     else if(e.recurrence==="installment"){
       const diff=mDiff(base,monthKey);
       if(diff>=0&&diff<e.installments){
-        const st=e.statusByMonth?.[monthKey]||"a_pagar";
-        const displayAmount=parseFloat((e.amount/e.installments).toFixed(2));
-        item={...e,statusForMonth:st,isRecurring:true,installmentNum:diff+1,recurLabel:`${diff+1}/${e.installments}×`,displayAmount};
+        item={...e,statusForMonth:st(),isRecurring:true,installmentNum:diff+1,recurLabel:`${diff+1}/${e.installments}×`,displayAmount:installmentAmount(e.amount,e.installments,diff+1)};
       }
     }
     if(item&&!e.deletedMonths?.includes(monthKey)){
       const ov=e.overrides?.[monthKey];
       if(ov){const{amount:oa,status:os,...rest}=ov;
         // statusByMonth tem prioridade sobre o status salvo no override
-        // (o toggle atualiza ambos, mas garante que statusByMonth sempre vence)
         const finalStatus=e.statusByMonth?.[monthKey]??os;
         item={...item,...rest,...(oa!==undefined?{displayAmount:oa}:{}),...(finalStatus!==undefined?{statusForMonth:finalStatus}:{})};}
       res.push(item);
@@ -93,90 +99,67 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
   for(const d of (dividas||[])){
     const diff=mDiff(d.startMonth,monthKey);
     if(diff>=0&&diff<d.installments){
-      const instVal=parseFloat((d.totalAmount/d.installments).toFixed(2));
+      const instVal=installmentAmount(d.totalAmount,d.installments,diff+1);
       const isPaid=d.paidMonths?.includes(monthKey)||false;
       res.push({id:`divida_${d.id}_${monthKey}`,description:d.name,amount:instVal,displayAmount:instVal,
-        date:`${monthKey}-${d.dueDay||"10"}`,type:"despesa",status:isPaid?"pago":"a_pagar",statusForMonth:isPaid?"pago":"a_pagar",
+        date:dateInMonth(monthKey,d.dueDay||10),type:"despesa",status:isPaid?"pago":"a_pagar",statusForMonth:isPaid?"pago":"a_pagar",
         category:d.category||"outro",recurrence:"installment",isRecurring:true,isDivida:true,dividaId:d.id,
         installmentNum:diff+1,installments:d.installments,recurLabel:`${diff+1}/${d.installments}×`,notes:d.notes||""});
     }
   }
   for(const card of (cards||[])){
-    const allBillings=getCardBillingMonths(card,cardPurchases||[]);
-    for(const bm of allBillings){
-      const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm);
-      if(fat.total<=0) continue;
-      // Fatura sempre aparece no mês de faturamento (billing month)
-      if(bm!==monthKey) continue;
-      if(fat.open){
-        // Aberta: mostra com data de fechamento (valor ainda em aberto)
-        res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:fat.total,
-          date:fat.closeDate,type:"despesa",status:"a_pagar",statusForMonth:"a_pagar",
-          category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:true,
-          faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,
-          cardColor:card.color,cardName:card.name});
-      } else {
-        // Fechada: mostra com data de vencimento real (ex: 10/06 para fatura de Mai)
-        const remainingAmount=fat.partial?parseFloat((fat.total-fat.paidAmount).toFixed(2)):fat.total;
-        res.push({id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,displayAmount:remainingAmount,
-          date:fat.dueDate,type:"despesa",status:fat.paid?"pago":"a_pagar",statusForMonth:fat.paid?"pago":"a_pagar",
-          category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,isOpenFatura:false,
-          faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,
-          paidAmount:fat.paidAmount,partial:fat.partial,
-          cardColor:card.color,cardName:card.name});
-      }
+    // Fatura sempre aparece no mês de faturamento (billing month)
+    if(!getCardBillingMonths(card,cardPurchases||[]).includes(monthKey)) continue;
+    const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},monthKey,today);
+    if(fat.total<=0) continue;
+    const common={id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(monthKey)}`,amount:fat.total,
+      type:"despesa",category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,
+      faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,cardColor:card.color,cardName:card.name};
+    if(fat.open){
+      // Aberta: mostra com data de fechamento (valor ainda em aberto)
+      res.push({...common,displayAmount:fat.total,date:fat.closeDate,status:"a_pagar",statusForMonth:"a_pagar",isOpenFatura:true});
+    } else {
+      // Fechada: mostra com data de vencimento real
+      const remainingAmount=fat.partial?Math.round((fat.total-fat.paidAmount)*100)/100:fat.total;
+      const status=fat.paid?"pago":"a_pagar";
+      res.push({...common,displayAmount:remainingAmount,date:fat.dueDate,status,statusForMonth:status,isOpenFatura:false,
+        paidAmount:fat.paidAmount,partial:fat.partial});
     }
   }
   return res;
 }
 
-// ─── Notifications ───────────────────────────────────────────
-export async function requestNotifPermission() {
-  if(!("Notification" in window)) return "unsupported";
-  if(Notification.permission==="granted") return "granted";
-  if(Notification.permission==="denied")  return "denied";
-  return await Notification.requestPermission();
+// ─── Alertas de vencimento (puro) ────────────────────────────
+// Classifica pendências do mês anterior, atual e seguinte em grupos de alerta.
+// Usado pelas notificações locais e pelo cron de push.
+export function collectDueAlerts(data,settings,today=todayISO()) {
+  const {entries,dividas,cards,cardPurchases,cardFaturas}=data;
+  const daysBefore=settings.daysBefore??3;
+  const NOW=today.substring(0,7);
+  const me=[addM(NOW,-1),NOW,addM(NOW,1)].flatMap(mk=>
+    getMonthEntries(entries,dividas,mk,cards,cardPurchases,cardFaturas,today)
+      .filter(e=>e.statusForMonth==="a_pagar"&&!e.isOpenFatura)
+      .map(e=>({...e,days:daysUntil(dueDateFor(e,mk),today)})));
+  const exp=me.filter(e=>e.type==="despesa"&&e.days!==null);
+  const inc=settings.incomeAlert!==false?me.filter(e=>e.type==="receita"&&e.days!==null):[];
+  return {
+    overdue: settings.overdueAlert!==false?exp.filter(e=>e.days<0):[],
+    dueToday: exp.filter(e=>e.days===0),
+    dueSoon:  exp.filter(e=>e.days>0&&e.days<=daysBefore),
+    incToday: inc.filter(e=>e.days===0),
+    incSoon:  inc.filter(e=>e.days>0&&e.days<=daysBefore),
+  };
 }
-export function fireNotification(title,body,tag) {
-  if(Notification.permission!=="granted") return;
-  // Usa service worker se disponível (funciona em PWA/Android)
-  if(navigator.serviceWorker?.controller) {
-    navigator.serviceWorker.controller.postMessage({type:'NOTIFY',title,body,tag});
-  } else {
-    try { new Notification(title,{body,tag,icon:'/meu_financeiro/icon-192.png'}); } catch{}
-  }
-}
-export function checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,settings) {
-  if(!settings.enabled||Notification.permission!=="granted") return 0;
-  const NOW=getNow();
-  const PREV=addM(NOW,-1);
-  const NEXT=addM(NOW,1);
-  const mkDate=(e,m)=>(e.isDivida||e.isFatura||e.recurrence==="none")?e.date:`${m}-${e.date.split("-")[2]}`;
-  const mePrev=getMonthEntries(entries,dividas,PREV,cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:PREV}));
-  const meNow =getMonthEntries(entries,dividas,NOW, cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NOW}));
-  const meNext=getMonthEntries(entries,dividas,NEXT,cards,cardPurchases,cardFaturas).map(e=>({...e,_mk:NEXT}));
-  const me=[...mePrev,...meNow,...meNext];
-  const pendingExp=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="a_pagar");
-  const pendingInc=settings.incomeAlert!==false?me.filter(e=>e.type==="receita"&&e.statusForMonth==="a_pagar"):[];
-  const overdue=[],dueToday=[],dueSoon=[],incToday=[],incSoon=[];
-  for(const e of pendingExp){
-    const days=daysUntil(mkDate(e,e._mk));
-    if(days===null) continue;
-    if(days<0&&settings.overdueAlert) overdue.push({...e,days});
-    else if(days===0) dueToday.push(e);
-    else if(days>0&&days<=settings.daysBefore) dueSoon.push({...e,days});
-  }
-  for(const e of pendingInc){
-    const days=daysUntil(mkDate(e,e._mk));
-    if(days===null) continue;
-    if(days===0) incToday.push(e);
-    else if(days>0&&days<=settings.daysBefore) incSoon.push({...e,days});
-  }
-  let fired=0;
-  if(overdue.length>0){fireNotification(`⚠️ ${overdue.length} conta${overdue.length>1?"s":""} vencida${overdue.length>1?"s":""}`,overdue.map(e=>`${e.description} (${Math.abs(e.days)}d atraso)`).join(", "),"mf-overdue");fired++;}
-  if(dueToday.length>0){fireNotification(`🔴 ${dueToday.length} conta${dueToday.length>1?"s":""} vence${dueToday.length>1?"m":""} hoje`,dueToday.map(e=>e.description).join(", "),"mf-today");fired++;}
-  if(dueSoon.length>0){fireNotification(`⏰ ${dueSoon.length} despesa${dueSoon.length>1?"s":""} vence${dueSoon.length>1?"m":""} em breve`,dueSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-soon");fired++;}
-  if(incToday.length>0){fireNotification(`💰 ${incToday.length} recebimento${incToday.length>1?"s":""} esperado${incToday.length>1?"s":""} hoje`,incToday.map(e=>e.description).join(", "),"mf-inc-today");fired++;}
-  if(incSoon.length>0){fireNotification(`📥 ${incSoon.length} recebimento${incSoon.length>1?"s":""} em breve`,incSoon.map(e=>`${e.description} (${e.days}d)`).join(", "),"mf-inc-soon");fired++;}
-  return fired;
+
+const plural=(n,s,p)=>n>1?p:s;
+// Converte os grupos de collectDueAlerts em mensagens {title,body,tag}.
+export function formatDueAlerts(a) {
+  const out=[];
+  const n=(l)=>l.length;
+  if(n(a.overdue))  out.push({tag:"mf-overdue",  title:`⚠️ ${n(a.overdue)} ${plural(n(a.overdue),"conta vencida","contas vencidas")}`, body:a.overdue.map(e=>`${e.description} (${Math.abs(e.days)}d atraso)`).join(", ")});
+  if(n(a.dueToday)) out.push({tag:"mf-today",    title:`🔴 ${n(a.dueToday)} ${plural(n(a.dueToday),"conta vence","contas vencem")} hoje`, body:a.dueToday.map(e=>e.description).join(", ")});
+  if(n(a.dueSoon))  out.push({tag:"mf-soon",     title:`⏰ ${n(a.dueSoon)} ${plural(n(a.dueSoon),"despesa vence","despesas vencem")} em breve`, body:a.dueSoon.map(e=>`${e.description} (${e.days}d)`).join(", ")});
+  if(n(a.incToday)) out.push({tag:"mf-inc-today",title:`💰 ${n(a.incToday)} ${plural(n(a.incToday),"recebimento esperado","recebimentos esperados")} hoje`, body:a.incToday.map(e=>e.description).join(", ")});
+  if(n(a.incSoon))  out.push({tag:"mf-inc-soon", title:`📥 ${n(a.incSoon)} ${plural(n(a.incSoon),"recebimento","recebimentos")} em breve`, body:a.incSoon.map(e=>`${e.description} (${e.days}d)`).join(", ")});
+  return out;
 }

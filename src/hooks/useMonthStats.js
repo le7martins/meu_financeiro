@@ -1,13 +1,14 @@
 import { useMemo, useRef } from 'react';
 import { getMonthEntries } from '../logic.js';
-import { addM, daysUntil, eVal } from '../utils.js';
+import { addM, daysUntil, dueDateFor, eVal } from '../utils.js';
 
-export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, NOW }) {
+export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, today }) {
   const accumCache = useRef({});
+  const NOW = today.substring(0, 7);
 
   const monthEntries = useMemo(
-    () => getMonthEntries(entries, dividas, selMonth, cards, cardPurchases, cardFaturas),
-    [entries, dividas, selMonth, cards, cardPurchases, cardFaturas]
+    () => getMonthEntries(entries, dividas, selMonth, cards, cardPurchases, cardFaturas, today),
+    [entries, dividas, selMonth, cards, cardPurchases, cardFaturas, today]
   );
 
   const totRec  = useMemo(() => monthEntries.filter(e => e.type === 'receita').reduce((s, e) => s + eVal(e), 0), [monthEntries]);
@@ -23,18 +24,18 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
     const cap = addM(selMonth, -36);
     const capped = earliest < cap;
     const start = capped ? cap : earliest;
-    const cacheKey = `${selMonth}_${start}`;
+    const cacheKey = `${selMonth}_${start}_${today}`;
     if (accumCache.current[cacheKey] !== undefined) return { value: accumCache.current[cacheKey], capped };
     let total = 0, cur = start;
     while (cur < selMonth) {
-      const me = getMonthEntries(entries, dividas, cur, cards, cardPurchases, cardFaturas);
+      const me = getMonthEntries(entries, dividas, cur, cards, cardPurchases, cardFaturas, today);
       total += me.filter(e => e.type === 'receita').reduce((s, e) => s + eVal(e), 0)
              - me.filter(e => e.type === 'despesa').reduce((s, e) => s + eVal(e), 0);
       cur = addM(cur, 1);
     }
     accumCache.current = { [cacheKey]: total };
     return { value: total, capped };
-  }, [entries, dividas, selMonth, cards, cardPurchases, cardFaturas]);
+  }, [entries, dividas, selMonth, cards, cardPurchases, cardFaturas, today]);
 
   const healthScore = useMemo(() => {
     if (totRec === 0) return null;
@@ -67,10 +68,10 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
     const seen = new Set();
     for (let i = -1; i <= 2; i++) {
       const m = addM(NOW, i);
-      const me = getMonthEntries(entries, dividas, m, cards, cardPurchases, cardFaturas);
+      const me = getMonthEntries(entries, dividas, m, cards, cardPurchases, cardFaturas, today);
       me.filter(e => e.statusForMonth === 'a_pagar').forEach(e => {
-        const due = (e.isDivida || e.isFatura || e.recurrence === 'none') ? e.date : `${m}-${e.date.split('-')[2]}`;
-        const days = daysUntil(due);
+        const due = dueDateFor(e, m);
+        const days = daysUntil(due, today);
         if (days === null) return;
         const key = `${e.id || e.dividaId || e.faturaKey}_${m}`;
         if (seen.has(key)) return;
@@ -83,7 +84,7 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
       overdueDue:  overdue.sort((a, b) => a._days - b._days),
       upcomingDue: upcoming.sort((a, b) => a._days - b._days).slice(0, 10),
     };
-  }, [entries, dividas, cards, cardPurchases, cardFaturas, NOW]);
+  }, [entries, dividas, cards, cardPurchases, cardFaturas, NOW, today]);
 
   return {
     monthEntries,

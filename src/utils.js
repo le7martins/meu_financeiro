@@ -2,19 +2,31 @@
 export const fmt      = (v) => new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(v);
 export const fmtShort = (v) => Math.abs(v)>=1000?`R$${(v/1000).toFixed(1)}k`:`R$${v.toFixed(0)}`;
 export const fmtDate  = (d) => { const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`; };
-export const TODAY    = new Date().toISOString().split("T")[0];
 export const MNAMES   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 export const mLabel   = (k) => { const [y,m]=k.split("-"); return `${MNAMES[+m-1]} ${y}`; };
 export const mShort   = (k) => MNAMES[+k.split("-")[1]-1];
-export const getNow   = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
+
+// ─── Datas ───────────────────────────────────────────────────
+// Sempre no fuso local do aparelho. "Hoje" é função (não constante): um PWA
+// aberto atravessa a meia-noite, e toISOString() usaria UTC — após 21h no
+// horário de Brasília já seria o dia seguinte.
+export const todayISO = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+export const getNow   = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 export const mDiff    = (a,b) => { const [ay,am]=a.split("-").map(Number),[by,bm]=b.split("-").map(Number); return (by-ay)*12+(bm-am); };
 export const addM     = (k,n) => { const [y,m]=k.split("-").map(Number),d=new Date(y,m-1+n,1); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
-export const daysUntil = (ds) => { if(!ds)return null; return Math.ceil((new Date(ds+"T12:00:00")-new Date(TODAY+"T12:00:00"))/86400000); };
-export const dueBadge  = (entry,mk) => {
+export const daysInMonth = (mk) => { const [y,m]=mk.split("-").map(Number); return new Date(y,m,0).getDate(); };
+// Data YYYY-MM-DD do dia `day` no mês `mk`, limitada ao último dia (31 → 28/02).
+export const dateInMonth = (mk, day) => `${mk}-${String(Math.min(Number(day)||1, daysInMonth(mk))).padStart(2,"0")}`;
+// Converte "YYYY-MM-DD" em Date local (new Date("YYYY-MM-DD") interpreta como UTC).
+export const parseISODate = (ds) => { const [y,m,d]=ds.split("-").map(Number); return new Date(y,m-1,d); };
+export const daysUntil = (ds, today = todayISO()) => { if(!ds)return null; return Math.round((parseISODate(ds)-parseISODate(today))/86400000); };
+// Vencimento de um item de getMonthEntries no mês `mk`.
+export const dueDateFor = (entry, mk) =>
+  entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura ? dateInMonth(mk, entry.date.split("-")[2]) : entry.date;
+export const dueBadge  = (entry,mk,today = todayISO()) => {
   if(entry.statusForMonth!=="a_pagar") return null;
   if(entry.isOpenFatura) return null;
-  const due = entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura ? `${mk}-${entry.date.split("-")[2]}` : entry.date;
-  const days = daysUntil(due);
+  const days = daysUntil(dueDateFor(entry,mk), today);
   if(days===null) return null;
   if(days<0)   return {text:`Vencido há ${Math.abs(days)}d`,color:"#f87171",bg:"rgba(248,113,113,.13)"};
   if(days===0) return {text:"Vence hoje!",color:"#fb923c",bg:"rgba(251,146,60,.18)"};
@@ -23,6 +35,19 @@ export const dueBadge  = (entry,mk) => {
   return null;
 };
 export const eVal = (e) => e.displayAmount??e.amount;
+
+// ─── Dinheiro ────────────────────────────────────────────────
+// Valor da parcela i (1-based) de n, em centavos exatos: a soma das parcelas
+// é sempre igual ao total. A sobra do arredondamento vai na 1ª parcela.
+export const installmentAmount = (total, n, i) => {
+  const cents = Math.round(total * 100);
+  const base = Math.floor(cents / n);
+  return (i === 1 ? cents - base * (n - 1) : base) / 100;
+};
+
+// ─── IDs ─────────────────────────────────────────────────────
+export const newId = () =>
+  globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2,10)}`;
 
 // ─── Storage ─────────────────────────────────────────────────
 export const loadLS = (k,def) => { try{const d=localStorage.getItem(k);return d?JSON.parse(d):def;}catch{return def;} };
