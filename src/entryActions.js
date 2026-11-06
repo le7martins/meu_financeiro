@@ -99,6 +99,8 @@ export function entryFromForm(form) {
     type: form.type, status: form.status, category: form.category, recurrence: form.recurrence, notes: form.notes,
     ...(form.recurrence === 'installment' ? { installments: parseInt(form.installments) } : {}),
     ...(form.endMonth ? { endMonth: form.endMonth } : {}),
+    ...(form.tags?.length ? { tags: form.tags } : {}),
+    ...(form.accountId ? { accountId: form.accountId } : {}),
     statusByMonth: {}, overrides: {},
   };
 }

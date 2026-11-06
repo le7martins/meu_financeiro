@@ -79,6 +79,8 @@ describe('novo lançamento', () => {
     const e = entryFromForm(form);
     expect(e).toMatchObject({ description: 'Mercado', amount: 50.5, installments: 3, statusByMonth: {}, overrides: {} });
     expect(e).not.toHaveProperty('endMonth');
+    expect(e).not.toHaveProperty('tags');
+    expect(entryFromForm({ ...form, tags: ['mercado'], accountId: 'a1' })).toMatchObject({ tags: ['mercado'], accountId: 'a1' });
     expect(cardPurchaseFromForm(form, 'c1')).toMatchObject({ cardId: 'c1', purchaseDate: '2026-11-05', installments: 1, amount: 50.5 });
   });
   test('duplicado: mesma descrição (sem caixa), valor, data e tipo', () => {
