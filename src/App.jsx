@@ -345,8 +345,9 @@ function MainApp({ fbUser, onLogout }){
   if(showOnboarding){
     return(
       <Suspense fallback={null}>
-        <div data-theme={theme} className={theme==="light"?"light-mode":""} style={{background:"var(--bg,#080c12)"}}>
-          <style>{`:root{--bg:#080c12;--text1:#fff;--text3:#778;--text4:#334;} .light-mode{--bg:#f8fafc;--text1:#111827;--text3:#6b7280;--text4:#9ca3af;}`}</style>
+        <div data-theme={theme} className={theme==="light"?"light-mode":""} style={{background:"var(--bg)",color:"var(--text-1)",fontFamily:"var(--font-sans)"}}>
+          {/* Fora de .appRoot: monta o CSS do app (tokens + tema) também neste ramo */}
+          <style>{CSS}</style>
           <OnboardingScreen onDone={()=>{ saveLS(k('onboarding_done'),true); setShowOnboarding(false); }}/>
         </div>
       </Suspense>

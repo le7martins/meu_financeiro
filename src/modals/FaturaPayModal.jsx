@@ -1,59 +1,67 @@
 import { useState } from 'react';
 import { fmt } from '../utils.js';
-import S from '../styles.js';
+import S, { tint } from '../styles.js';
+import { useDialog } from '../components/Field.jsx';
+
+const btnSecondary={flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"};
 
 export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
   const alreadyPaid=entry.statusForMonth==="pago";
   const [payType,setPayType]=useState("total");
   const [partialAmt,setPartialAmt]=useState(String(entry.amount));
   const isPartial=payType==="partial";
+  const {dialogProps,titleId}=useDialog(onClose);
+  const partialN=parseFloat(partialAmt);
+  const head=(title)=>(
+    <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>{title}</div><div style={{fontSize:"var(--fs-sm)",color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
+  );
   if(alreadyPaid) return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+      <div {...dialogProps} style={{...S.modal,maxHeight:"auto",outline:"none"}} className="modal-in">
         <div style={S.modalHandle}/>
-        <div style={S.mHeader}><div><div style={S.mTitle}>Fatura paga</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
-        <div style={{background:"rgba(74,222,128,.06)",border:"1px solid #4ade8033",borderRadius:11,padding:"14px",marginBottom:16,textAlign:"center"}}>
-          <div style={{fontSize:22}}>✅</div>
-          <div style={{fontSize:14,fontWeight:700,color:"#4ade80",marginTop:6}}>Fatura quitada</div>
-          <div style={{fontSize:12,color:"var(--text3)",marginTop:4}}>{fmt(entry.amount)}</div>
+        {head("Fatura paga")}
+        <div style={{background:"var(--success-soft)",border:"1px solid var(--success-border)",borderRadius:11,padding:"14px",marginBottom:16,textAlign:"center"}}>
+          <div aria-hidden="true" style={{fontSize:"var(--fs-5xl)"}}>✅</div>
+          <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--success)",marginTop:6}}>Fatura quitada</div>
+          <div style={{fontSize:"var(--fs-md)",color:"var(--text-3)",marginTop:4}}>{fmt(entry.amount)}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
-          <button onClick={onClose} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Fechar</button>
-          <button onClick={()=>{onRevert(entry.faturaKey);onClose();}} style={{flex:1,padding:"11px",background:"rgba(248,113,113,.12)",border:"1px solid #f8717133",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>↩ Estornar</button>
+          <button type="button" onClick={onClose} style={btnSecondary}>Fechar</button>
+          <button type="button" onClick={()=>{onRevert(entry.faturaKey);onClose();}} style={{flex:1,padding:"11px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>↩ Estornar</button>
         </div>
       </div>
     </div>
   );
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
+      <div {...dialogProps} style={{...S.modal,maxHeight:"auto",outline:"none"}} className="modal-in">
         <div style={S.modalHandle}/>
-        <div style={S.mHeader}><div><div style={S.mTitle}>Pagar Fatura</div><div style={{fontSize:11,color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button style={S.xBtn} onClick={onClose}>✕</button></div>
-        <div style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:11,padding:"12px 14px",marginBottom:16,textAlign:"center"}}>
-          <div style={{fontSize:11,color:"var(--text3)",marginBottom:4}}>Total da fatura</div>
-          <div style={{fontSize:28,fontWeight:800,color:entry.cardColor}}>{fmt(entry.amount)}</div>
+        {head("Pagar Fatura")}
+        <div style={{background:"var(--surface-sunken)",border:"1px solid var(--border)",borderRadius:11,padding:"12px 14px",marginBottom:16,textAlign:"center"}}>
+          <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginBottom:4}}>Total da fatura</div>
+          <div style={{fontSize:"var(--fs-6xl)",fontWeight:800,color:entry.cardColor}}>{fmt(entry.amount)}</div>
         </div>
-        <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <div role="group" aria-label="Tipo de pagamento" style={{display:"flex",gap:8,marginBottom:16}}>
           {[["total","✓ Pagar total"],["partial","Pagar parcial"]].map(([t,l])=>(
-            <button key={t} onClick={()=>setPayType(t)}
-              style={{flex:1,padding:"10px",background:payType===t?"#0d1a2e":"transparent",border:`1px solid ${payType===t?"#1a3a6e":"#111820"}`,borderRadius:10,color:payType===t?"#8ab4f8":"var(--text3)",fontSize:12,fontWeight:600,cursor:"pointer"}}>{l}</button>
+            <button type="button" key={t} aria-pressed={payType===t} onClick={()=>setPayType(t)}
+              style={{flex:1,padding:"10px",background:payType===t?"var(--accent-surface)":"transparent",border:`1px solid ${payType===t?"var(--accent-border)":"var(--border-subtle)"}`,borderRadius:"var(--radius-md)",color:payType===t?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-md)",fontWeight:600,cursor:"pointer"}}>{l}</button>
           ))}
         </div>
         {isPartial&&(
           <div style={{marginBottom:16}}>
-            <label style={S.lbl}>Valor pago (R$)</label>
-            <input style={S.inp} type="number" min="0" max={entry.amount} step="0.01" value={partialAmt} onChange={e=>setPartialAmt(e.target.value)}/>
-            {partialAmt&&parseFloat(partialAmt)<entry.amount&&(
-              <div style={{marginTop:8,fontSize:11,color:"#facc15",background:"rgba(250,204,21,.08)",border:"1px solid rgba(250,204,21,.2)",borderRadius:8,padding:"7px 10px"}}>
-                ⚠️ Saldo restante de {fmt(entry.amount-parseFloat(partialAmt))} ficará em aberto
+            <label htmlFor="fatura-valor" style={S.lbl}>Valor pago (R$)</label>
+            <input id="fatura-valor" style={S.inp} type="number" inputMode="decimal" min="0" max={entry.amount} step="0.01" value={partialAmt} onChange={e=>setPartialAmt(e.target.value)} aria-describedby={partialAmt&&partialN<entry.amount?"fatura-aviso":undefined}/>
+            {partialAmt&&partialN<entry.amount&&(
+              <div id="fatura-aviso" role="status" style={{marginTop:8,fontSize:"var(--fs-sm)",color:"var(--warning)",background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:"var(--radius-sm)",padding:"7px 10px"}}>
+                ⚠️ Saldo restante de {fmt(entry.amount-partialN)} ficará em aberto
               </div>
             )}
           </div>
         )}
         <div style={{display:"flex",gap:8}}>
-          <button onClick={onClose} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
-          <button onClick={()=>onPay(entry,isPartial?parseFloat(partialAmt)||entry.amount:entry.amount,isPartial&&parseFloat(partialAmt)<entry.amount)}
-            style={{flex:1,padding:"11px",background:`${entry.cardColor}22`,border:`1px solid ${entry.cardColor}44`,borderRadius:10,color:entry.cardColor,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+          <button type="button" onClick={onClose} style={btnSecondary}>Cancelar</button>
+          <button type="button" onClick={()=>onPay(entry,isPartial?partialN||entry.amount:entry.amount,isPartial&&partialN<entry.amount)}
+            style={{flex:1,padding:"11px",background:tint(entry.cardColor,13),border:`1px solid ${tint(entry.cardColor,27)}`,borderRadius:"var(--radius-md)",color:entry.cardColor,fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>
             {isPartial?"Registrar pagamento":"✓ Marcar como paga"}
           </button>
         </div>

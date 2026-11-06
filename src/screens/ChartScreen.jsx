@@ -6,7 +6,7 @@ import SumCard from '../components/SumCard.jsx';
 import MonthPicker from '../components/MonthPicker.jsx';
 import { getMonthEntries, buildFatura, getCardBillingMonths } from '../logic.js';
 import { fmt, fmtShort, mLabel, mShort, addM, eVal } from '../utils.js';
-import S from '../styles.js';
+import S, { tint } from '../styles.js';
 
 export default function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,cardFaturas,accumSaldo}){
   const [mode,setMode]=useState("mes");
@@ -218,20 +218,20 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
   return(
     <div style={{paddingBottom:80,paddingTop:4}}>
       <div style={{padding:"12px 14px 0"}}>
-        <div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>Período de análise</div>
+        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>Período de análise</div>
         <div style={{display:"flex",gap:6,marginBottom:12,position:"relative"}}>
-          <button onClick={()=>{setMode("mes");setShowPicker(p=>!p);}} className="fTab"
-            style={{...S.fTab,flex:1,justifyContent:"center",gap:5,...(mode==="mes"?S.fTabActive:{})}}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            {mLabel(specMonth)}<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          <button onClick={()=>{setMode("mes");setShowPicker(p=>!p);}} className="fTab" aria-pressed={mode==="mes"} aria-haspopup="true" aria-expanded={showPicker&&mode==="mes"}
+            style={{...S.fTab,minHeight:40,flex:1,justifyContent:"center",gap:5,...(mode==="mes"?S.fTabActive:{})}}>
+            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            {mLabel(specMonth)}<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
-          <button onClick={()=>{setMode("periodo");setShowPicker(false);}} className="fTab"
-            style={{...S.fTab,flex:1,justifyContent:"center",...(mode==="periodo"?S.fTabActive:{})}}>Período</button>
+          <button onClick={()=>{setMode("periodo");setShowPicker(false);}} className="fTab" aria-pressed={mode==="periodo"}
+            style={{...S.fTab,minHeight:40,flex:1,justifyContent:"center",...(mode==="periodo"?S.fTabActive:{})}}>Período</button>
           {showPicker&&mode==="mes"&&(
-            <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,width:"calc(50% - 3px)",background:"var(--card-bg)",border:"1px solid #1a3a6e",borderRadius:12,zIndex:20,overflow:"hidden",maxHeight:220,overflowY:"auto",boxShadow:"0 8px 32px rgba(0,0,0,.6)"}}>
+            <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,width:"calc(50% - 3px)",background:"var(--surface)",border:"1px solid var(--accent-border)",borderRadius:"var(--radius-lg)",zIndex:20,overflow:"hidden",maxHeight:220,overflowY:"auto",boxShadow:"var(--shadow-md)"}}>
               {Array.from({length:24},(_,i)=>addM(nowMonth,i-12)).map(m=>(
                 <button key={m} onClick={()=>{setSpecMonth(m);setShowPicker(false);}}
-                  style={{width:"100%",padding:"9px 14px",background:m===specMonth?"#1a3a6e44":"transparent",border:"none",color:m===specMonth?"#8ab4f8":"var(--text2)",fontSize:12,cursor:"pointer",textAlign:"left",fontFamily:"inherit",borderBottom:"1px solid var(--border2)",fontWeight:m===specMonth?700:400}}>
+                  style={{width:"100%",minHeight:40,padding:"9px 14px",background:m===specMonth?"var(--accent-soft)":"transparent",border:"none",color:m===specMonth?"var(--accent)":"var(--text-2)",fontSize:"var(--fs-md)",cursor:"pointer",textAlign:"left",fontFamily:"inherit",borderBottom:"1px solid var(--border-subtle)",fontWeight:m===specMonth?700:400}}>
                   {mLabel(m)}{m===nowMonth?" ·":""}
                 </button>
               ))}
@@ -247,25 +247,25 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 14px 10px"}}>
-        <SumCard label="Receitas" value={fmt(totals.rec)} color="#4ade80" icon="↑"/>
-        <SumCard label="Despesas" value={fmt(totals.dep)} color="#fb923c" icon="↓"/>
-        <SumCard label="Saldo" value={fmt(totals.saldo)} color={totals.saldo>=0?"#4ade80":"#f87171"} icon={totals.saldo>=0?"◈":"▽"} wide/>
+        <SumCard label="Receitas" value={fmt(totals.rec)} color="var(--success)" icon="↑"/>
+        <SumCard label="Despesas" value={fmt(totals.dep)} color="var(--orange)" icon="↓"/>
+        <SumCard label="Saldo" value={fmt(totals.saldo)} color={totals.saldo>=0?"var(--success)":"var(--danger)"} icon={totals.saldo>=0?"◈":"▽"} wide/>
       </div>
 
       {insights&&(<div style={{padding:"0 14px 12px",display:"flex",flexDirection:"column",gap:6}}>
-        <div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:11,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:18}}>📉</span>
-          <div><div style={{fontSize:10,color:"var(--text3)",marginBottom:2}}>Mês com maior gasto</div><div style={{fontSize:12,fontWeight:700,color:"#fb923c"}}>{mLabel(insights.maxDepM)} · {fmt(insights.maxDep)}</div></div>
+        <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:11,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
+          <span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>📉</span>
+          <div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:2}}>Mês com maior gasto</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--orange)"}}>{mLabel(insights.maxDepM)} · {fmt(insights.maxDep)}</div></div>
         </div>
-        {insights.topCat&&<div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:11,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:18}}>🏆</span>
-          <div><div style={{fontSize:10,color:"var(--text3)",marginBottom:2}}>Maior {catView==="despesa"?"gasto":"receita"} por categoria</div><div style={{fontSize:12,fontWeight:700,color:insights.topCat.color}}>{insights.topCat.name} · {fmt(insights.topCat.value)}</div></div>
+        {insights.topCat&&<div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:11,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
+          <span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>🏆</span>
+          <div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:2}}>Maior {catView==="despesa"?"gasto":"receita"} por categoria</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:insights.topCat.color}}>{insights.topCat.name} · {fmt(insights.topCat.value)}</div></div>
         </div>}
       </div>)}
 
       <div style={{display:"flex",gap:6,padding:"0 14px 12px",flexWrap:"wrap"}}>
         {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["historico","📊 Histórico"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"],["anual","📅 Anual"]].map(([t,l])=>(
-          <button key={t} onClick={()=>setChartType(t)} className="fTab" style={{...S.fTab,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
+          <button key={t} onClick={()=>setChartType(t)} className="fTab" aria-pressed={chartType===t} style={{...S.fTab,minHeight:40,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
         ))}
       </div>
 
@@ -274,8 +274,8 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
           <div style={S.chartTitle}>{chartType==="barras"?"Receitas vs Despesas":"Evolução do Saldo"}</div>
           <BarSVG data={monthlyData} type={chartType}/>
           <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:10}}>
-            {chartType==="barras"?(<><Leg color="#4ade80" label="Receitas"/><Leg color="#fb923c" label="Despesas"/></>)
-              :(<><Leg color="#4ade80" label="Receitas"/><Leg color="#fb923c" label="Despesas"/><Leg color="#8ab4f8" label="Saldo" dashed/></>)}
+            {chartType==="barras"?(<><Leg color="var(--chart-2)" label="Receitas"/><Leg color="var(--chart-4)" label="Despesas"/></>)
+              :(<><Leg color="var(--chart-2)" label="Receitas"/><Leg color="var(--chart-4)" label="Despesas"/><Leg color="var(--chart-1)" label="Saldo" dashed/></>)}
           </div>
         </div>)}
 
@@ -284,13 +284,13 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             <div style={S.chartTitle}>Por Categoria</div>
             <div style={{display:"flex",gap:5}}>
               {[["despesa","Despesas"],["receita","Receitas"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setCatView(v)} className="fTab"
-                  style={{...S.fTab,...(catView===v?S.fTabActive:{}),padding:"4px 9px",fontSize:10}}>{l}</button>
+                <button key={v} onClick={()=>setCatView(v)} className="fTab" aria-pressed={catView===v}
+                  style={{...S.fTab,...(catView===v?S.fTabActive:{}),padding:"4px 9px",minHeight:36,fontSize:"var(--fs-xs)"}}>{l}</button>
               ))}
             </div>
           </div>
           {catData.length===0
-            ?<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Sem dados no período</div>
+            ?<div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:"var(--fs-base)"}}>Sem dados no período</div>
             :(<>
               <DonutSVG data={catData} total={totals[catView==="despesa"?"dep":"rec"]}/>
               <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
@@ -298,10 +298,10 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                   const tot=totals[catView==="despesa"?"dep":"rec"];
                   const pct=tot>0?((c.value/tot)*100).toFixed(1):0;
                   return(<div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                    <div style={{flex:1,fontSize:12,color:"var(--text2)",fontWeight:500}}>{c.name}</div>
-                    <div style={{fontSize:11,color:"var(--text3)"}}>{pct}%</div>
-                    <div style={{fontSize:12,color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
+                    <div aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                    <div style={{flex:1,fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500}}>{c.name}</div>
+                    <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{pct}%</div>
+                    <div style={{fontSize:"var(--fs-md)",color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
                   </div>);
                 })}
               </div>
@@ -315,14 +315,14 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             <div style={S.chartTitle}>Histórico Mensal</div>
             <div style={{display:"flex",gap:5}}>
               {[["6","6M"],["12","12M"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setHistMeses(parseInt(v))} className="fTab"
-                  style={{...S.fTab,...(histMeses===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",fontSize:10}}>{l}</button>
+                <button key={v} onClick={()=>setHistMeses(parseInt(v))} className="fTab" aria-pressed={histMeses===parseInt(v)} aria-label={`Últimos ${l.replace("M"," meses")}`}
+                  style={{...S.fTab,...(histMeses===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",minHeight:36,fontSize:"var(--fs-xs)"}}>{l}</button>
               ))}
             </div>
           </div>
           <BarSVG data={histData} type="barras"/>
           <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:10}}>
-            <Leg color="#4ade80" label="Receitas"/><Leg color="#fb923c" label="Despesas"/>
+            <Leg color="var(--chart-2)" label="Receitas"/><Leg color="var(--chart-4)" label="Despesas"/>
           </div>
           {histData.length>=2&&(()=>{
             const totR=histData.reduce((s,d)=>s+d.receitas,0);
@@ -333,20 +333,20 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             return(
               <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                  {[{l:`Média receita/${histMeses}M`,v:avgR,c:"#4ade80"},{l:`Média despesa/${histMeses}M`,v:avgD,c:"#fb923c"},{l:`Melhor saldo`,v:best.saldo,c:best.saldo>=0?"#4ade80":"#f87171"}].map(({l,v,c})=>(
-                    <div key={l} style={{background:"var(--bg)",border:"1px solid var(--border2)",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
-                      <div style={{fontSize:8,color:"var(--text4)",marginBottom:3,lineHeight:1.3}}>{l}</div>
-                      <div style={{fontSize:11,fontWeight:700,color:c}}>{fmtShort(v)}</div>
+                  {[{l:`Média receita/${histMeses}M`,v:avgR,c:"var(--success)"},{l:`Média despesa/${histMeses}M`,v:avgD,c:"var(--orange)"},{l:`Melhor saldo`,v:best.saldo,c:best.saldo>=0?"var(--success)":"var(--danger)"}].map(({l,v,c})=>(
+                    <div key={l} style={{background:"var(--surface-sunken)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)",padding:"8px 10px",textAlign:"center"}}>
+                      <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:3,lineHeight:1.3}}>{l}</div>
+                      <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:c}}>{fmtShort(v)}</div>
                     </div>
                   ))}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:6}}>
                   {histData.map((d,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:d.isCurrent?"var(--card-bg)":"transparent",border:d.isCurrent?"1px solid var(--border2)":"none"}}>
-                      <span style={{fontSize:10,color:d.isCurrent?"var(--text1)":"var(--text3)",fontWeight:d.isCurrent?700:400,width:28,flexShrink:0}}>{d.month}</span>
-                      <span style={{fontSize:10,color:"#4ade8088",flex:1}}>↑{fmtShort(d.receitas)}</span>
-                      <span style={{fontSize:10,color:"#fb923c88",flex:1}}>↓{fmtShort(d.despesas)}</span>
-                      <span style={{fontSize:10,fontWeight:600,color:d.saldo>=0?"#4ade80":"#f87171",width:54,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmtShort(d.saldo)}</span>
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:d.isCurrent?"var(--surface)":"transparent",border:d.isCurrent?"1px solid var(--border-subtle)":"none"}}>
+                      <span style={{fontSize:"var(--fs-xs)",color:d.isCurrent?"var(--text-1)":"var(--text-3)",fontWeight:d.isCurrent?700:400,width:28,flexShrink:0}}>{d.month}</span>
+                      <span style={{fontSize:"var(--fs-xs)",color:"var(--success)",flex:1}}>↑{fmtShort(d.receitas)}</span>
+                      <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",flex:1}}>↓{fmtShort(d.despesas)}</span>
+                      <span style={{fontSize:"var(--fs-xs)",fontWeight:600,color:d.saldo>=0?"var(--success)":"var(--danger)",width:54,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmtShort(d.saldo)}</span>
                     </div>
                   ))}
                 </div>
@@ -361,116 +361,116 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             <div style={S.chartTitle}>Projeção de Saldo</div>
             <div style={{display:"flex",gap:5}}>
               {[["3","3M"],["6","6M"],["12","12M"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setProjMonths(parseInt(v))} className="fTab"
-                  style={{...S.fTab,...(projMonths===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",fontSize:10}}>{l}</button>
+                <button key={v} onClick={()=>setProjMonths(parseInt(v))} className="fTab" aria-pressed={projMonths===parseInt(v)} aria-label={`Próximos ${l.replace("M"," meses")}`}
+                  style={{...S.fTab,...(projMonths===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",minHeight:36,fontSize:"var(--fs-xs)"}}>{l}</button>
               ))}
             </div>
           </div>
-          <div style={{fontSize:10,color:"var(--text3)",marginBottom:12}}>Baseado em lançamentos fixos, parcelados, dívidas e faturas</div>
+          <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:12}}>Baseado em lançamentos fixos, parcelados, dívidas e faturas</div>
           <BarSVG data={projData} type="barras"/>
           {projCumData.length>0&&(
-            <div style={{margin:"14px 0 10px",background:projCumData[projCumData.length-1].cumulative>=0?"rgba(74,222,128,.08)":"rgba(248,113,113,.08)",border:`1px solid ${projCumData[projCumData.length-1].cumulative>=0?"#4ade8033":"#f8717133"}`,borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style={{fontSize:10,color:"var(--text3)"}}>Saldo acumulado em {projCumData[projCumData.length-1].month}</div><div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>baseado nos últimos dados disponíveis</div></div>
-              <div style={{fontSize:18,fontWeight:800,color:projCumData[projCumData.length-1].cumulative>=0?"#4ade80":"#f87171"}}>{fmt(projCumData[projCumData.length-1].cumulative)}</div>
+            <div style={{margin:"14px 0 10px",background:projCumData[projCumData.length-1].cumulative>=0?"var(--success-soft)":"var(--danger-soft)",border:`1px solid ${projCumData[projCumData.length-1].cumulative>=0?"var(--success-border)":"var(--danger-border)"}`,borderRadius:"var(--radius-md)",padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Saldo acumulado em {projCumData[projCumData.length-1].month}</div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:2}}>baseado nos últimos dados disponíveis</div></div>
+              <div style={{fontSize:"var(--fs-3xl)",fontWeight:800,color:projCumData[projCumData.length-1].cumulative>=0?"var(--success)":"var(--danger)"}}>{fmt(projCumData[projCumData.length-1].cumulative)}</div>
             </div>
           )}
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {projCumData.map((d,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg)",borderRadius:8,padding:"7px 10px",border:"1px solid var(--border2)"}}>
-                <div style={{fontSize:12,fontWeight:600,color:"#8ab4f8",width:28,flexShrink:0}}>{d.month}</div>
-                <div style={{fontSize:10,color:"#4ade80",flex:1}}>↑{fmt(d.receitas)}</div>
-                <div style={{fontSize:10,color:"#fb923c",flex:1}}>↓{fmt(d.despesas)}</div>
-                <div style={{fontSize:11,fontWeight:600,color:d.saldo>=0?"#4ade80":"#f87171",width:60,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmt(d.saldo)}</div>
-                <div style={{width:1,height:14,background:"var(--border2)",flexShrink:0}}/>
-                <div style={{fontSize:11,fontWeight:700,color:d.cumulative>=0?"#4ade80":"#f87171",width:64,textAlign:"right"}}>{fmt(d.cumulative)}</div>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--surface-sunken)",borderRadius:"var(--radius-sm)",padding:"7px 10px",border:"1px solid var(--border-subtle)"}}>
+                <div style={{fontSize:"var(--fs-md)",fontWeight:600,color:"var(--accent)",width:28,flexShrink:0}}>{d.month}</div>
+                <div style={{fontSize:"var(--fs-xs)",color:"var(--success)",flex:1}}>↑{fmt(d.receitas)}</div>
+                <div style={{fontSize:"var(--fs-xs)",color:"var(--orange)",flex:1}}>↓{fmt(d.despesas)}</div>
+                <div style={{fontSize:"var(--fs-sm)",fontWeight:600,color:d.saldo>=0?"var(--success)":"var(--danger)",width:60,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmt(d.saldo)}</div>
+                <div style={{width:1,height:14,background:"var(--border-subtle)",flexShrink:0}}/>
+                <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:d.cumulative>=0?"var(--success)":"var(--danger)",width:64,textAlign:"right"}}>{fmt(d.cumulative)}</div>
               </div>
             ))}
           </div>
           <div style={{display:"flex",justifyContent:"flex-end",gap:12,marginTop:8}}>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#8ab4f8"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Saldo mensal</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:7,height:7,borderRadius:2,background:"#4ade80"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Acumulado</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:7,height:7,borderRadius:2,background:"var(--chart-1)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Saldo mensal</span></div>
+            <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:7,height:7,borderRadius:2,background:"var(--chart-2)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Acumulado</span></div>
           </div>
         </div>)}
 
         {chartType==="comparar"&&(<div style={S.chartBox}>
           <div style={S.chartTitle}>Comparar meses</div>
           <div style={{display:"flex",gap:10,marginBottom:16}}>
-            {[[cmpA,setCmpA,"#8ab4f8"],[cmpB,setCmpB,"#fb923c"]].map(([m,setM,color],idx)=>(
+            {[[cmpA,setCmpA,"var(--accent)"],[cmpB,setCmpB,"var(--orange)"]].map(([m,setM,color],idx)=>(
               <div key={idx} style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:10,color:color,fontWeight:700,marginBottom:5}}>{idx===0?"Mês A":"Mês B"}</div>
+                <div style={{fontSize:"var(--fs-xs)",color:color,fontWeight:700,marginBottom:5}}>{idx===0?"Mês A":"Mês B"}</div>
                 <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
-                  <button onClick={()=>setM(p=>addM(p,-1))} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 6px",fontSize:12}}>‹</button>
-                  <span style={{fontSize:12,fontWeight:700,color,minWidth:70,textAlign:"center"}}>{mShort(m)}</span>
-                  <button onClick={()=>setM(p=>addM(p,1))} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 6px",fontSize:12}}>›</button>
+                  <button onClick={()=>setM(p=>addM(p,-1))} aria-label={`${idx===0?"Mês A":"Mês B"} anterior`} style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 6px",fontSize:"var(--fs-md)"}}>‹</button>
+                  <span style={{fontSize:"var(--fs-md)",fontWeight:700,color,minWidth:70,textAlign:"center"}}>{mShort(m)}</span>
+                  <button onClick={()=>setM(p=>addM(p,1))} aria-label={`${idx===0?"Mês A":"Mês B"} seguinte`} style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 6px",fontSize:"var(--fs-md)"}}>›</button>
                 </div>
               </div>
             ))}
           </div>
-          {[["Receitas","rec","#4ade80"],["Despesas","dep","#fb923c"],["Saldo","saldo","#8ab4f8"]].map(([label,key,color])=>{
+          {[["Receitas","rec","var(--success)"],["Despesas","dep","var(--orange)"],["Saldo","saldo","var(--accent)"]].map(([label,key,color])=>{
             const va=cmpData.a[key],vb=cmpData.b[key];
             const max=Math.max(Math.abs(va),Math.abs(vb),1);
             const diff=va-vb;
             return(
               <div key={key} style={{marginBottom:14}}>
                 <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                  <span style={{fontSize:11,color:"var(--text3)",fontWeight:600}}>{label}</span>
-                  <span style={{fontSize:10,color:diff>0?"#4ade80":diff<0?"#f87171":"var(--text3)",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
+                  <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",fontWeight:600}}>{label}</span>
+                  <span style={{fontSize:"var(--fs-xs)",color:diff>0?"var(--success)":diff<0?"var(--danger)":"var(--text-3)",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <span style={{fontSize:10,color:"#8ab4f8",width:52,textAlign:"right"}}>{fmt(va)}</span>
-                  <div style={{flex:1,height:8,background:"var(--bg)",borderRadius:4,overflow:"hidden",position:"relative"}}>
-                    <div style={{position:"absolute",right:"50%",height:"100%",width:`${(Math.abs(va)/max)*50}%`,background:"#8ab4f8",borderRadius:"4px 0 0 4px",opacity:0.8}}/>
-                    <div style={{position:"absolute",left:"50%",height:"100%",width:`${(Math.abs(vb)/max)*50}%`,background:"#fb923c",borderRadius:"0 4px 4px 0",opacity:0.8}}/>
-                    <div style={{position:"absolute",left:"50%",top:0,width:1,height:"100%",background:"var(--border2)"}}/>
+                  <span style={{fontSize:"var(--fs-xs)",color:"var(--accent)",width:52,textAlign:"right"}}>{fmt(va)}</span>
+                  <div style={{flex:1,height:8,background:"var(--surface-sunken)",borderRadius:4,overflow:"hidden",position:"relative"}}>
+                    <div style={{position:"absolute",right:"50%",height:"100%",width:`${(Math.abs(va)/max)*50}%`,background:"var(--chart-1)",borderRadius:"4px 0 0 4px",opacity:0.8}}/>
+                    <div style={{position:"absolute",left:"50%",height:"100%",width:`${(Math.abs(vb)/max)*50}%`,background:"var(--chart-4)",borderRadius:"0 4px 4px 0",opacity:0.8}}/>
+                    <div style={{position:"absolute",left:"50%",top:0,width:1,height:"100%",background:"var(--border-subtle)"}}/>
                   </div>
-                  <span style={{fontSize:10,color:"#fb923c",width:52}}>{fmt(vb)}</span>
+                  <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",width:52}}>{fmt(vb)}</span>
                 </div>
               </div>
             );
           })}
           {cmpData.a.cats.length>0&&(
             <div style={{marginTop:8}}>
-              <div style={{fontSize:10,color:"var(--text3)",fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Top despesas</div>
+              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Top despesas</div>
               {cmpData.a.cats.map(ca=>{
                 const cb=cmpData.b.cats.find(x=>x.id===ca.id);
                 const diff=(ca.value-(cb?.value||0));
                 return(
                   <div key={ca.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:ca.color,flexShrink:0}}/>
-                    <span style={{flex:1,fontSize:11,color:"var(--text2)"}}>{ca.name}</span>
-                    <span style={{fontSize:10,color:"#8ab4f8",width:52,textAlign:"right"}}>{fmt(ca.value)}</span>
-                    <span style={{fontSize:10,color:diff>0?"#f87171":diff<0?"#4ade80":"var(--text4)",width:52,textAlign:"right",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
-                    <span style={{fontSize:10,color:"#fb923c",width:52}}>{fmt(cb?.value||0)}</span>
+                    <div aria-hidden="true" style={{width:7,height:7,borderRadius:"50%",background:ca.color,flexShrink:0}}/>
+                    <span style={{flex:1,fontSize:"var(--fs-sm)",color:"var(--text-2)"}}>{ca.name}</span>
+                    <span style={{fontSize:"var(--fs-xs)",color:"var(--accent)",width:52,textAlign:"right"}}>{fmt(ca.value)}</span>
+                    <span style={{fontSize:"var(--fs-xs)",color:diff>0?"var(--danger)":diff<0?"var(--success)":"var(--text-3)",width:52,textAlign:"right",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
+                    <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",width:52}}>{fmt(cb?.value||0)}</span>
                   </div>
                 );
               })}
               <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginTop:6}}>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:"#8ab4f8"}}/><span style={{fontSize:9,color:"var(--text3)"}}>{mShort(cmpA)}</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:8,borderRadius:2,background:"#fb923c"}}/><span style={{fontSize:9,color:"var(--text3)"}}>{mShort(cmpB)}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:8,height:8,borderRadius:2,background:"var(--chart-1)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>{mShort(cmpA)}</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:8,height:8,borderRadius:2,background:"var(--chart-4)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>{mShort(cmpB)}</span></div>
               </div>
             </div>
           )}
         </div>)}
 
         {chartType==="cartoes"&&(<div>
-          {cards.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Nenhum cartão cadastrado</div>}
-          {cards.length>0&&cardPurchases.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text4)",fontSize:13}}>Nenhuma compra lançada nos cartões</div>}
+          {cards.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:"var(--fs-base)"}}>Nenhum cartão cadastrado</div>}
+          {cards.length>0&&cardPurchases.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:"var(--fs-base)"}}>Nenhuma compra lançada nos cartões</div>}
           {cards.length>0&&cardPurchases.length>0&&(<>
             <div style={{...S.chartBox,marginBottom:10}}>
               <div style={S.chartTitle}>Faturas por mês</div>
               <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:8}}>
-                {cardMonthlyData.filter(d=>d.total>0).length===0&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--text4)",fontSize:12}}>Sem faturas no período</div>}
+                {cardMonthlyData.filter(d=>d.total>0).length===0&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--text-3)",fontSize:"var(--fs-md)"}}>Sem faturas no período</div>}
                 {cardMonthlyData.map((d,i)=>{
                   if(d.total===0) return null;
                   return(
-                    <div key={i} style={{background:"var(--bg)",borderRadius:9,padding:"8px 12px",border:"1px solid var(--border2)"}}>
+                    <div key={i} style={{background:"var(--surface-sunken)",borderRadius:9,padding:"8px 12px",border:"1px solid var(--border-subtle)"}}>
                       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-                        <span style={{fontSize:12,fontWeight:600,color:"var(--text1)"}}>{d.month}</span>
-                        <span style={{fontSize:13,fontWeight:800,color:"#fb923c"}}>{fmt(d.total)}</span>
+                        <span style={{fontSize:"var(--fs-md)",fontWeight:600,color:"var(--text-1)"}}>{d.month}</span>
+                        <span style={{fontSize:"var(--fs-base)",fontWeight:800,color:"var(--orange)"}}>{fmt(d.total)}</span>
                       </div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                         {cards.map(card=>d[card.id]>0&&(
-                          <span key={card.id} style={{fontSize:10,padding:"2px 7px",borderRadius:5,background:card.color+"22",color:card.color,border:`1px solid ${card.color}44`}}>
+                          <span key={card.id} style={{fontSize:"var(--fs-xs)",padding:"2px 7px",borderRadius:5,background:tint(card.color,13),color:card.color,border:`1px solid ${tint(card.color,27)}`}}>
                             {card.name}: {fmt(d[card.id])}
                           </span>
                         ))}
@@ -482,19 +482,19 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             </div>
             <div style={S.chartBox}>
               <div style={S.chartTitle}>Gastos por categoria</div>
-              <div style={{fontSize:10,color:"var(--text3)",marginBottom:10}}>Total gasto nos cartões: <strong style={{color:"#fb923c"}}>{fmt(cardCatData.total)}</strong></div>
+              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:10}}>Total gasto nos cartões: <strong style={{color:"var(--orange)"}}>{fmt(cardCatData.total)}</strong></div>
               {cardCatData.cats.length===0
-                ?<div style={{textAlign:"center",padding:"24px 0",color:"var(--text4)",fontSize:12}}>Sem dados</div>
+                ?<div style={{textAlign:"center",padding:"24px 0",color:"var(--text-3)",fontSize:"var(--fs-md)"}}>Sem dados</div>
                 :(<>
                   <DonutSVG data={cardCatData.cats} total={cardCatData.total}/>
                   <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
                     {cardCatData.cats.map((c,i)=>{
                       const pct=cardCatData.total>0?((c.value/cardCatData.total)*100).toFixed(1):0;
                       return(<div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                        <div style={{flex:1,fontSize:12,color:"var(--text2)",fontWeight:500}}>{c.name}</div>
-                        <div style={{fontSize:11,color:"var(--text3)"}}>{pct}%</div>
-                        <div style={{fontSize:12,color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
+                        <div aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                        <div style={{flex:1,fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500}}>{c.name}</div>
+                        <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{pct}%</div>
+                        <div style={{fontSize:"var(--fs-md)",color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
                       </div>);
                     })}
                   </div>
@@ -510,13 +510,13 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                   const pct=cardCatData.total>0?((total/cardCatData.total)*100).toFixed(0):0;
                   return(
                     <div key={card.id} style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div style={{width:10,height:10,borderRadius:"50%",background:card.color,flexShrink:0}}/>
+                      <div aria-hidden="true" style={{width:10,height:10,borderRadius:"50%",background:card.color,flexShrink:0}}/>
                       <div style={{flex:1}}>
                         <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                          <span style={{fontSize:12,color:"var(--text1)",fontWeight:600}}>{card.name}</span>
-                          <span style={{fontSize:12,color:card.color,fontWeight:700}}>{fmt(total)}</span>
+                          <span style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600}}>{card.name}</span>
+                          <span style={{fontSize:"var(--fs-md)",color:card.color,fontWeight:700}}>{fmt(total)}</span>
                         </div>
-                        <div style={{height:4,background:"rgba(255,255,255,.07)",borderRadius:2,overflow:"hidden"}}>
+                        <div role="progressbar" aria-label={`${card.name}: ${pct}% do total`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number(pct)} style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
                           <div style={{height:"100%",width:`${pct}%`,background:card.color,borderRadius:2}}/>
                         </div>
                       </div>
@@ -547,15 +547,15 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                 <div style={S.chartTitle}>Resumo Anual {year}</div>
                 <div style={{display:"flex",gap:4}}>
-                  <button onClick={()=>{const y=parseInt(year)-1;setSpecMonth(`${y}-01`);}} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 8px",fontSize:12}}>‹</button>
-                  <button onClick={()=>{const y=parseInt(year)+1;setSpecMonth(`${y}-01`);}} style={{background:"none",border:"1px solid var(--border)",borderRadius:6,color:"var(--text3)",cursor:"pointer",padding:"2px 8px",fontSize:12}}>›</button>
+                  <button onClick={()=>{const y=parseInt(year)-1;setSpecMonth(`${y}-01`);}} aria-label="Ano anterior" style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 8px",fontSize:"var(--fs-md)"}}>‹</button>
+                  <button onClick={()=>{const y=parseInt(year)+1;setSpecMonth(`${y}-01`);}} aria-label="Próximo ano" style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 8px",fontSize:"var(--fs-md)"}}>›</button>
                 </div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
-                {[{l:"Receitas",v:totRec,c:"#4ade80"},{l:"Despesas",v:totDep,c:"#fb923c"},{l:"Saldo",v:totSaldo,c:totSaldo>=0?"#4ade80":"#f87171"}].map(({l,v,c})=>(
-                  <div key={l} style={{background:"var(--bg)",borderRadius:10,padding:"8px 10px",textAlign:"center"}}>
-                    <div style={{fontSize:9,color:"var(--text3)",marginBottom:3}}>{l}</div>
-                    <div style={{fontSize:11,fontWeight:800,color:c}}>{fmtShort(v)}</div>
+                {[{l:"Receitas",v:totRec,c:"var(--success)"},{l:"Despesas",v:totDep,c:"var(--orange)"},{l:"Saldo",v:totSaldo,c:totSaldo>=0?"var(--success)":"var(--danger)"}].map(({l,v,c})=>(
+                  <div key={l} style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:3}}>{l}</div>
+                    <div style={{fontSize:"var(--fs-sm)",fontWeight:800,color:c}}>{fmtShort(v)}</div>
                   </div>
                 ))}
               </div>
@@ -565,21 +565,21 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                   const depPct=maxVal>0?(dep/maxVal)*100:0;
                   const isCurrent=m===nowMonth;
                   return(
-                    <div key={m} style={{background:isCurrent?"var(--bg)":"transparent",borderRadius:8,padding:"5px 8px",border:isCurrent?"1px solid var(--border2)":"none"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{width:26,fontSize:10,fontWeight:isCurrent?700:400,color:isCurrent?"var(--text1)":"var(--text3)",flexShrink:0}}>{MNAMES[i]}</div>
+                    <div key={m} style={{background:isCurrent?"var(--surface-sunken)":"transparent",borderRadius:"var(--radius-sm)",padding:"5px 8px",border:isCurrent?"1px solid var(--border-subtle)":"none"}}>
+                      <div role="group" aria-label={`${MNAMES[i]}: receitas ${fmt(rec)}, despesas ${fmt(dep)}, saldo ${fmt(saldo)}`} style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:26,fontSize:"var(--fs-xs)",fontWeight:isCurrent?700:400,color:isCurrent?"var(--text-1)":"var(--text-3)",flexShrink:0}}>{MNAMES[i]}</div>
                         <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
-                          <div style={{height:4,background:"var(--bg2,#0d1118)",borderRadius:2,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:`${recPct}%`,background:"#4ade8088",borderRadius:2}}/>
+                          <div style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${recPct}%`,background:tint("var(--chart-2)",53),borderRadius:2}}/>
                           </div>
-                          <div style={{height:4,background:"var(--bg2,#0d1118)",borderRadius:2,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:`${depPct}%`,background:"#fb923c88",borderRadius:2}}/>
+                          <div style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${depPct}%`,background:tint("var(--chart-4)",53),borderRadius:2}}/>
                           </div>
                         </div>
                         <div style={{display:"flex",gap:8,flexShrink:0}}>
-                          <span style={{fontSize:10,color:"#4ade8088",minWidth:50,textAlign:"right"}}>{rec>0?fmtShort(rec):"-"}</span>
-                          <span style={{fontSize:10,color:"#fb923c88",minWidth:50,textAlign:"right"}}>{dep>0?fmtShort(dep):"-"}</span>
-                          <span style={{fontSize:10,fontWeight:700,color:saldo>=0?"#4ade80":"#f87171",minWidth:54,textAlign:"right"}}>{rec===0&&dep===0?"-":`${saldo>=0?"+":""}${fmtShort(saldo)}`}</span>
+                          <span style={{fontSize:"var(--fs-xs)",color:"var(--success)",minWidth:50,textAlign:"right"}}>{rec>0?fmtShort(rec):"-"}</span>
+                          <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",minWidth:50,textAlign:"right"}}>{dep>0?fmtShort(dep):"-"}</span>
+                          <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:saldo>=0?"var(--success)":"var(--danger)",minWidth:54,textAlign:"right"}}>{rec===0&&dep===0?"-":`${saldo>=0?"+":""}${fmtShort(saldo)}`}</span>
                         </div>
                       </div>
                     </div>
@@ -587,8 +587,8 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
                 })}
               </div>
               <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginTop:8}}>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:"#4ade8088"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Receitas</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:"#fb923c88"}}/><span style={{fontSize:9,color:"var(--text3)"}}>Despesas</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:tint("var(--chart-2)",53)}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Receitas</span></div>
+                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:tint("var(--chart-4)",53)}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Despesas</span></div>
               </div>
             </div>
           );
@@ -599,9 +599,9 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
             <div>
               <div style={S.chartTitle}>Relatório Mensal</div>
-              <div style={{fontSize:10,color:"var(--text3)",marginTop:2}}>Gera imagem para compartilhar</div>
+              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>Gera imagem para compartilhar</div>
             </div>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8ab4f8" strokeWidth="1.5" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" style={{stroke:"var(--accent)"}}><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           </div>
           <div style={{marginBottom:14}}>
             <label style={{...S.lbl,marginBottom:6}}>Mês do relatório</label>
@@ -616,20 +616,20 @@ export default function ChartScreen({entries,dividas,categories,nowMonth,cards,c
             me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
             const topCat=Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0];
             return(
-              <div style={{background:"var(--bg)",border:"1px solid var(--border2)",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-                <div style={{fontSize:10,color:"var(--text3)",marginBottom:8,fontWeight:600}}>{mLabel(relMes)}</div>
+              <div style={{background:"var(--surface-sunken)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-md)",padding:"12px 14px",marginBottom:14}}>
+                <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:8,fontWeight:600}}>{mLabel(relMes)}</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                  <div><div style={{fontSize:9,color:"var(--text4)"}}>Receitas</div><div style={{fontSize:13,fontWeight:700,color:"#4ade80"}}>{fmt(rec)}</div></div>
-                  <div><div style={{fontSize:9,color:"var(--text4)"}}>Despesas</div><div style={{fontSize:13,fontWeight:700,color:"#fb923c"}}>{fmt(dep)}</div></div>
-                  <div><div style={{fontSize:9,color:"var(--text4)"}}>Saldo</div><div style={{fontSize:13,fontWeight:700,color:rec-dep>=0?"#4ade80":"#f87171"}}>{fmt(rec-dep)}</div></div>
-                  <div><div style={{fontSize:9,color:"var(--text4)"}}>% Pago</div><div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{dep>0?((pago/dep)*100).toFixed(0):0}%</div></div>
+                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Receitas</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--success)"}}>{fmt(rec)}</div></div>
+                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Despesas</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--orange)"}}>{fmt(dep)}</div></div>
+                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Saldo</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:rec-dep>=0?"var(--success)":"var(--danger)"}}>{fmt(rec-dep)}</div></div>
+                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>% Pago</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{dep>0?((pago/dep)*100).toFixed(0):0}%</div></div>
                 </div>
-                {topCat&&<div style={{fontSize:10,color:"var(--text3)"}}>Maior gasto: <span style={{color:catColor(topCat[0]),fontWeight:600}}>{catName(topCat[0])} ({fmt(topCat[1])})</span></div>}
+                {topCat&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Maior gasto: <span style={{color:catColor(topCat[0]),fontWeight:600}}>{catName(topCat[0])} ({fmt(topCat[1])})</span></div>}
               </div>
             );
           })()}
           <button onClick={gerarRelatorio} disabled={gerandoRel}
-            style={{width:"100%",padding:"12px",background:"linear-gradient(135deg,#1a3a6e,#0d2247)",border:"1px solid #2a4a8e",borderRadius:10,color:"#8ab4f8",fontSize:13,fontWeight:700,cursor:gerandoRel?"wait":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:gerandoRel?0.6:1}}>
+            style={{width:"100%",padding:"12px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-md)",color:"var(--primary-text)",fontSize:"var(--fs-base)",fontWeight:700,cursor:gerandoRel?"wait":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:gerandoRel?0.6:1}}>
             {gerandoRel?(
               <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>Gerando...</>
             ):(

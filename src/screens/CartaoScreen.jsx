@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import Field from '../components/Field.jsx';
+import Field, { ModalShell } from "../components/Field.jsx";
 import PartialFatModal from '../modals/PartialFatModal.jsx';
 import { getBillingMonth, buildFatura, getCardBillingMonths } from '../logic.js';
 import { fmt, fmtDate, mLabel, mShort, addM, todayISO, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
-import S from '../styles.js';
+import S, { tint } from "../styles.js";
+
+const btnCancel={flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"};
+const btnDanger={flex:1,padding:"11px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"};
+const dangerNote={background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:11,padding:"12px 14px",marginBottom:18};
+const tintBtn=(color)=>({background:`linear-gradient(135deg,${tint(color,20)},${tint(color,7)})`,borderColor:tint(color,27),color});
 
 export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas,setCardFaturas,categories,nowMonth,toast,onRevertFatura}){
   const [showCardForm,setShowCardForm]=useState(false);
@@ -64,13 +69,13 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
 
   return(
     <div style={{paddingBottom:90}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 14px 10px",borderBottom:"1px solid var(--border2)"}}>
-        <div><div style={{fontSize:14,fontWeight:700,color:"var(--text1)"}}>Meus Cartões</div><div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>{cards.length} cartão{cards.length!==1?"ões":""} cadastrado{cards.length!==1?"s":""}</div></div>
-        <button onClick={()=>{setCardForm(BLANK_CARD);setShowCardForm(true);}} className="hbtn add-btn" style={{...S.hbtn,...S.addBtn,fontSize:12}}>+ Novo Cartão</button>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 14px 10px",borderBottom:"1px solid var(--border-subtle)"}}>
+        <div><div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--text-1)"}}>Meus Cartões</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{cards.length} cartão{cards.length!==1?"ões":""} cadastrado{cards.length!==1?"s":""}</div></div>
+        <button type="button" onClick={()=>{setCardForm(BLANK_CARD);setShowCardForm(true);}} className="hbtn add-btn" style={{...S.hbtn,...S.addBtn,fontSize:"var(--fs-md)"}}>+ Novo Cartão</button>
       </div>
 
       <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:14}}>
-        {cards.length===0&&<div style={S.empty}><div style={{fontSize:36,opacity:0.3,marginBottom:8}}>💳</div><div style={{color:"var(--text4)",fontSize:14,fontWeight:600}}>Nenhum cartão cadastrado</div><div style={{color:"var(--text4)",fontSize:12,marginTop:3}}>Adicione um cartão para controlar suas faturas</div></div>}
+        {cards.length===0&&<div style={S.empty}><div aria-hidden="true" style={{fontSize:"var(--fs-7xl)",opacity:0.3,marginBottom:8}}>💳</div><div style={{color:"var(--text-4)",fontSize:"var(--fs-lg)",fontWeight:600}}>Nenhum cartão cadastrado</div><div style={{color:"var(--text-4)",fontSize:"var(--fs-md)",marginTop:3}}>Adicione um cartão para controlar suas faturas</div></div>}
 
         {cards.map(card=>{
           const allBillings=getCardBillingMonths(card,cardPurchases);
@@ -85,60 +90,61 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
             return s;
           },0);
           const limitPct=card.limit>0?Math.min(100,(usedLimit/card.limit)*100):0;
+          const limitColor=limitPct>80?"var(--danger)":limitPct>60?"var(--warning)":card.color;
 
           return(
-            <div key={card.id} style={{background:"var(--card-bg)",borderRadius:18,overflow:"hidden",border:`1px solid ${card.color}22`}}>
+            <div key={card.id} style={{background:"var(--surface)",borderRadius:18,overflow:"hidden",border:`1px solid ${tint(card.color,13)}`}}>
 
               {/* Cabeçalho do cartão */}
-              <div style={{background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,padding:"16px 16px 14px",borderBottom:`1px solid ${card.color}22`}}>
+              <div style={{background:`linear-gradient(135deg,${tint(card.color,20)},${tint(card.color,7)})`,padding:"16px 16px 14px",borderBottom:`1px solid ${tint(card.color,13)}`}}>
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
                   <div>
-                    <div style={{fontSize:16,fontWeight:800,color:"#fff"}}>{card.name}</div>
-                    <div style={{fontSize:10,color:`${card.color}bb`,marginTop:2}}>Fecha dia {card.closeDay} · Vence dia {card.dueDay} do mês seguinte</div>
+                    <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:"var(--text-1)"}}>{card.name}</div>
+                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>Fecha dia {card.closeDay} · Vence dia {card.dueDay} do mês seguinte</div>
                   </div>
                   <div style={{display:"flex",gap:5}}>
-                    <button className="iconBtn" onClick={()=>{setActiveCardId(card.id);setPurchForm(BLANK_PURCH);setShowPurchaseForm(true);}}
-                      style={{...S.iconBtn,background:`${card.color}22`,color:card.color,width:30,height:30,borderRadius:9}}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <button type="button" className="iconBtn" aria-label={`Nova compra no cartão ${card.name}`} title="Nova compra" onClick={()=>{setActiveCardId(card.id);setPurchForm(BLANK_PURCH);setShowPurchaseForm(true);}}
+                      style={{...S.iconBtn,background:tint(card.color,13),color:card.color,width:30,height:30,borderRadius:9}}>
+                      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button className="iconBtn" title="Editar cartão" onClick={()=>openEditCard(card)}
-                      style={{...S.iconBtn,background:`${card.color}22`,color:card.color,width:30,height:30,borderRadius:9,fontSize:13}}>✏</button>
-                    <button className="iconBtn" onClick={()=>setDelCardId(card.id)} style={{...S.iconBtn,background:"rgba(239,68,68,.1)",color:"#f87171",width:30,height:30,borderRadius:9}}>✕</button>
+                    <button type="button" className="iconBtn" title="Editar cartão" aria-label={`Editar cartão ${card.name}`} onClick={()=>openEditCard(card)}
+                      style={{...S.iconBtn,background:tint(card.color,13),color:card.color,width:30,height:30,borderRadius:9,fontSize:"var(--fs-base)"}}>✏</button>
+                    <button type="button" className="iconBtn" title="Excluir cartão" aria-label={`Excluir cartão ${card.name}`} onClick={()=>setDelCardId(card.id)} style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)",width:30,height:30,borderRadius:9}}>✕</button>
                   </div>
                 </div>
                 {card.limit>0&&(<div style={{marginTop:12}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                    <span style={{fontSize:10,color:`${card.color}99`}}>Limite utilizado</span>
-                    <span style={{fontSize:11,fontWeight:700,color:limitPct>80?"#f87171":limitPct>60?"#facc15":card.color}}>{limitPct.toFixed(0)}%</span>
+                    <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Limite utilizado</span>
+                    <span style={{fontSize:"var(--fs-sm)",fontWeight:700,color:limitColor}}>{limitPct.toFixed(0)}%</span>
                   </div>
-                  <div style={{height:5,background:"rgba(255,255,255,.08)",borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${limitPct}%`,background:limitPct>80?"#f87171":limitPct>60?"#facc15":card.color,borderRadius:3,transition:"width .5s"}}/>
+                  <div role="progressbar" aria-label="Limite utilizado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(limitPct)} style={{height:5,background:"var(--track)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${limitPct}%`,background:limitColor,borderRadius:3,transition:"width .5s"}}/>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                    <span style={{fontSize:9,color:"var(--text3)"}}>Usado: {fmt(usedLimit)}</span>
-                    <span style={{fontSize:9,color:"var(--text3)"}}>Disponível: {fmt(Math.max(0,card.limit-usedLimit))}</span>
+                    <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Usado: {fmt(usedLimit)}</span>
+                    <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Disponível: {fmt(Math.max(0,card.limit-usedLimit))}</span>
                   </div>
                 </div>)}
               </div>
 
               {/* Seletor de mês — chips clicáveis */}
-              <div style={{overflowX:"auto",padding:"10px 14px 8px",borderBottom:`1px solid ${card.color}11`}}>
-                <div style={{display:"flex",gap:7,minWidth:"max-content"}}>
+              <div style={{overflowX:"auto",padding:"10px 14px 8px",borderBottom:`1px solid ${tint(card.color,7)}`}}>
+                <div role="group" aria-label={`Faturas de ${card.name}`} style={{display:"flex",gap:7,minWidth:"max-content"}}>
                   {stripMonths.map(bm=>{
                     const f=buildFatura(card,cardPurchases,cardFaturas,bm);
                     const isSel=bm===selBM;
                     const isNow=bm===nowMonth;
                     return(
-                      <button key={bm} onClick={()=>setSelectedBM(p=>({...p,[card.id]:bm}))}
-                        style={{textAlign:"center",minWidth:62,background:isSel?`${card.color}22`:"var(--bg)",borderRadius:10,padding:"7px 5px",
-                          border:`1.5px solid ${isSel?card.color+"99":"var(--border2)"}`,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-                        <div style={{fontSize:9,color:isSel?card.color:isNow?"var(--text2)":"var(--text4)",fontWeight:isSel||isNow?700:400,marginBottom:3}}>
+                      <button type="button" key={bm} aria-pressed={isSel} onClick={()=>setSelectedBM(p=>({...p,[card.id]:bm}))}
+                        style={{textAlign:"center",minWidth:62,background:isSel?tint(card.color,13):"var(--surface-sunken)",borderRadius:10,padding:"7px 5px",
+                          border:`1.5px solid ${isSel?tint(card.color,60):"var(--border-subtle)"}`,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+                        <div style={{fontSize:"var(--fs-2xs)",color:isSel?card.color:isNow?"var(--text-2)":"var(--text-4)",fontWeight:isSel||isNow?700:400,marginBottom:3}}>
                           {mShort(bm)}{isNow?" ●":""}
                         </div>
-                        <div style={{fontSize:12,fontWeight:700,color:f.total>0?(isSel?card.color:"var(--text2)"):"var(--text4)"}}>
+                        <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:f.total>0?(isSel?card.color:"var(--text-2)"):"var(--text-4)"}}>
                           {f.total>0?fmt(f.total):"—"}
                         </div>
-                        <div style={{fontSize:8,marginTop:2,color:f.paid?"#4ade80":f.open?"#facc15":f.total>0?"#fb923c":"transparent"}}>
+                        <div style={{fontSize:8,marginTop:2,color:f.paid?"var(--success)":f.open?"var(--warning)":f.total>0?"var(--orange)":"transparent"}}>
                           {f.paid?"✓ pago":f.open?"aberto":f.total>0?"a pagar":""}
                         </div>
                       </button>
@@ -151,15 +157,15 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
               <div style={{padding:"12px 14px 14px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                   <div>
-                    <div style={{fontSize:13,fontWeight:700,color:"var(--text1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:9,color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
-                    <div style={{fontSize:10,color:"var(--text3)",marginTop:1}}>
+                    <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:"var(--fs-2xs)",color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
+                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>
                       {selFat.open?`Fecha em ${fmtDate(selFat.closeDate)}`:selFat.total>0?`Vence ${fmtDate(selFat.dueDate)}`:"Sem compras"}
                     </div>
                   </div>
                   {selFat.total>0&&(
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:16,fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
-                      <div style={{fontSize:9,marginTop:1,color:selFat.paid?"#4ade80":selFat.open?"#facc15":selFat.partial?"#facc15":"#fb923c",fontWeight:600}}>
+                      <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
+                      <div style={{fontSize:"var(--fs-2xs)",marginTop:1,color:selFat.paid?"var(--success)":selFat.open?"var(--warning)":selFat.partial?"var(--warning)":"var(--orange)",fontWeight:600}}>
                         {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":selFat.partial?`✓ R$${(selFat.paidAmount||0).toFixed(2)} pago`:"⏳ a pagar"}
                       </div>
                     </div>
@@ -167,38 +173,38 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                 </div>
 
                 {selFat.items.length===0&&(
-                  <div style={{textAlign:"center",padding:"12px 0",color:"var(--text4)",fontSize:11}}>Nenhuma compra nesta fatura</div>
+                  <div style={{textAlign:"center",padding:"12px 0",color:"var(--text-4)",fontSize:"var(--fs-sm)"}}>Nenhuma compra nesta fatura</div>
                 )}
                 <div style={{display:"flex",flexDirection:"column",gap:5}}>
                   {selFat.items.map(item=>(
-                    <div key={item.id+item.installmentNum} style={{display:"flex",alignItems:"center",gap:8,background:"var(--bg)",borderRadius:9,padding:"8px 10px",border:"1px solid var(--border2)"}}>
+                    <div key={item.id+item.installmentNum} style={{display:"flex",alignItems:"center",gap:8,background:"var(--surface-sunken)",borderRadius:9,padding:"8px 10px",border:"1px solid var(--border-subtle)"}}>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,color:"var(--text2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
-                        <div style={{fontSize:9,color:"var(--text3)",marginTop:1,display:"flex",gap:6}}>
+                        <div style={{fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
+                        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:1,display:"flex",gap:6}}>
                           {item.total>1&&<span style={{color:card.color,fontWeight:600}}>📋 {item.installmentNum}/{item.total}x</span>}
                           {item.total>1&&<span>Total: {fmt(item.amount*item.total)}</span>}
                         </div>
                       </div>
-                      <div style={{fontSize:12,fontWeight:700,color:card.color,flexShrink:0}}>{fmt(item.amount)}</div>
+                      <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:card.color,flexShrink:0}}>{fmt(item.amount)}</div>
                       {!selFat.paid&&(<>
-                        <button className="iconBtn" onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
-                          style={{...S.iconBtn,background:"rgba(138,180,248,.1)",color:"#8ab4f8",width:22,height:22,borderRadius:6,fontSize:11}}>✏</button>
-                        <button className="iconBtn" onClick={()=>setDelPurchId(item.id)}
-                          style={{...S.iconBtn,background:"rgba(239,68,68,.08)",color:"#f8717188",width:22,height:22,borderRadius:6,fontSize:11}}>✕</button>
+                        <button type="button" className="iconBtn" aria-label={`Editar compra ${item.description}`} onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
+                          style={{...S.iconBtn,background:"var(--accent-soft)",color:"var(--accent)",width:22,height:22,borderRadius:6,fontSize:"var(--fs-sm)"}}>✏</button>
+                        <button type="button" className="iconBtn" aria-label={`Excluir compra ${item.description}`} onClick={()=>setDelPurchId(item.id)}
+                          style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)",width:22,height:22,borderRadius:6,fontSize:"var(--fs-sm)"}}>✕</button>
                       </>)}
                     </div>
                   ))}
                 </div>
 
                 {!selFat.open&&selFat.total>0&&!selFat.paid&&(
-                  <button onClick={()=>setPartialFatTarget({...selFat,card})}
-                    style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${card.color}33,${card.color}11)`,border:`1px solid ${card.color}44`,borderRadius:10,color:card.color,fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                  <button type="button" onClick={()=>setPartialFatTarget({...selFat,card})}
+                    style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${tint(card.color,20)},${tint(card.color,7)})`,border:`1px solid ${tint(card.color,27)}`,borderRadius:"var(--radius-md)",color:card.color,fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>
                     {selFat.partial?`Pagar restante — ${fmt(parseFloat((selFat.total-selFat.paidAmount).toFixed(2)))}`:`Pagar fatura — ${fmt(selFat.total)}`}
                   </button>
                 )}
                 {selFat.paid&&(
-                  <button onClick={()=>onRevertFatura(selFat.key)}
-                    style={{marginTop:10,width:"100%",padding:"8px",background:"rgba(248,113,113,.08)",border:"1px solid #f8717133",borderRadius:9,color:"#f87171",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                  <button type="button" onClick={()=>onRevertFatura(selFat.key)}
+                    style={{marginTop:10,width:"100%",padding:"8px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:9,color:"var(--danger)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer"}}>
                     ↩ Estornar pagamento
                   </button>
                 )}
@@ -209,98 +215,86 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
       </div>
 
       {delCardId&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelCardId(null)}>
-          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>Excluir cartão</div><button style={S.xBtn} onClick={()=>setDelCardId(null)}>✕</button></div>
-            <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
-              <div style={{fontSize:13,fontWeight:700,color:"var(--text1)",marginBottom:2}}>{cards.find(c=>c.id===delCardId)?.name}</div>
-              <div style={{fontSize:11,color:"#f87171"}}>Remove o cartão e todas as compras e faturas associadas.</div>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setDelCardId(null)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={()=>handleDeleteCard(delCardId)} style={{flex:1,padding:"11px",background:"rgba(239,68,68,.15)",border:"1px solid #f8717144",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>Excluir</button>
-            </div>
+        <ModalShell title="Excluir cartão" onClose={()=>setDelCardId(null)} compact>
+          <div style={dangerNote}>
+            <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:2}}>{cards.find(c=>c.id===delCardId)?.name}</div>
+            <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)"}}>Remove o cartão e todas as compras e faturas associadas.</div>
           </div>
-        </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setDelCardId(null)} style={btnCancel}>Cancelar</button>
+            <button type="button" onClick={()=>handleDeleteCard(delCardId)} style={btnDanger}>Excluir</button>
+          </div>
+        </ModalShell>
       )}
 
       {showCardForm&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&closeCardForm()}>
-          <div style={S.modal} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>{editCardId?"Editar Cartão":"Novo Cartão"}</div><button style={S.xBtn} onClick={closeCardForm}>✕</button></div>
-            <Field label="Nome do cartão"><input style={S.inp} placeholder="Ex: Nubank, Inter..." value={cardForm.name} onChange={e=>setCardForm(p=>({...p,name:e.target.value}))}/></Field>
-            <Field label="Limite (R$)"><input style={S.inp} type="number" placeholder="0,00" min="0" step="0.01" value={cardForm.limit} onChange={e=>setCardForm(p=>({...p,limit:e.target.value}))}/></Field>
-            <div style={{display:"flex",gap:10}}>
-              <Field label="Dia fechamento" style={{flex:1}}><input style={S.inp} type="number" min={1} max={28} value={cardForm.closeDay} onChange={e=>setCardForm(p=>({...p,closeDay:e.target.value}))}/></Field>
-              <Field label="Dia vencimento" style={{flex:1}}><input style={S.inp} type="number" min={1} max={28} value={cardForm.dueDay} onChange={e=>setCardForm(p=>({...p,dueDay:e.target.value}))}/></Field>
-            </div>
-            <Field label="Cor do cartão">
-              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-                {CARD_COLORS.map(c=>(
-                  <button key={c} onClick={()=>setCardForm(p=>({...p,color:c}))}
-                    style={{width:32,height:32,borderRadius:9,background:c,border:`2.5px solid ${cardForm.color===c?"#fff":"transparent"}`,cursor:"pointer",transform:cardForm.color===c?"scale(1.15)":"scale(1)",transition:"transform .15s"}}/>
-                ))}
-              </div>
-            </Field>
-            <button onClick={handleSaveCard} className="submitBtn"
-              style={{...S.submitBtn,background:`linear-gradient(135deg,${cardForm.color}33,${cardForm.color}11)`,borderColor:`${cardForm.color}44`,color:cardForm.color,opacity:!cardForm.name?0.35:1}}
-              disabled={!cardForm.name}>{editCardId?"Salvar alterações":"Adicionar Cartão"}</button>
+        <ModalShell title={editCardId?"Editar Cartão":"Novo Cartão"} onClose={closeCardForm}>
+          <Field label="Nome do cartão" required><input style={S.inp} placeholder="Ex: Nubank, Inter..." value={cardForm.name} onChange={e=>setCardForm(p=>({...p,name:e.target.value}))}/></Field>
+          <Field label="Limite (R$)"><input style={S.inp} type="number" inputMode="decimal" placeholder="0,00" min="0" step="0.01" value={cardForm.limit} onChange={e=>setCardForm(p=>({...p,limit:e.target.value}))}/></Field>
+          <div style={{display:"flex",gap:10}}>
+            <Field label="Dia fechamento" style={{flex:1}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={cardForm.closeDay} onChange={e=>setCardForm(p=>({...p,closeDay:e.target.value}))}/></Field>
+            <Field label="Dia vencimento" style={{flex:1}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={cardForm.dueDay} onChange={e=>setCardForm(p=>({...p,dueDay:e.target.value}))}/></Field>
           </div>
-        </div>
+          <Field label="Cor do cartão">
+            <div role="group" aria-label="Cor do cartão" style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+              {CARD_COLORS.map(c=>(
+                <button type="button" key={c} aria-label={`Cor ${c}`} aria-pressed={cardForm.color===c} onClick={()=>setCardForm(p=>({...p,color:c}))}
+                  style={{width:32,height:32,borderRadius:9,background:c,border:`2.5px solid ${cardForm.color===c?"var(--text-1)":"transparent"}`,cursor:"pointer",transform:cardForm.color===c?"scale(1.15)":"scale(1)",transition:"transform .15s"}}/>
+              ))}
+            </div>
+          </Field>
+          <button type="button" onClick={handleSaveCard} className="submitBtn"
+            style={{...S.submitBtn,...tintBtn(cardForm.color),opacity:!cardForm.name?0.35:1}}
+            disabled={!cardForm.name}>{editCardId?"Salvar alterações":"Adicionar Cartão"}</button>
+        </ModalShell>
       )}
 
       {showPurchaseForm&&activeCard&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setShowPurchaseForm(false)}>
-          <div style={S.modal} className="modal-in">
-            <div style={S.mHeader}>
-              <div><div style={S.mTitle}>Nova Compra</div><div style={{fontSize:11,color:activeCard.color,marginTop:2}}>💳 {activeCard.name}</div></div>
-              <button style={S.xBtn} onClick={()=>setShowPurchaseForm(false)}>✕</button>
-            </div>
-            <Field label="Descrição"><input style={S.inp} placeholder="Ex: Supermercado, Restaurante..." value={purchForm.description} onChange={e=>setPurchForm(p=>({...p,description:e.target.value}))}/></Field>
-            <div style={{display:"flex",gap:10}}>
-              <Field label="Valor total (R$)" style={{flex:1}}><input style={S.inp} type="number" placeholder="0,00" min="0" step="0.01" value={purchForm.amount} onChange={e=>setPurchForm(p=>({...p,amount:e.target.value}))}/></Field>
-              <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" min={1} max={48} value={purchForm.installments} onChange={e=>setPurchForm(p=>({...p,installments:e.target.value}))}/></Field>
-            </div>
-            {purchForm.amount&&purchForm.installments>1&&(
-              <div style={{marginBottom:13,background:"var(--bg)",border:`1px solid ${activeCard.color}33`,borderRadius:10,padding:"9px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <span style={{fontSize:11,color:"var(--text3)"}}>{purchForm.installments}x de</span>
-                <span style={{fontSize:18,fontWeight:800,color:activeCard.color}}>{fmt(parseFloat(purchForm.amount)/parseInt(purchForm.installments))}</span>
-              </div>
-            )}
-            <Field label="Data da compra"><input style={S.inp} type="date" value={purchForm.purchaseDate} onChange={e=>setPurchForm(p=>({...p,purchaseDate:e.target.value}))}/></Field>
-            <div style={{marginBottom:13}}>
-              <label style={S.lbl}>Categoria</label>
-              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                {categories.filter(c=>c.type==="both"||c.type==="despesa").map(cat=>(
-                  <button key={cat.id} onClick={()=>setPurchForm(p=>({...p,category:cat.id}))}
-                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${purchForm.category===cat.id?cat.color:"transparent"}`,background:purchForm.category===cat.id?cat.color+"22":"rgba(255,255,255,.05)",color:purchForm.category===cat.id?cat.color:"var(--text3)",fontSize:11,cursor:"pointer",fontWeight:500}}>
-                    <span style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:48}} placeholder="Alguma anotação..." value={purchForm.notes} onChange={e=>setPurchForm(p=>({...p,notes:e.target.value}))}/></Field>
-            <button onClick={handleSavePurchase} className="submitBtn"
-              style={{...S.submitBtn,background:`linear-gradient(135deg,${activeCard.color}33,${activeCard.color}11)`,borderColor:`${activeCard.color}44`,color:activeCard.color,opacity:(!purchForm.description||!purchForm.amount)?0.35:1}}
-              disabled={!purchForm.description||!purchForm.amount}>Adicionar Compra</button>
+        <ModalShell title="Nova Compra" subtitle={<div style={{fontSize:"var(--fs-sm)",color:activeCard.color,marginTop:2}}>💳 {activeCard.name}</div>} onClose={()=>setShowPurchaseForm(false)}>
+          <Field label="Descrição" required><input style={S.inp} placeholder="Ex: Supermercado, Restaurante..." value={purchForm.description} onChange={e=>setPurchForm(p=>({...p,description:e.target.value}))}/></Field>
+          <div style={{display:"flex",gap:10}}>
+            <Field label="Valor total (R$)" required style={{flex:1}}><input style={S.inp} type="number" inputMode="decimal" placeholder="0,00" min="0" step="0.01" value={purchForm.amount} onChange={e=>setPurchForm(p=>({...p,amount:e.target.value}))}/></Field>
+            <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={48} value={purchForm.installments} onChange={e=>setPurchForm(p=>({...p,installments:e.target.value}))}/></Field>
           </div>
-        </div>
+          {purchForm.amount&&purchForm.installments>1&&(
+            <div style={{marginBottom:13,background:"var(--surface-sunken)",border:`1px solid ${tint(activeCard.color,20)}`,borderRadius:"var(--radius-md)",padding:"9px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{purchForm.installments}x de</span>
+              <span style={{fontSize:"var(--fs-3xl)",fontWeight:800,color:activeCard.color}}>{fmt(parseFloat(purchForm.amount)/parseInt(purchForm.installments))}</span>
+            </div>
+          )}
+          <Field label="Data da compra"><input style={S.inp} type="date" value={purchForm.purchaseDate} onChange={e=>setPurchForm(p=>({...p,purchaseDate:e.target.value}))}/></Field>
+          <div style={{marginBottom:13}} role="group" aria-labelledby="cartao-cat-lbl">
+            <span id="cartao-cat-lbl" style={S.lbl}>Categoria</span>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {categories.filter(c=>c.type==="both"||c.type==="despesa").map(cat=>{
+                const sel=purchForm.category===cat.id;
+                return(
+                  <button type="button" key={cat.id} aria-pressed={sel} onClick={()=>setPurchForm(p=>({...p,category:cat.id}))}
+                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${sel?cat.color:"transparent"}`,background:sel?tint(cat.color,13):"var(--surface-hover)",color:sel?cat.color:"var(--text-3)",fontSize:"var(--fs-sm)",cursor:"pointer",fontWeight:500}}>
+                    <span aria-hidden="true" style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:48}} placeholder="Alguma anotação..." value={purchForm.notes} onChange={e=>setPurchForm(p=>({...p,notes:e.target.value}))}/></Field>
+          <button type="button" onClick={handleSavePurchase} className="submitBtn"
+            style={{...S.submitBtn,...tintBtn(activeCard.color),opacity:(!purchForm.description||!purchForm.amount)?0.35:1}}
+            disabled={!purchForm.description||!purchForm.amount}>Adicionar Compra</button>
+        </ModalShell>
       )}
 
       {delPurchId&&(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setDelPurchId(null)}>
-          <div style={{...S.modal,maxHeight:"auto"}} className="modal-in">
-            <div style={S.mHeader}><div style={S.mTitle}>Excluir compra</div><button style={S.xBtn} onClick={()=>setDelPurchId(null)}>✕</button></div>
-            <div style={{background:"rgba(239,68,68,.08)",border:"1px solid rgba(239,68,68,.2)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
-              <div style={{fontSize:13,fontWeight:700,color:"var(--text1)",marginBottom:2}}>{cardPurchases.find(p=>p.id===delPurchId)?.description}</div>
-              <div style={{fontSize:11,color:"#f87171"}}>Remove a compra e todas as parcelas associadas.</div>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>setDelPurchId(null)} style={{flex:1,padding:"11px",background:"var(--card-bg2)",border:"1px solid #1a2840",borderRadius:10,color:"var(--text3)",fontSize:13,fontWeight:600,cursor:"pointer"}}>Cancelar</button>
-              <button onClick={()=>handleDeletePurch(delPurchId)} style={{flex:1,padding:"11px",background:"rgba(239,68,68,.15)",border:"1px solid #f8717144",borderRadius:10,color:"#f87171",fontSize:13,fontWeight:700,cursor:"pointer"}}>Excluir</button>
-            </div>
+        <ModalShell title="Excluir compra" onClose={()=>setDelPurchId(null)} compact>
+          <div style={dangerNote}>
+            <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:2}}>{cardPurchases.find(p=>p.id===delPurchId)?.description}</div>
+            <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)"}}>Remove a compra e todas as parcelas associadas.</div>
           </div>
-        </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setDelPurchId(null)} style={btnCancel}>Cancelar</button>
+            <button type="button" onClick={()=>handleDeletePurch(delPurchId)} style={btnDanger}>Excluir</button>
+          </div>
+        </ModalShell>
       )}
 
       {partialFatTarget&&(
@@ -312,20 +306,17 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
         />
       )}
 
-      {editPurch&&(()=>{const ec=cards.find(c=>c.id===editPurch.cardId);const ec2=ec?.color||"#8ab4f8";return(
-        <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&setEditPurch(null)}>
-          <div style={S.modal} className="modal-in">
-            <div style={S.mHeader}><div><div style={S.mTitle}>Editar Compra</div>{ec&&<div style={{fontSize:11,color:ec2,marginTop:2}}>💳 {ec.name}</div>}</div><button style={S.xBtn} onClick={()=>setEditPurch(null)}>✕</button></div>
-            <Field label="Descrição"><input style={S.inp} value={editPurch.description} onChange={e=>setEditPurch(p=>({...p,description:e.target.value}))}/></Field>
-            <div style={{display:"flex",gap:10}}>
-              <Field label="Valor total (R$)" style={{flex:1}}><input style={S.inp} type="number" min="0" step="0.01" value={editPurch.amount} onChange={e=>setEditPurch(p=>({...p,amount:e.target.value}))}/></Field>
-              <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" min={1} max={48} value={editPurch.installments} onChange={e=>setEditPurch(p=>({...p,installments:e.target.value}))}/></Field>
-            </div>
-            <Field label="Data da compra"><input style={S.inp} type="date" value={editPurch.purchaseDate} onChange={e=>setEditPurch(p=>({...p,purchaseDate:e.target.value}))}/></Field>
-            <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:48}} value={editPurch.notes||""} onChange={e=>setEditPurch(p=>({...p,notes:e.target.value}))}/></Field>
-            <button onClick={handleEditPurch} className="submitBtn" style={{...S.submitBtn,background:`linear-gradient(135deg,${ec2}33,${ec2}11)`,borderColor:`${ec2}44`,color:ec2}}>Salvar alterações</button>
+      {editPurch&&(()=>{const ec=cards.find(c=>c.id===editPurch.cardId);const ec2=ec?.color||"var(--accent)";return(
+        <ModalShell title="Editar Compra" subtitle={ec&&<div style={{fontSize:"var(--fs-sm)",color:ec2,marginTop:2}}>💳 {ec.name}</div>} onClose={()=>setEditPurch(null)}>
+          <Field label="Descrição"><input style={S.inp} value={editPurch.description} onChange={e=>setEditPurch(p=>({...p,description:e.target.value}))}/></Field>
+          <div style={{display:"flex",gap:10}}>
+            <Field label="Valor total (R$)" style={{flex:1}}><input style={S.inp} type="number" inputMode="decimal" min="0" step="0.01" value={editPurch.amount} onChange={e=>setEditPurch(p=>({...p,amount:e.target.value}))}/></Field>
+            <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={48} value={editPurch.installments} onChange={e=>setEditPurch(p=>({...p,installments:e.target.value}))}/></Field>
           </div>
-        </div>
+          <Field label="Data da compra"><input style={S.inp} type="date" value={editPurch.purchaseDate} onChange={e=>setEditPurch(p=>({...p,purchaseDate:e.target.value}))}/></Field>
+          <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:48}} value={editPurch.notes||""} onChange={e=>setEditPurch(p=>({...p,notes:e.target.value}))}/></Field>
+          <button type="button" onClick={handleEditPurch} className="submitBtn" style={{...S.submitBtn,...tintBtn(ec2)}}>Salvar alterações</button>
+        </ModalShell>
       );})()}
     </div>
   );

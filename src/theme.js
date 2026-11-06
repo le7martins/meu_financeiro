@@ -17,4 +17,6 @@ export function applyTheme(theme) {
   const light = theme === 'light';
   LEGACY_INLINE_VARS.forEach((k) => root.style.removeProperty(k));
   root.classList.toggle('light-mode', light);
+  // Barra do navegador/status bar do PWA acompanha o tema (mesmo valor de --bg)
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f8fafc' : '#080c12');
 }
