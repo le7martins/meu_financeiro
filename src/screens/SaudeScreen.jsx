@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import HealthBar from '../components/HealthBar.jsx';
 import { getMonthEntries } from '../logic.js';
-import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort } from '../utils.js';
+import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort, newId } from '../utils.js';
 
 // ─── Masked currency input ───────────────────────────────────
 function CurrencyInput({ value, onChange, placeholder = "0,00", style = {} }) {
@@ -55,7 +55,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   const goalsList = goals.savingsGoals || [];
   const addGoal = () => {
     if(!goalDraft.name.trim()||goalDraft.targetAmount<=0) return;
-    onSaveGoals({...goals,savingsGoals:[...goalsList,{id:Date.now().toString(),...goalDraft}]});
+    onSaveGoals({...goals,savingsGoals:[...goalsList,{id:newId(),...goalDraft}]});
     setGoalDraft(blankDraft());setShowGoalForm(false);
   };
   const removeGoal = (id) => onSaveGoals({...goals,savingsGoals:goalsList.filter(g=>g.id!==id)});

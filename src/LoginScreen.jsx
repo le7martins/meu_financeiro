@@ -27,7 +27,7 @@ const S = {
     boxSizing:'border-box' },
   label: { fontSize:11, color:'#556', marginBottom:4, display:'block' },
   btn: (primary) => ({
-    width:'100%', padding:'13px', borderRadius:10, border:'none', cursor:'pointer',
+    width:'100%', padding:'13px', borderRadius:10, cursor:'pointer',
     fontSize:14, fontWeight:700, fontFamily:'inherit', transition:'opacity .15s',
     background: primary ? 'linear-gradient(135deg,#1a3a6e,#0d2247)' : '#0d1118',
     color: primary ? '#8ab4f8' : '#667',

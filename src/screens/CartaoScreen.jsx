@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Field from '../components/Field.jsx';
 import PartialFatModal from '../modals/PartialFatModal.jsx';
 import { getBillingMonth, buildFatura, getCardBillingMonths } from '../logic.js';
-import { fmt, fmtDate, mLabel, mShort, addM, TODAY } from '../utils.js';
+import { fmt, fmtDate, mLabel, mShort, addM, todayISO, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
 import S from '../styles.js';
 
@@ -17,11 +17,10 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const [editPurch,setEditPurch]=useState(null);
   const [selectedBM,setSelectedBM]=useState({});
   const [cardForm,setCardForm]=useState({name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]});
-  const [purchForm,setPurchForm]=useState({description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""});
+  const [purchForm,setPurchForm]=useState({description:"",amount:"",installments:1,purchaseDate:todayISO(),category:"outro",notes:""});
   const BLANK_CARD={name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]};
-  const BLANK_PURCH={description:"",amount:"",installments:1,purchaseDate:TODAY,category:"outro",notes:""};
+  const BLANK_PURCH={description:"",amount:"",installments:1,purchaseDate:todayISO(),category:"outro",notes:""};
   const activeCard=cards.find(c=>c.id===activeCardId)||null;
-  const toggleM=(key)=>setExpandedM(p=>({...p,[key]:!p[key]}));
   const openEditCard=(card)=>{setEditCardId(card.id);setCardForm({name:card.name,limit:String(card.limit||""),closeDay:String(card.closeDay),dueDay:String(card.dueDay),color:card.color});setShowCardForm(true);};
   const closeCardForm=()=>{setShowCardForm(false);setCardForm(BLANK_CARD);setEditCardId(null);};
 
@@ -32,14 +31,14 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
       setCards(cards.map(c=>c.id!==editCardId?c:{...c,...data}));
       toast("✓ Cartão atualizado");
     } else {
-      setCards([...cards,{id:Date.now().toString(),...data}]);
+      setCards([...cards,{id:newId(),...data}]);
       toast("💳 Cartão adicionado");
     }
     closeCardForm();
   };
   const handleSavePurchase=()=>{
     if(!purchForm.description.trim()||!purchForm.amount||!activeCardId) return;
-    const p={id:Date.now().toString(),cardId:activeCardId,...purchForm,amount:parseFloat(purchForm.amount),installments:parseInt(purchForm.installments)||1};
+    const p={id:newId(),cardId:activeCardId,...purchForm,amount:parseFloat(purchForm.amount),installments:parseInt(purchForm.installments)||1};
     setCardPurchases([p,...cardPurchases]);setPurchForm(BLANK_PURCH);setShowPurchaseForm(false);
     toast("✓ Compra lançada");
   };
@@ -58,7 +57,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const handlePayFat=(fat,amount)=>{
     const totalPaid=parseFloat(((fat.paidAmount||0)+amount).toFixed(2));
     const full=totalPaid>=fat.total;
-    setCardFaturas({...cardFaturas,[fat.key]:{paid:full,paidAmount:totalPaid,paidDate:TODAY,partial:!full}});
+    setCardFaturas({...cardFaturas,[fat.key]:{paid:full,paidAmount:totalPaid,paidDate:todayISO(),partial:!full}});
     setPartialFatTarget(null);
     toast(full?"✓ Fatura paga":"Pagamento parcial registrado");
   };

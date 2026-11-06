@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { getMonthEntries } from '../logic.js';
-import { addM, daysUntil, eVal } from '../utils.js';
+import { addM, daysUntil, dueDateFor, eVal } from '../utils.js';
 
 export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, NOW }) {
   const accumCache = useRef({});
@@ -69,7 +69,7 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
       const m = addM(NOW, i);
       const me = getMonthEntries(entries, dividas, m, cards, cardPurchases, cardFaturas);
       me.filter(e => e.statusForMonth === 'a_pagar').forEach(e => {
-        const due = (e.isDivida || e.isFatura || e.recurrence === 'none') ? e.date : `${m}-${e.date.split('-')[2]}`;
+        const due = dueDateFor(e, m);
         const days = daysUntil(due);
         if (days === null) return;
         const key = `${e.id || e.dividaId || e.faturaKey}_${m}`;

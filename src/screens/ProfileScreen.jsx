@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import Toggle from '../components/Toggle.jsx';
-import { mLabel } from '../utils.js';
+import { mLabel, newId } from '../utils.js';
 import S from '../styles.js';
 
 function ProfileSection({title,children}){return(<div><div style={{fontSize:9,color:"var(--text3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--card-bg)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
@@ -31,7 +31,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const saveAcc=()=>{
     if(!accDraft.name.trim()) return;
     if(editAccId) onSaveAccounts(accounts.map(a=>a.id===editAccId?{...a,...accDraft}:a));
-    else onSaveAccounts([...accounts,{id:Date.now().toString(),...accDraft}]);
+    else onSaveAccounts([...accounts,{id:newId(),...accDraft}]);
     setShowAccForm(false);setEditAccId(null);
   };
   const deleteAcc=(id)=>onSaveAccounts(accounts.filter(a=>a.id!==id));

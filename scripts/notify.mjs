@@ -1,131 +1,102 @@
 #!/usr/bin/env node
 /**
  * Cron: envia notificações push para usuários com vencimentos próximos.
- * Roda via GitHub Actions (diariamente às 08:00 BRT).
- * Requer: FIREBASE_SERVICE_ACCOUNT (JSON), VITE_VAPID_KEY no env.
+ * Roda via GitHub Actions (diariamente às 08:00 BRT, com TZ=America/Sao_Paulo).
+ * Usa as MESMAS regras do app (src/logic.js): recorrências, parcelas,
+ * dívidas e faturas de cartão.
  */
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
+import { collectDueAlerts, formatDueAlerts } from '../src/logic.js';
+import { todayISO } from '../src/utils.js';
 
 // GOOGLE_APPLICATION_CREDENTIALS aponta para o arquivo gravado pelo workflow
 initializeApp();
 const db = getFirestore();
 const messaging = getMessaging();
 
-const TODAY = new Date().toISOString().split('T')[0];
-const daysUntil = (ds) => {
-  if (!ds) return null;
-  return Math.ceil((new Date(ds + 'T12:00:00') - new Date(TODAY + 'T12:00:00')) / 86400000);
-};
-const getNow = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
-const addM = (k, n) => {
-  const [y, m] = k.split('-').map(Number);
-  const d = new Date(y, m - 1 + n, 1);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-};
+const DATA_TYPES = ['entries', 'dividas', 'cards', 'purchases', 'faturas', 'settings'];
 
 async function getUserData(uid) {
-  const types = ['entries', 'dividas', 'settings'];
   const results = {};
-  await Promise.all(types.map(async t => {
+  await Promise.all(DATA_TYPES.map(async t => {
     const snap = await db.doc(`users/${uid}/data/${t}`).get();
     if (snap.exists) results[t] = snap.data().v;
   }));
   return results;
 }
 
-function getUpcoming(entries = [], dividas = [], settings = {}) {
-  const daysBefore = settings.notifSettings?.daysBefore ?? 3;
-  const overdueAlert = settings.notifSettings?.overdueAlert !== false;
-  const NOW = getNow();
-  const NEXT = addM(NOW, 1);
-  const alerts = [];
+// Resume os grupos de alerta em uma única notificação.
+// O corpo é limitado: o FCM rejeita payloads acima de 4KB.
+const MAX_BODY = 300;
+const clip = (s) => (s.length > MAX_BODY ? `${s.slice(0, MAX_BODY - 1)}…` : s);
+function summarize(msgs) {
+  if (msgs.length === 1) return { title: msgs[0].title, body: clip(msgs[0].body) };
+  return { title: `${msgs.length} alertas financeiros`, body: clip(msgs.map(m => `${m.title}: ${m.body}`).join(' · ')) };
+}
 
-  const allEntries = [...(entries || [])];
-  for (const mk of [NOW, NEXT]) {
-    for (const e of allEntries) {
-      if (e.type !== 'despesa') continue;
-      const base = e.date.substring(0, 7);
-      let active = false;
-      if (e.recurrence === 'none') active = base === mk;
-      else if (e.recurrence === 'fixed') active = base <= mk && (!e.endMonth || mk <= e.endMonth);
-      if (!active) continue;
-      const status = e.statusByMonth?.[mk] || e.status || 'a_pagar';
-      if (status !== 'a_pagar') continue;
-      const dueDate = e.recurrence !== 'none' ? `${mk}-${e.date.split('-')[2]}` : e.date;
-      const days = daysUntil(dueDate);
-      if (days === null) continue;
-      if (days < 0 && overdueAlert) alerts.push({ title: `⚠️ Vencido há ${Math.abs(days)}d`, body: e.description });
-      else if (days === 0) alerts.push({ title: '🔴 Vence hoje!', body: e.description });
-      else if (days > 0 && days <= daysBefore) alerts.push({ title: `⏰ Vence em ${days}d`, body: e.description });
+async function processUser(uid, token, today) {
+  const data = await getUserData(uid);
+  const notif = data.settings?.notifSettings || {};
+  if (notif.enabled === false) return false;
+
+  const msgs = formatDueAlerts(collectDueAlerts({
+    entries: data.entries || [],
+    dividas: data.dividas || [],
+    cards: data.cards || [],
+    cardPurchases: data.purchases || [],
+    cardFaturas: data.faturas || {},
+  }, notif, today));
+  if (msgs.length === 0) return false;
+
+  const { title, body } = summarize(msgs);
+  try {
+    await messaging.send({
+      token,
+      notification: { title, body },
+      data: { tag: 'mf-cron', count: String(msgs.length) },
+      android: { priority: 'high', notification: { channelId: 'mf-alerts' } },
+      apns: { payload: { aps: { badge: msgs.length, sound: 'default' } } },
+      webpush: {
+        notification: { icon: '/meu_financeiro/icon-192.png', badge: '/meu_financeiro/icon-192.png', vibrate: [200, 100, 200] },
+        fcmOptions: { link: 'https://le7martins.github.io/meu_financeiro/' },
+      },
+    });
+  } catch (err) {
+    // Token inválido: remove do perfil
+    if (err.code === 'messaging/registration-token-not-registered') {
+      await db.doc(`userProfiles/${uid}`).update({ fcmToken: null });
     }
+    throw err;
   }
-
-  for (const d of (dividas || [])) {
-    const [sy, sm] = d.startMonth.split('-').map(Number);
-    const [ny, nm] = NOW.split('-').map(Number);
-    const diff = (ny - sy) * 12 + (nm - sm);
-    if (diff < 0 || diff >= d.installments) continue;
-    if (d.paidMonths?.includes(NOW)) continue;
-    const dueDate = `${NOW}-${d.dueDay || '10'}`;
-    const days = daysUntil(dueDate);
-    if (days === null) continue;
-    if (days < 0 && overdueAlert) alerts.push({ title: `⚠️ Dívida vencida há ${Math.abs(days)}d`, body: d.name });
-    else if (days === 0) alerts.push({ title: '🔴 Dívida vence hoje!', body: d.name });
-    else if (days > 0 && days <= daysBefore) alerts.push({ title: `⏰ Dívida vence em ${days}d`, body: d.name });
-  }
-
-  return alerts;
+  console.log(`[OK] ${uid.substring(0, 8)}… → ${msgs.length} grupo(s) de alerta`);
+  return true;
 }
 
 async function run() {
+  const today = todayISO();
+  console.log(`Data de referência: ${today}`);
   const profilesSnap = await db.collection('userProfiles').get();
   let sent = 0;
   let skipped = 0;
+  let failed = 0;
 
   for (const doc of profilesSnap.docs) {
-    const profile = doc.data();
     const uid = doc.id;
-    const token = profile.fcmToken;
+    const token = doc.data().fcmToken;
     if (!token) { skipped++; continue; }
 
-    const data = await getUserData(uid);
-    const alerts = getUpcoming(data.entries, data.dividas, data.settings);
-    if (alerts.length === 0) { skipped++; continue; }
-
-    // Agrupa em uma única notificação (resumo)
-    const titles = [...new Set(alerts.map(a => a.title))];
-    const bodies = alerts.map(a => a.body).slice(0, 5).join(', ');
-    const title = titles.length === 1 ? titles[0] : `${alerts.length} alertas financeiros`;
-
+    // Erro de um usuário (dado malformado, token inválido) não interrompe os demais
     try {
-      await messaging.send({
-        token,
-        notification: { title, body: bodies },
-        data: { tag: 'mf-cron', count: String(alerts.length) },
-        android: { priority: 'high', notification: { channelId: 'mf-alerts' } },
-        apns: { payload: { aps: { badge: alerts.length, sound: 'default' } } },
-        webpush: {
-          notification: { icon: '/meu_financeiro/icon-192.png', badge: '/meu_financeiro/icon-192.png', vibrate: [200, 100, 200] },
-          fcmOptions: { link: 'https://le7martins.github.io/meu_financeiro/' },
-        },
-      });
-      sent++;
-      console.log(`[OK] ${uid.substring(0, 8)}… → ${alerts.length} alerta(s)`);
+      if (await processUser(uid, token, today)) sent++; else skipped++;
     } catch (err) {
+      failed++;
       console.warn(`[WARN] ${uid.substring(0, 8)}… → ${err.message}`);
-      // Token inválido: remove do perfil
-      if (err.code === 'messaging/registration-token-not-registered') {
-        await db.doc(`userProfiles/${uid}`).update({ fcmToken: null });
-      }
     }
   }
 
-  console.log(`\nConcluído: ${sent} enviado(s), ${skipped} sem alertas/token.`);
+  console.log(`\nConcluído: ${sent} enviado(s), ${skipped} sem alertas/token, ${failed} com erro.`);
 }
 
 run().catch(e => { console.error(e); process.exit(1); });
