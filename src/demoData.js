@@ -40,13 +40,13 @@ export function seedDemo(uid) {
       id:'div1', name:'Financiamento Carro',
       totalAmount:36000, installments:60, startMonth:'2023-06',
       category:'transporte', notes:'Honda Civic — Itaú Financiamentos',
-      paidMonths:{},
+      paidMonths:[],
     },
     {
       id:'div2', name:'Empréstimo Pessoal',
       totalAmount:12000, installments:24, startMonth:'2024-06',
       category:'divida', notes:'CEF — taxa 1,8% a.m.',
-      paidMonths:{},
+      paidMonths:[],
     },
   ]);
 
@@ -58,16 +58,16 @@ export function seedDemo(uid) {
 
   // ── Card purchases ───────────────────────────────────────────
   save('cpurchases', [
-    { id:'cp1',  cardId:'c1', description:'iFood Jantar',           amount:87.90,  date:'2026-05-07', category:'alimentacao' },
-    { id:'cp2',  cardId:'c1', description:'Amazon — Livros',        amount:134.70, date:'2026-05-04', category:'educacao'    },
-    { id:'cp3',  cardId:'c1', description:'Zara — Calça jeans',     amount:299.90, date:'2026-04-22', category:'outro'       },
-    { id:'cp4',  cardId:'c1', description:'iFood Almoço',           amount:45.50,  date:'2026-04-17', category:'alimentacao' },
-    { id:'cp5',  cardId:'c1', description:'Netflix',                amount:55.90,  date:'2026-04-18', category:'assinatura'  },
-    { id:'cp6',  cardId:'c2', description:'Supermercado Carrefour', amount:487.30, date:'2026-05-08', category:'alimentacao' },
-    { id:'cp7',  cardId:'c2', description:'Posto Ipiranga',         amount:195.00, date:'2026-05-06', category:'transporte'  },
-    { id:'cp8',  cardId:'c2', description:'Drogasil',               amount:98.40,  date:'2026-05-09', category:'saude'       },
-    { id:'cp9',  cardId:'c2', description:'Renner — Camisetas',     amount:189.90, date:'2026-04-12', category:'outro'       },
-    { id:'cp10', cardId:'c2', description:'Burger King',            amount:62.50,  date:'2026-04-28', category:'alimentacao' },
+    { id:'cp1',  cardId:'c1', description:'iFood Jantar',           amount:87.90,  purchaseDate:'2026-05-07', category:'alimentacao' },
+    { id:'cp2',  cardId:'c1', description:'Amazon — Livros',        amount:134.70, purchaseDate:'2026-05-04', category:'educacao'    },
+    { id:'cp3',  cardId:'c1', description:'Zara — Calça jeans',     amount:299.90, purchaseDate:'2026-04-22', category:'outro'       },
+    { id:'cp4',  cardId:'c1', description:'iFood Almoço',           amount:45.50,  purchaseDate:'2026-04-17', category:'alimentacao' },
+    { id:'cp5',  cardId:'c1', description:'Netflix',                amount:55.90,  purchaseDate:'2026-04-18', category:'assinatura'  },
+    { id:'cp6',  cardId:'c2', description:'Supermercado Carrefour', amount:487.30, purchaseDate:'2026-05-08', category:'alimentacao' },
+    { id:'cp7',  cardId:'c2', description:'Posto Ipiranga',         amount:195.00, purchaseDate:'2026-05-06', category:'transporte'  },
+    { id:'cp8',  cardId:'c2', description:'Drogasil',               amount:98.40,  purchaseDate:'2026-05-09', category:'saude'       },
+    { id:'cp9',  cardId:'c2', description:'Renner — Camisetas',     amount:189.90, purchaseDate:'2026-04-12', category:'outro'       },
+    { id:'cp10', cardId:'c2', description:'Burger King',            amount:62.50,  purchaseDate:'2026-04-28', category:'alimentacao' },
   ]);
 
   // ── Card faturas (April paid) ─────────────────────────────────
