@@ -7,6 +7,10 @@
 // Equivalências hex→%: 11≈7 18≈9 20/22≈13 33=20 44≈27 55=33 66=40 88≈53 99=60
 export const tint = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
+// Cor usada como TEXTO: mistura com a cor do texto do tema, então escurece no tema claro (cores pastel
+// pensadas para o fundo escuro ficariam apagadas) e continua legível no escuro.
+export const textOn = (color) => `color-mix(in srgb, ${color} 62%, var(--text-1))`;
+
 const S={
   root:       {minHeight:"100vh",background:"var(--bg)",color:"var(--text-1)",fontFamily:"var(--font-sans)",paddingBottom:"calc(152px + env(safe-area-inset-bottom, 0px))"},
   header:     {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 8px",borderBottom:"1px solid var(--border-subtle)"},

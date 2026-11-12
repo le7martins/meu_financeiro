@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import DonutSVG from '../../components/DonutSVG.jsx';
-import S, { tint } from '../../styles.js';
+import S, { tint, textOn } from '../../styles.js';
 import { fmt, mShort, mLabel } from '../../utils.js';
 import { cardStats } from './summary.js';
 
@@ -24,7 +24,7 @@ export default function CardsTab({ cards, cardPurchases, cardFaturas, today, ran
             </div>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {cards.filter(c => d.byCard[c.id] > 0).map(c => (
-                <span key={c.id} style={{ fontSize: 'var(--fs-sm)', padding: '2px 7px', borderRadius: 5, background: tint(c.color, 13), color: c.color, border: `1px solid ${tint(c.color, 27)}` }}>{c.name}: {fmt(d.byCard[c.id])}</span>
+                <span key={c.id} style={{ fontSize: 'var(--fs-sm)', padding: '2px 7px', borderRadius: 5, background: tint(c.color, 13), color: textOn(c.color), border: `1px solid ${tint(c.color, 27)}` }}>{c.name}: {fmt(d.byCard[c.id])}</span>
               ))}
             </div>
           </div>
@@ -57,7 +57,7 @@ export default function CardsTab({ cards, cardPurchases, cardFaturas, today, ran
               <div key={card.id}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                   <span style={{ fontSize: 'var(--fs-md)', color: 'var(--text-1)', fontWeight: 600 }}>{card.name}</span>
-                  <span style={{ fontSize: 'var(--fs-md)', color: card.color, fontWeight: 700 }}>{fmt(total)} · {pct}%</span>
+                  <span style={{ fontSize: 'var(--fs-md)', color: textOn(card.color), fontWeight: 700 }}>{fmt(total)} · {pct}%</span>
                 </div>
                 <div role="progressbar" aria-label={`${card.name}: ${pct}% do total`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{ height: 5, background: 'var(--track)', borderRadius: 3, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: card.color }} />

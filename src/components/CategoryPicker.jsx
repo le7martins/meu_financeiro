@@ -43,7 +43,7 @@ export default function CategoryPicker({ cats, selected, onSelect, entries, type
               <div id={titleId} style={S.mTitle}>Categorias de {type === 'receita' ? 'receita' : 'despesa'}</div>
               <button type="button" aria-label="Fechar" style={S.xBtn} onClick={() => setOpen(false)}>✕</button>
             </div>
-            <CatSelector {...selectorProps} cats={cats} selected={selected} onSelect={id => { onSelect(id); setOpen(false); }} />
+            <CatSelector {...selectorProps} large label="Toque para escolher" cats={cats} selected={selected} onSelect={id => { onSelect(id); setOpen(false); }} />
           </div>
         </div>,
         document.body

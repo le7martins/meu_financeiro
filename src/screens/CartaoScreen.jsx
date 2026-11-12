@@ -6,13 +6,13 @@ import { payFatura } from '../entryActions.js';
 import { pickableCategories } from '../categoryMigration.js';
 import { fmt, fmtDate, mLabel, mShort, addM, todayISO, daysUntil, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
-import S, { tint } from "../styles.js";
+import S, { tint, textOn } from "../styles.js";
 import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
 
 const btnCancel={flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"};
 const btnDanger={flex:1,padding:"11px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"};
 const dangerNote={background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:11,padding:"12px 14px",marginBottom:18};
-const tintBtn=(color)=>({background:`linear-gradient(135deg,${tint(color,20)},${tint(color,7)})`,borderColor:tint(color,27),color});
+const tintBtn=(color)=>({background:`linear-gradient(135deg,${tint(color,20)},${tint(color,7)})`,borderColor:tint(color,27),color:textOn(color)});
 
 export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurchases,cardFaturas,setCardFaturas,categories,nowMonth,toast,onRevertFatura}){
   const [showCardForm,setShowCardForm]=useState(false);
@@ -32,7 +32,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const BLANK_CARD={name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]};
   const BLANK_PURCH={description:"",amount:"",installments:1,purchaseDate:todayISO(),category:"outro",notes:""};
   const activeCard=cards.find(c=>c.id===activeCardId)||null;
-  const openEditCard=(card)=>{setEditCardId(card.id);setCardForm({name:card.name,limit:String(card.limit||""),closeDay:String(card.closeDay),dueDay:String(card.dueDay),color:card.color});setShowCardForm(true);};
+  const openEditCard=(card)=>{setEditCardId(card.id);setCardForm({name:card.name,limit:String(card.limit||""),closeDay:String(card.closeDay),dueDay:String(card.dueDay),color:textOn(card.color)});setShowCardForm(true);};
   const closeCardForm=()=>{setShowCardForm(false);setCardForm(BLANK_CARD);setEditCardId(null);};
 
   const clampDay=(v,def)=>Math.min(28,Math.max(1,parseInt(v)||def));
@@ -106,7 +106,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
           const selFat=buildFatura(card,cardPurchases,cardFaturas,selBM);
           const usedLimit=cardUsedLimit(card,cardPurchases,cardFaturas);
           const limitPct=card.limit>0?Math.min(100,(usedLimit/card.limit)*100):0;
-          const limitColor=limitPct>80?"var(--danger)":limitPct>60?"var(--warning)":card.color;
+          const limitColor=limitPct>80?"var(--danger)":limitPct>60?"var(--warning)":textOn(card.color);
 
           return(
             <div key={card.id} style={{background:"var(--surface)",borderRadius:18,overflow:"hidden",border:`1px solid ${tint(card.color,13)}`}}>
@@ -120,7 +120,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
                     <button type="button" className="iconBtn" aria-label={`Nova compra no cartão ${card.name}`} title="Nova compra" onClick={()=>{setActiveCardId(card.id);setPurchForm(BLANK_PURCH);setShowPurchaseForm(true);}}
-                      style={{...S.iconBtn,width:44,height:44,borderRadius:"var(--radius-full)",background:tint(card.color,13),color:card.color}}>
+                      style={{...S.iconBtn,width:44,height:44,borderRadius:"var(--radius-full)",background:tint(card.color,13),color:textOn(card.color)}}>
                       <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
                     <MoreButton label={`Ações do cartão ${card.name}`} onClick={()=>setCardMenuId(card.id)}/>
@@ -170,7 +170,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
               <div style={{padding:"12px 14px 14px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                   <div>
-                    <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:"var(--fs-sm)",color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
+                    <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:"var(--fs-sm)",color:textOn(card.color),fontWeight:500}}>parcelas futuras</span>}</div>
                     {(()=>{
                       const late=!selFat.open&&selFat.total>0&&!selFat.paid&&selFat.dueDate<todayISO();
                       const days=late?-daysUntil(selFat.dueDate,todayISO()):0;
@@ -181,7 +181,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                   </div>
                   {selFat.total>0&&(
                     <div style={{textAlign:"right"}}>
-                      <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
+                      <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:textOn(card.color)}}>{fmt(selFat.total)}</div>
                       <div style={{fontSize:"var(--fs-sm)",marginTop:1,color:selFat.paid?"var(--success)":selFat.open?"var(--warning)":selFat.partial?"var(--warning)":"var(--orange)",fontWeight:600}}>
                         {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":selFat.partial?`✓ ${fmt(selFat.paidAmount||0)} pago`:"⏳ a pagar"}
                       </div>
@@ -198,11 +198,11 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
                         <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1,display:"flex",gap:8}}>
-                          {item.total>1&&<span style={{color:card.color,fontWeight:600}}>{item.installmentNum}/{item.total}x</span>}
+                          {item.total>1&&<span style={{color:textOn(card.color),fontWeight:600}}>{item.installmentNum}/{item.total}x</span>}
                           {item.total>1&&<span>Total {fmt(cardPurchases.find(x=>x.id===item.id)?.amount??item.amount*item.total)}</span>}
                         </div>
                       </div>
-                      <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:card.color,flexShrink:0}}>{fmt(item.amount)}</div>
+                      <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:textOn(card.color),flexShrink:0}}>{fmt(item.amount)}</div>
                       {!selFat.paid&&<MoreButton label={`Ações da compra ${item.description}`} onClick={()=>setPurchMenu(item)} style={{margin:"-4px -6px -4px 0"}}/>}
                     </div>
                   ))}
@@ -210,7 +210,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
 
                 {!selFat.open&&selFat.total>0&&!selFat.paid&&(
                   <button type="button" onClick={()=>setPartialFatTarget({...selFat,card})}
-                    style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${tint(card.color,20)},${tint(card.color,7)})`,border:`1px solid ${tint(card.color,27)}`,borderRadius:"var(--radius-md)",color:card.color,fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>
+                    style={{marginTop:10,width:"100%",padding:"10px",background:`linear-gradient(135deg,${tint(card.color,20)},${tint(card.color,7)})`,border:`1px solid ${tint(card.color,27)}`,borderRadius:"var(--radius-md)",color:textOn(card.color),fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>
                     {selFat.partial?`Pagar restante — ${fmt(parseFloat((selFat.total-selFat.paidAmount).toFixed(2)))}`:`Pagar fatura — ${fmt(selFat.total)}`}
                   </button>
                 )}

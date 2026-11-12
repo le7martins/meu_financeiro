@@ -1,6 +1,6 @@
 import { buildFatura, faturaDueOffset } from '../logic.js';
 import { fmt, mShort, addM, todayISO } from '../utils.js';
-import { tint } from '../styles.js';
+import { tint, textOn } from '../styles.js';
 
 const cents = (v) => Math.round(v * 100) / 100;
 const dm = (ds) => `${ds.slice(8, 10)}/${ds.slice(5, 7)}`;
@@ -65,7 +65,7 @@ export default function FaturasPlan({ cards, cardPurchases, cardFaturas, nowMont
                   </div>
                   <div style={{ fontSize: "var(--fs-sm)", fontWeight: st.token ? 600 : 500, color: st.token ? `var(--${st.token})` : "var(--text-3)", marginTop: 1 }}>{st.text}</div>
                 </div>
-                <div style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: f.paid ? "var(--text-3)" : card.color, flexShrink: 0 }}>{fmt(f.paid ? f.total : remaining)}</div>
+                <div style={{ fontSize: "var(--fs-lg)", fontWeight: 700, color: f.paid ? "var(--text-3)" : textOn(card.color), flexShrink: 0 }}>{fmt(f.paid ? f.total : remaining)}</div>
               </div>
             );
           })}

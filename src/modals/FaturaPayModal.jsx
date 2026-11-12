@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { fmt } from '../utils.js';
-import S, { tint } from '../styles.js';
+import S, { tint, textOn } from '../styles.js';
 import { useDialog } from '../components/Field.jsx';
 
 const btnSecondary={flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"};
@@ -17,7 +17,7 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
   const partialOk=partialN>0&&partialN<=remaining+0.004;
   const confirmOk=!isPartial||partialOk;
   const head=(title)=>(
-    <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>{title}</div><div style={{fontSize:"var(--fs-sm)",color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
+    <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>{title}</div><div style={{fontSize:"var(--fs-sm)",color:textOn(entry.cardColor),marginTop:2}}>💳 {entry.cardName}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
   );
   if(alreadyPaid) return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
@@ -43,7 +43,7 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
         {head("Pagar Fatura")}
         <div style={{background:"var(--surface-sunken)",border:"1px solid var(--border)",borderRadius:11,padding:"12px 14px",marginBottom:16,textAlign:"center"}}>
           <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginBottom:4}}>{alreadyPaid2>0?"Falta pagar":"Total da fatura"}</div>
-          <div style={{fontSize:"var(--fs-6xl)",fontWeight:800,color:entry.cardColor}}>{fmt(remaining)}</div>
+          <div style={{fontSize:"var(--fs-6xl)",fontWeight:800,color:textOn(entry.cardColor)}}>{fmt(remaining)}</div>
           {alreadyPaid2>0&&<div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:4}}>Total {fmt(entry.amount)} · já pago {fmt(alreadyPaid2)}</div>}
         </div>
         <div role="group" aria-label="Tipo de pagamento" style={{display:"flex",gap:8,marginBottom:16}}>
@@ -67,7 +67,7 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
         <div style={{display:"flex",gap:8}}>
           <button type="button" onClick={onClose} style={btnSecondary}>Cancelar</button>
           <button type="button" disabled={!confirmOk} onClick={()=>confirmOk&&onPay(entry,isPartial?partialN:remaining,isPartial&&partialN<remaining-0.004)}
-            style={{flex:1,padding:"11px",background:tint(entry.cardColor,13),border:`1px solid ${tint(entry.cardColor,27)}`,borderRadius:"var(--radius-md)",color:entry.cardColor,fontSize:"var(--fs-base)",fontWeight:700,cursor:confirmOk?"pointer":"not-allowed",opacity:confirmOk?1:0.45}}>
+            style={{flex:1,padding:"11px",background:tint(entry.cardColor,13),border:`1px solid ${tint(entry.cardColor,27)}`,borderRadius:"var(--radius-md)",color:textOn(entry.cardColor),fontSize:"var(--fs-base)",fontWeight:700,cursor:confirmOk?"pointer":"not-allowed",opacity:confirmOk?1:0.45}}>
             {isPartial?"Registrar pagamento":"✓ Marcar como paga"}
           </button>
         </div>

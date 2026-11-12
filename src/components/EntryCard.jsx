@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import S, { tint } from '../styles.js';
+import S, { tint, textOn } from '../styles.js';
 import EntryActionsSheet from './EntryActionsSheet.jsx';
 import { MoreButton } from './ActionsSheet.jsx';
 import { fmt, fmtDate, mDiff, dueLine, eVal, originalMonthAmount } from '../utils.js';
@@ -26,7 +26,7 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
     const due=dueLine(entry,selMonth);
     const paidDt=entry.isRecurring?entry.paidDateByMonth?.[selMonth]:entry.paidDate;
     const borderColor=entry.type==="receita"?"var(--success-border)":entry.isDivida?"var(--danger-border)":entry.isFatura?tint(entry.cardColor,33):"var(--border)";
-    const amtColor=entry.type==="receita"?"var(--success)":entry.isDivida?"var(--danger)":entry.isFatura?entry.cardColor:"var(--text-1)";
+    const amtColor=entry.type==="receita"?"var(--success)":entry.isDivida?"var(--danger)":entry.isFatura?textOn(entry.cardColor):"var(--text-1)";
     const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
     const origAmt=originalMonthAmount(entry);
     const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
@@ -98,7 +98,7 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
                   <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",display:"flex",columnGap:8,flexWrap:"wrap",alignItems:"baseline"}}>
                     {showPaidInMeta
                       ?<span style={{fontWeight:600,color:"var(--success)"}}>✓ {entry.type==="receita"?"Recebido":"Pago"} em {fmtDate(paidDt)}</span>
-                      :due&&<span style={{fontWeight:due.token?700:500,color:due.token?`var(--${due.token})`:entry.isOpenFatura?entry.cardColor:"var(--text-3)"}}>{due.text}</span>}
+                      :due&&<span style={{fontWeight:due.token?700:500,color:due.token?`var(--${due.token})`:entry.isOpenFatura?textOn(entry.cardColor):"var(--text-3)"}}>{due.text}</span>}
                   </div>
                 )}
                 {noteLine&&<div style={{display:"flex",alignItems:"center",gap:5,fontSize:"var(--fs-sm)",color:"var(--text-3)",minWidth:0}}>

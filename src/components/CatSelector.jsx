@@ -1,11 +1,11 @@
 import S, { tint } from '../styles.js';
 import { PRESET_COLORS } from '../constants.js';
 
-export default function CatSelector({cats,selected,onSelect,editCats,setEditCats,addingCat,setAddingCat,newName,setNewName,newColor,setNewColor,usedIds,onAddCat,onRemoveCat}){
+export default function CatSelector({large=false,label="Categoria",cats,selected,onSelect,editCats,setEditCats,addingCat,setAddingCat,newName,setNewName,newColor,setNewColor,usedIds,onAddCat,onRemoveCat}){
   return(
     <div style={{marginBottom:13}} role="group" aria-labelledby="catsel-lbl">
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-        <span id="catsel-lbl" style={{...S.lbl,marginBottom:0}}>Categoria</span>
+        <span id="catsel-lbl" style={{...S.lbl,marginBottom:0}}>{label}</span>
         <button type="button" onClick={()=>{setEditCats(p=>!p);setAddingCat(false);}} aria-pressed={!!editCats}
           style={{background:editCats?"var(--accent-soft)":"transparent",border:`1px solid ${editCats?"var(--accent-border)":"var(--border-subtle)"}`,borderRadius:"var(--radius-xs)",padding:"3px 8px",color:editCats?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-xs)",cursor:"pointer",fontWeight:600}}>
           {editCats?"✓ Concluir":"✏ Editar"}
@@ -17,7 +17,7 @@ export default function CatSelector({cats,selected,onSelect,editCats,setEditCats
           return(
             <div key={cat.id} style={{position:"relative",display:"inline-flex"}}>
               <button type="button" aria-pressed={sel} onClick={()=>!editCats&&onSelect(cat.id)}
-                style={{padding:editCats?"4px 22px 4px 9px":"5px 9px",borderRadius:7,border:`1px solid ${sel?cat.color:"transparent"}`,background:sel?tint(cat.color,13):"var(--surface-hover)",color:sel?cat.color:"var(--text-3)",fontSize:"var(--fs-sm)",cursor:editCats?"default":"pointer",fontWeight:500}}>
+                style={{...(large?{minHeight:44,padding:editCats?"0 26px 0 14px":"0 14px",borderRadius:"var(--radius-md)"}:{padding:editCats?"4px 22px 4px 9px":"5px 9px",borderRadius:7}),border:`1px solid ${sel?cat.color:"transparent"}`,background:sel?tint(cat.color,13):"var(--surface-hover)",color:sel?cat.color:"var(--text-3)",fontSize:"var(--fs-sm)",cursor:editCats?"default":"pointer",fontWeight:500}}>
                 <span aria-hidden="true" style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}
               </button>
               {editCats&&(usedIds.has(cat.id)
