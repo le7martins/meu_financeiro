@@ -83,7 +83,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
   // Categories with budget set but no spending this month — show in budget section
   const catsWithBudgetOnly = categories.filter(c =>
-    budgets[c.id] > 0 && !catMap[c.id]
+    c.type === 'despesa' && budgets[c.id] > 0 && !catMap[c.id]
   ).map(c => ({ id: c.id, name: c.name, color: c.color, value: 0 }));
 
   // Combined budget list: spending cats + budget-only cats
@@ -314,7 +314,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           const unallocated=incomeTarget-totalAllocated;
           const allocPct=incomeTarget>0?Math.min(100,(totalAllocated/incomeTarget)*100):0;
           const over=totalAllocated>incomeTarget;
-          const catsEnv=categories.filter(c=>budgets[c.id]>0).map(c=>({...c,budget:budgets[c.id],spent:catMap[c.id]||0})).sort((a,b)=>b.budget-a.budget);
+          const catsEnv=categories.filter(c=>c.type==='despesa'&&budgets[c.id]>0).map(c=>({...c,budget:budgets[c.id],spent:catMap[c.id]||0})).sort((a,b)=>b.budget-a.budget);
           return(
             <div style={{background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:14,padding:"14px"}}>
               <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--warning)",marginBottom:12}}>Planejamento do mês</div>

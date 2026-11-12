@@ -15,6 +15,7 @@ import {
 import { useUserData } from './hooks/useUserData.js';
 import { useMonthStats } from './hooks/useMonthStats.js';
 import { useToast } from './hooks/useToast.js';
+import { migrateCategories } from './categoryMigration.js';
 import { useToday } from './hooks/useToday.js';
 import S from './styles.js';
 import { CSS } from './appCss.js';
@@ -320,15 +321,17 @@ function MainApp({ fbUser, onLogout }){
       const ok=await showConfirm({title:"Restaurar backup?",message:"Todos os dados atuais serão substituídos pelos dados do backup.",detail:`Backup de ${data.exportedAt?new Date(data.exportedAt).toLocaleDateString("pt-BR"):"data desconhecida"} · ${parts}`,confirmLabel:"Restaurar",danger:true});
       if(!ok) return;
       try{
-        save.entries(data.entries);
+        // Backups antigos podem ter categorias "both": ajusta antes de salvar
+        const mig=migrateCategories({categories:data.categories||categories,entries:data.entries,budgets:data.budgets||budgets});
+        save.entries(mig.entries);
+        if(data.categories||mig.changedCats) save.categories(mig.categories);
+        if(data.budgets||mig.changedBudgets)  save.budgets(mig.budgets);
         if(data.dividas)       save.dividas(data.dividas);
         if(data.cards)         save.cards(data.cards);
         if(data.cardPurchases) save.cardPurchases(data.cardPurchases);
         if(data.cardFaturas)   save.cardFaturas(data.cardFaturas);
-        if(data.categories)    save.categories(data.categories);
         if(data.accounts)      save.accounts(data.accounts);
         if(data.goals)         save.goals(data.goals);
-        if(data.budgets)       save.budgets(data.budgets);
         if(data.notifSettings) save.notifSettings(data.notifSettings);
         toast("✅ Backup restaurado!");
       } catch(err){
@@ -337,7 +340,7 @@ function MainApp({ fbUser, onLogout }){
       }
     };
     reader.readAsText(file);e.target.value="";
-  },[save,toast,showConfirm]);
+  },[save,toast,showConfirm,categories,budgets]);
 
   const handleExportCSV=useCallback((mk,toMk)=>{
     const csv=buildCsv({entries,dividas,cards,cardPurchases,cardFaturas,categories},mk,toMk);

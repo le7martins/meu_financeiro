@@ -133,7 +133,7 @@ export function seedDemo(uid) {
     },
     {
       id:'e05', description:'Reembolso plano saúde', type:'receita',
-      amount:280, date:'2026-05-08', category:'saude',
+      amount:280, date:'2026-05-08', category:'reembolso',
       recurrence:'none', status:'pago', notes:'Consulta cardiologista',
       tags:[], statusByMonth:{}, overrides:{}, accountId:'acc1',
     },

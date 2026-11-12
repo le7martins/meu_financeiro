@@ -3,6 +3,7 @@ import Field, { ModalShell } from "../components/Field.jsx";
 import PartialFatModal from '../modals/PartialFatModal.jsx';
 import { buildFatura, getCardBillingMonths, faturaDueOffset, cardUsedLimit } from '../logic.js';
 import { payFatura } from '../entryActions.js';
+import { pickableCategories } from '../categoryMigration.js';
 import { fmt, fmtDate, mLabel, mShort, addM, todayISO, daysUntil, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
 import S, { tint } from "../styles.js";
@@ -307,7 +308,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
           <div style={{marginBottom:13}} role="group" aria-labelledby="cartao-cat-lbl">
             <span id="cartao-cat-lbl" style={S.lbl}>Categoria</span>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {categories.filter(c=>c.type==="both"||c.type==="despesa").map(cat=>{
+              {pickableCategories(categories,"despesa").map(cat=>{
                 const sel=purchForm.category===cat.id;
                 return(
                   <button type="button" key={cat.id} aria-pressed={sel} onClick={()=>setPurchForm(p=>({...p,category:cat.id}))}

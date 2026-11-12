@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import CatSelector from '../components/CatSelector.jsx';
+import CategoryPicker from '../components/CategoryPicker.jsx';
 import Field, { useDialog } from "../components/Field.jsx";
 import { fmt, eVal, mLabel, originalMonthAmount } from '../utils.js';
 import S from "../styles.js";
 import { MonthIcon, FutureIcon } from '../components/ScopeIcons.jsx';
+import { pickableCategories } from '../categoryMigration.js';
 
 export default function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClose}){
   const [desc,setDesc]=useState(entry.description);
@@ -24,12 +25,13 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
   const [notes,setNotes]=useState(entry.notes||"");
   const [tags,setTags]=useState(entry.tags||[]);
   const [tagInput,setTagInput]=useState("");
+  const [showMore,setShowMore]=useState(()=>!!(entry.notes||(entry.tags||[]).length));
   const addTag=(raw)=>{const t=raw.trim().toLowerCase().replace(/\s+/g,"_");if(!t||tags.includes(t))return;setTags(p=>[...p,t]);setTagInput("");};
   const [editCats,setEditCats]=useState(false);
   const [addingCat,setAddingCat]=useState(false);
   const [newName,setNewName]=useState("");
   const [newColor,setNewColor]=useState("#6C8EEF");
-  const filteredCats=categories.filter(c=>c.type==="both"||c.type===entry.type);
+  const filteredCats=pickableCategories(categories,entry.type);
   const usedIds=new Set(entries.map(e=>e.category));
   const isDespesa=entry.type==="despesa";
   const addCat=()=>{if(!newName.trim())return;const id=newName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_")+"_"+Date.now();onUpdateCats([...categories,{id,name:newName.trim(),color:newColor,type:entry.type}]);setCategory(id);setNewName("");setAddingCat(false);};
@@ -61,12 +63,18 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
             </div>
           )}
         </Field>
-        <CatSelector cats={filteredCats} selected={category} onSelect={setCategory} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
+        <CategoryPicker cats={filteredCats} selected={category} onSelect={setCategory} entries={entries} type={entry.type} selectorProps={{editCats,setEditCats,addingCat,setAddingCat,newName,setNewName,newColor,setNewColor,usedIds,onAddCat:addCat,onRemoveCat:removeCat}}/>
+        <button type="button" aria-expanded={showMore} onClick={()=>setShowMore(m=>!m)}
+          style={{width:"100%",minHeight:44,marginBottom:13,background:"transparent",border:"1px dashed var(--border)",borderRadius:"var(--radius-md)",color:"var(--text-2)",fontSize:"var(--fs-md)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+          {showMore?"Menos detalhes":"Mais detalhes (observação, tags)"}
+        </button>
+        {showMore&&(<>
         <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:52}} placeholder="Alguma anotação..." value={notes} onChange={e=>setNotes(e.target.value)}/></Field>
         <Field label="Tags (opcional)">
           {tags.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>{tags.map(t=><button type="button" key={t} aria-label={`Remover tag ${t}`} onClick={()=>setTags(p=>p.filter(x=>x!==t))} style={{fontSize:"var(--fs-xs)",padding:"2px 7px",borderRadius:5,background:"var(--accent-soft)",border:"1px solid var(--accent-border)",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>#{t} ✕</button>)}</div>}
           <input style={S.inp} placeholder="Adicionar tag (Enter ou vírgula)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
         </Field>
+        </>)}
         <Field label="Status"><div role="group" aria-label="Status" style={{display:"flex",gap:8}}>{(isDespesa?[["a_pagar","⏳ A Pagar","orange"],["pago","✓ Pago","success"]]:[["a_pagar","⏳ A Receber","orange"],["pago","✓ Recebido","success"]]).map(([s,l,c])=>(<button type="button" key={s} aria-pressed={resolvedStatus===s} onClick={()=>setStatus(s)} style={{...S.typeBtn,...(resolvedStatus===s?{background:`var(--${c}-soft)`,border:`1px solid var(--${c}-border)`,color:`var(--${c})`}:{})}}>{l}</button>))}</div></Field>
         {entry.isRecurring?(
           <div role="group" aria-labelledby="e-aplicar" style={{marginTop:4}}>

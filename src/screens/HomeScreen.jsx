@@ -86,7 +86,8 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
   ];
 
   const SORT_LABEL = { date: "Data", amount: "Valor", status: "Status", name: "Nome" };
-  const usedCategories = categories.filter(c => monthEntries.some(e => e.category === c.id));
+  const typeFilter = filter === "despesa" || filter === "receita" ? filter : null;
+  const usedCategories = categories.filter(c => monthEntries.some(e => e.category === c.id && (!typeFilter || e.type === typeFilter)));
   const activeChips = [
     filter !== "all" && { key: "status", label: FILTERS.find(f => f[0] === filter)?.[1] || filter, clear: () => setFilter("all") },
     filterCat !== "all" && { key: "cat", label: catName(filterCat), clear: () => setFilterCat("all") },

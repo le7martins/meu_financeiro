@@ -6,6 +6,7 @@ import { registerFCMToken } from '../fcm';
 import { loadLS, saveLS } from '../utils.js';
 import { DEFAULT_CATS, defaultNotifSettings } from '../constants.js';
 import { applyTheme } from '../theme.js';
+import { migrateCategories } from '../categoryMigration.js';
 
 const DEFAULT_GOALS = { monthly: 0, savingsPct: 20 };
 
@@ -145,6 +146,20 @@ export function useUserData(uid, { cloud = true } = {}) {
     setField(name, value, SETTINGS[name].ls);
     pushToCloud('settings', { ...readSettingsFromCache(), [name]: value });
   }, [setField, pushToCloud, readSettingsFromCache]);
+
+  // Cada categoria tem um tipo só (receita ou despesa): ajusta o que foi salvo antes dessa regra.
+  // Idempotente (a segunda passada não muda nada) e guarda uma cópia local para poder reverter.
+  useEffect(() => {
+    if (!dbReady) return;
+    const m = migrateCategories({ categories: data.categories, entries: data.entries, budgets: data.budgets });
+    if (!m.changed) return;
+    for (const [name, value] of [['categories', data.categories], ['entries', data.entries], ['budgets', data.budgets]]) {
+      if (loadLS(k(`${name}_v1_backup`), null) === null) saveLS(k(`${name}_v1_backup`), value);
+    }
+    if (m.changedCats) saveSetting('categories', m.categories);
+    if (m.changedBudgets) saveSetting('budgets', m.budgets);
+    if (m.changedEntries) saveCollection('entries', m.entries);
+  }, [dbReady, data.categories, data.entries, data.budgets, k, saveSetting, saveCollection]);
 
   // Aplica o tema sempre que muda (inclusive quando vem da nuvem)
   useEffect(() => { applyTheme(data.theme); }, [data.theme]);

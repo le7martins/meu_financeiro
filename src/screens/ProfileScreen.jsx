@@ -95,12 +95,13 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
     const {date:dCol,desc:descCol,amount:amtCol,category:catCol}=importMap;
     if(!dCol||!descCol||!amtCol)return;
     const now=Date.now();
-    const guessCategory=(rawCat)=>{
-      if(!rawCat||!catCol) return 'outro';
+    const guessCategory=(rawCat,type)=>{
+      const fallback=type==='receita'?'outra_receita':'outro';
+      if(!rawCat||!catCol) return fallback;
       const norm=(s)=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
       const r=norm(rawCat);
-      const found=categories.find(c=>norm(c.name).includes(r)||r.includes(norm(c.name)));
-      return found?found.id:'outro';
+      const found=categories.filter(c=>c.type===type).find(c=>norm(c.name).includes(r)||r.includes(norm(c.name)));
+      return found?found.id:fallback;
     };
     const isDuplicate=(ne)=>entries.some(e=>{
       if(Math.abs(parseFloat(e.amount)-ne.amount)>0.01) return false;
@@ -113,7 +114,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       const parsedAmt=parseBRNum(row[amtCol]);
       if(!parsedDate||parsedAmt===null||parsedAmt===0)return null;
       const type=importMap.type||(parsedAmt<0?'despesa':'receita');
-      return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type,status:'pago',category:guessCategory(row[catCol]),recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
+      return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type,status:'pago',category:guessCategory(row[catCol],type),recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
     }).filter(Boolean);
     if(candidates.length===0)return;
     const unique=candidates.filter(ne=>!isDuplicate(ne));

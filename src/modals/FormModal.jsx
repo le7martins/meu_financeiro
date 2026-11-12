@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef } from 'react';
-import CatSelector from '../components/CatSelector.jsx';
+import CategoryPicker from '../components/CategoryPicker.jsx';
 import Field, { useDialog } from "../components/Field.jsx";
 import MonthPicker from '../components/MonthPicker.jsx';
-import { fmt } from '../utils.js';
+import { fmt, fmtDate, todayISO } from '../utils.js';
 import { formErrors } from '../entryActions.js';
 import S, { tint } from "../styles.js";
+import { pickableCategories } from '../categoryMigration.js';
 
 export default function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose,cards=[],accounts=[]}){
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -51,11 +52,12 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
   const firstErr=touched.submit?Object.values(errs)[0]:null;
   const cardMode=type==="despesa"&&!!form.payWith&&form.payWith!=="saldo"; // compra no cartão: só único ou parcelado
   const [tagInput,setTagInput]=useState("");
-  const [showMore,setShowMore]=useState(()=>!!(form.notes||(form.tags||[]).length||form.accountId)); // abre sozinho ao clonar com esses dados
+  const [showMore,setShowMore]=useState(()=>!!(form.notes||(form.tags||[]).length||form.accountId||(form.recurrence&&form.recurrence!=="none"))); // abre sozinho ao clonar com esses dados
+  const lateErr=touched.submit&&(errs.installments||errs.endMonth); // erro dentro dos detalhes: abre o bloco
   const addTag=(raw)=>{const t=raw.trim().toLowerCase().replace(/\s+/g,"_");if(!t||(form.tags||[]).includes(t))return;set("tags",[...(form.tags||[]),t]);setTagInput("");};
   const [newName,setNewName]=useState("");
   const [newColor,setNewColor]=useState("#6C8EEF");
-  const filteredCats=categories.filter(c=>c.type==="both"||c.type===type);
+  const filteredCats=pickableCategories(categories,type);
   const usedIds=new Set(entries.map(e=>e.category));
   const addCat=()=>{if(!newName.trim())return;const id=newName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_")+"_"+Date.now();onUpdateCats([...categories,{id,name:newName.trim(),color:newColor,type}]);set("category",id);setNewName("");setAddingCat(false);};
   const removeCat=(catId)=>{if(usedIds.has(catId))return;onUpdateCats(categories.filter(c=>c.id!==catId));if(form.category===catId){const r=filteredCats.filter(c=>c.id!==catId);if(r.length>0)set("category",r[0].id);}};
@@ -65,17 +67,31 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
     ?[["a_pagar","⏳ A Receber","orange"],["pago","✓ Recebido","success"]]
     :[["a_pagar","⏳ A Pagar","orange"],["pago","✓ Pago","success"]];
 
+  const today=todayISO();
+  const repeatTypes=[["fixed","Fixo"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"]];
+  const group=form.recurrence==="none"?"none":form.recurrence==="installment"?"installment":"repeat";
+  const lastRepeat=useRef("fixed");
+  if(group==="repeat") lastRepeat.current=form.recurrence;
+  const pickGroup=(g)=>set("recurrence",g==="none"?"none":g==="installment"?"installment":lastRepeat.current);
+  const recLabel=group==="none"?"Único":group==="installment"?`${form.installments||"?"}x`:(repeatTypes.find(([r])=>r===form.recurrence)?.[1]||"Fixo");
+  const statusLabel=cardMode?null:(form.status==="pago"?(type==="receita"?"Recebido":"Pago"):(type==="receita"?"A receber":"A pagar"));
+  const summary=[form.date===today?"Hoje":fmtDate(form.date),recLabel,statusLabel,form.accountId&&accounts.find(a=>a.id===form.accountId)?.name].filter(Boolean).join(" · ");
+  const seg=(on)=>({...S.typeBtn,flex:1,minHeight:44,...(on?{background:"var(--accent-soft)",border:"1px solid var(--accent-border)",color:"var(--accent)"}:{})});
+  const open=showMore||!!lateErr;
+
   return(
     <div className="appOverlay" style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div {...dialogProps} style={{...S.modal,outline:"none"}} className="modal-in">
         <div style={S.modalHandle}/>
         <div style={S.mHeader}>
-          <div>
-            <div id={titleId} style={S.mTitle}>Novo Lançamento</div>
-            <div style={{fontSize:"var(--fs-sm)",color:typeColor,fontWeight:600,marginTop:3}}>{type==="receita"?"🟢 Receita":"🔴 Despesa"}</div>
-          </div>
+          <div id={titleId} style={{...S.mTitle,color:typeColor}}>{type==="receita"?"Nova receita":"Nova despesa"}</div>
           <button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button>
         </div>
+
+        {/* Valor primeiro: é o que se digita sempre */}
+        <Field label="Valor" required error={amtErr?`⚠️ ${amtErr}`:null}>
+          <input style={{...S.inp,fontSize:"var(--fs-6xl)",fontWeight:800,color:typeColor,padding:"10px 12px",borderColor:amtErr?"var(--danger)":"var(--border)"}} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
+        </Field>
 
         {/* Description with autocomplete */}
         <Field label="Descrição" required htmlFor="f-desc" error={descErr?`⚠️ ${descErr}`:null} errorId="f-desc-err">
@@ -116,15 +132,34 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           </div>
         </Field>
 
-        <div style={{display:"flex",gap:10}}>
-          <Field label="Valor" required error={amtErr?`⚠️ ${amtErr}`:null} style={{flex:1}}>
-            <input style={{...S.inp,borderColor:amtErr?"var(--danger)":"var(--border)"}} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
-          </Field>
-          <Field label={cardMode?"Data da compra":"Vencimento"} style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
-        </div>
+
+        <CategoryPicker cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} entries={entries} type={type} selectorProps={{editCats,setEditCats,addingCat,setAddingCat,newName,setNewName,newColor,setNewColor,usedIds,onAddCat:addCat,onRemoveCat:removeCat}}/>
+
+        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div role="group" aria-label="Pagar com" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button type="button" aria-pressed={form.payWith==="saldo"} onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>Saldo</button>{cards.map(c=>(<button type="button" key={c.id} aria-pressed={form.payWith===c.id} onClick={()=>{set("payWith",c.id);if(!["none","installment"].includes(form.recurrence))set("recurrence","none");}} style={{...S.chipBtn,...(form.payWith===c.id?{background:tint(c.color,20),border:`1px solid ${tint(c.color,53)}`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-sunken)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão{form.recurrence==="installment"?` em ${form.installments||"?"} parcelas`:""}</div>}</Field>}
+
+
+        {/* Detalhes recolhidos: data, recorrência, status, conta, observação e tags */}
+        <button type="button" aria-expanded={open} aria-controls="f-more" onClick={()=>setShowMore(m=>!m)}
+          style={{width:"100%",minHeight:48,marginBottom:open?10:14,padding:"0 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"var(--surface-sunken)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",color:"var(--text-1)",fontSize:"var(--fs-md)",fontWeight:600,cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+          <span>{summary}</span>
+          <span style={{display:"flex",alignItems:"center",gap:6,color:"var(--text-3)",fontSize:"var(--fs-sm)",fontWeight:500,flexShrink:0}}>Detalhes
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{transform:open?"rotate(180deg)":"none",transition:"transform .2s"}}><polyline points="6 9 12 15 18 9"/></svg>
+          </span>
+        </button>
+        {open&&(<div id="f-more">
+        <Field label={cardMode?"Data da compra":"Vencimento"}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
 
         <Field label="Recorrência">
-          <div role="group" aria-label="Recorrência" style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado"]].filter(([r])=>!cardMode||r==="none"||r==="installment").map(([r,l])=>(<button type="button" key={r} aria-pressed={form.recurrence===r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
+          <div role="group" aria-label="Recorrência" style={{display:"flex",gap:6}}>
+            {[["none","Único"],...(cardMode?[]:[["repeat","Repete"]]),["installment","Parcelado"]].map(([g,l])=>(
+              <button type="button" key={g} aria-pressed={group===g} onClick={()=>pickGroup(g)} style={seg(group===g)}>{l}</button>
+            ))}
+          </div>
+          {group==="repeat"&&(
+            <div role="group" aria-label="Frequência" style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+              {repeatTypes.map(([r,l])=><button type="button" key={r} aria-pressed={form.recurrence===r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,minHeight:40,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>)}
+            </div>
+          )}
           {form.recurrence==="installment"&&(
             <div style={{marginTop:10}}>
               <label htmlFor="f-parcelas" style={{...S.lbl,marginBottom:5}}>Nº de parcelas</label>
@@ -153,17 +188,8 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           </div>)}
         </Field>
 
-        <CatSelector cats={filteredCats} selected={form.category} onSelect={v=>set("category",v)} editCats={editCats} setEditCats={setEditCats} addingCat={addingCat} setAddingCat={setAddingCat} newName={newName} setNewName={setNewName} newColor={newColor} setNewColor={setNewColor} usedIds={usedIds} onAddCat={addCat} onRemoveCat={removeCat}/>
-
-        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div role="group" aria-label="Pagar com" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button type="button" aria-pressed={form.payWith==="saldo"} onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>💰 Saldo</button>{cards.map(c=>(<button type="button" key={c.id} aria-pressed={form.payWith===c.id} onClick={()=>{set("payWith",c.id);if(!["none","installment"].includes(form.recurrence))set("recurrence","none");}} style={{...S.chipBtn,...(form.payWith===c.id?{background:tint(c.color,20),border:`1px solid ${tint(c.color,53)}`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-sunken)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão{form.recurrence==="installment"?` em ${form.installments||"?"} parcelas`:""}</div>}</Field>}
-
         {(type!=="despesa"||!cards.length||form.payWith==="saldo")&&<Field label="Status"><div role="group" aria-label="Status" style={{display:"flex",gap:8}}>{statusOpts.map(([s,l,c])=>(<button type="button" key={s} aria-pressed={form.status===s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:`var(--${c}-soft)`,border:`1px solid var(--${c}-border)`,color:`var(--${c})`}:{})}}>{l}</button>))}</div></Field>}
 
-        <button type="button" aria-expanded={showMore} onClick={()=>setShowMore(m=>!m)}
-          style={{width:"100%",minHeight:44,marginBottom:13,background:"transparent",border:"1px dashed var(--border)",borderRadius:"var(--radius-md)",color:"var(--text-2)",fontSize:"var(--fs-md)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-          {showMore?"Menos opções":`Mais opções (${[accounts.length>0&&"conta","observação","tags"].filter(Boolean).join(", ")})`}
-        </button>
-        {showMore&&(<>
         {accounts.length>0&&<Field label="Conta (opcional)">
           <div role="group" aria-label="Conta" style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             <button type="button" aria-pressed={!form.accountId} onClick={()=>set("accountId",null)} style={{...S.chipBtn,...(!form.accountId?S.chipActive:{})}}>Sem conta</button>
@@ -183,13 +209,16 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           <input style={S.inp} placeholder="Ex: viagem, fixo, mercado... (Enter para adicionar)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
         </Field>
 
-        </>)}
+        </div>)}
 
-        {firstErr&&<div role="alert" style={{marginBottom:10,fontSize:"var(--fs-md)",color:"var(--danger)",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-sm)",padding:"8px 10px"}}>⚠️ {firstErr}</div>}
-        <button type="button" aria-disabled={!isValid} onClick={()=>{setTouched({description:true,amount:true,submit:true});if(isValid)onAdd();}} className="submitBtn"
-          style={{...S.submitBtn,opacity:isValid?1:0.45,cursor:isValid?"pointer":"not-allowed",background:type==="receita"?"var(--btn-success-bg)":"var(--primary-bg)",borderColor:type==="receita"?"var(--btn-success-border)":"var(--primary-border)",color:type==="receita"?"var(--btn-success-text)":"var(--orange)"}}>
-          Adicionar {type==="receita"?"Receita":"Despesa"}
-        </button>
+        {/* Rodapé fixo: o botão de adicionar nunca sai da tela */}
+        <div style={{position:"sticky",bottom:-36,margin:"6px -18px -36px",padding:"12px 18px 36px",background:"var(--surface-raised)",borderTop:"1px solid var(--border-subtle)"}}>
+          {firstErr&&<div role="alert" style={{marginBottom:10,fontSize:"var(--fs-md)",color:"var(--danger)",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-sm)",padding:"8px 10px"}}>⚠️ {firstErr}</div>}
+          <button type="button" aria-disabled={!isValid} onClick={()=>{setTouched({description:true,amount:true,submit:true});if(isValid)onAdd();}} className="submitBtn"
+            style={{...S.submitBtn,marginTop:0,opacity:isValid?1:0.45,cursor:isValid?"pointer":"not-allowed",background:type==="receita"?"var(--btn-success-bg)":"var(--primary-bg)",borderColor:type==="receita"?"var(--btn-success-border)":"var(--primary-border)",color:type==="receita"?"var(--btn-success-text)":"var(--orange)"}}>
+            Adicionar {type==="receita"?"receita":"despesa"}
+          </button>
+        </div>
       </div>
     </div>
   );
