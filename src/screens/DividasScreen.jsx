@@ -3,6 +3,7 @@ import Field, { ModalShell } from "../components/Field.jsx";
 import MonthPicker from '../components/MonthPicker.jsx';
 import { getNow, mLabel, mShort, addM, fmt, newId } from '../utils.js';
 import S, { tint } from "../styles.js";
+import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
 
 // ─── Masked currency input ────────────────────────────────────
 function CurrencyInput({ id, value, onChange, placeholder = "0,00", style = {} }) {
@@ -24,6 +25,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [delId,setDelId]=useState(null);
+  const [menuDivId,setMenuDivId]=useState(null);
   const [celebrate,setCelebrate]=useState(null);
   const [showQuitadas,setShowQuitadas]=useState(false);
   const BLANK_D={name:"",totalAmount:"",installments:12,startMonth:nowMonth,dueDay:"10",category:"divida",notes:""};
@@ -66,6 +68,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
   const openNew=()=>{setDform(BLANK_D);setEditId(null);setShowForm(true);};
   const closeForm=()=>{setShowForm(false);setEditId(null);};
   const canSave=!!dform.name&&!!dform.totalAmount;
+  const openEdit=(d)=>{setDform({name:d.name,totalAmount:String(d.totalAmount),installments:d.installments,startMonth:d.startMonth,dueDay:d.dueDay||"10",category:d.category||"divida",notes:d.notes||""});setEditId(d.id);setShowForm(true);};
 
   return(
     <div style={{paddingBottom:90}}>
@@ -78,16 +81,18 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
         <button type="button" onClick={openNew} className="hbtn add-btn" style={{...S.hbtn,...S.addBtn,fontSize:"var(--fs-md)"}}>+ Nova Dívida</button>
       </div>
 
-      {/* Summary cards — só mostra se há dívidas ativas */}
+      {/* Resumo — só mostra se há dívidas ativas */}
       {active.length>0&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"12px 14px 4px"}}>
-          <div style={{background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-lg)",padding:"11px 13px"}}>
-            <div style={{fontSize:"var(--fs-2xs)",color:"var(--danger)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700,marginBottom:4}}>Em aberto</div>
-            <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:"var(--danger)",letterSpacing:"-0.5px"}}>{fmt(Math.max(0,totalEmAberto))}</div>
-          </div>
-          <div style={{background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:"var(--radius-lg)",padding:"11px 13px"}}>
-            <div style={{fontSize:"var(--fs-2xs)",color:"var(--warning)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700,marginBottom:4}}>Total/mês</div>
-            <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:"var(--warning)",letterSpacing:"-0.5px"}}>{fmt(totalMensal)}</div>
+        <div style={{padding:"12px 14px 4px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:"10px 14px"}}>
+            <div>
+              <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700}}>Em aberto</div>
+              <div style={{fontSize:"var(--fs-xl)",fontWeight:800,color:"var(--danger)",letterSpacing:"-0.3px",marginTop:2}}>{fmt(Math.max(0,totalEmAberto))}</div>
+            </div>
+            <div>
+              <div style={{fontSize:"var(--fs-sm)",color:"var(--warning)",textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:700}}>Total/mês</div>
+              <div style={{fontSize:"var(--fs-xl)",fontWeight:800,color:"var(--warning)",letterSpacing:"-0.3px",marginTop:2}}>{fmt(totalMensal)}</div>
+            </div>
           </div>
         </div>
       )}
@@ -128,55 +133,55 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                   <div style={{fontSize:"var(--fs-md)",color:"var(--success)",fontWeight:700,marginTop:2}}>Dívida quitada! Parabéns!</div>
                 </div>
               )}
-              <div style={{padding:"13px 14px 10px"}}>
-                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8,marginBottom:10}}>
+              <div style={{padding:"12px 14px 10px"}}>
+                <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",gap:8}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--text-1)",marginBottom:3}}>{d.name}</div>
-                    <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                      <span style={{...S.tag,color:cc,borderColor:tint(cc,27),background:tint(cc,9)}}>{catName(d.category)}</span>
-                      <span style={{...S.tag,color:"var(--danger)",borderColor:"var(--danger-border)",background:"var(--danger-soft)"}}>💳 {paid}/{d.installments} parcelas</span>
-                      <span style={{fontSize:"var(--fs-xs)",color:"var(--text-4)"}}>até {mLabel(endMonth)}</span>
+                    <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--text-1)",minHeight:20,lineHeight:"20px"}}>{d.name}</div>
+                    <div style={{marginTop:3,fontSize:"var(--fs-sm)",color:"var(--text-3)",display:"flex",columnGap:10,rowGap:2,flexWrap:"wrap",alignItems:"center"}}>
+                      <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:"var(--radius-full)",background:cc}}/>{catName(d.category)}</span>
+                      <span>{paid}/{d.installments} parcelas</span>
+                      <span>até {mLabel(endMonth)}</span>
                     </div>
                   </div>
-                  <div style={{display:"flex",gap:4}}>
-                    <button type="button" className="iconBtn" title="Editar dívida" aria-label={`Editar dívida ${d.name}`} onClick={()=>{setDform({name:d.name,totalAmount:String(d.totalAmount),installments:d.installments,startMonth:d.startMonth,dueDay:d.dueDay||"10",category:d.category||"divida",notes:d.notes||""});setEditId(d.id);setShowForm(true);}}
-                      style={{...S.iconBtn,background:"var(--accent-soft)",color:"var(--accent)"}}>
-                      <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                    <button type="button" className="iconBtn" title="Excluir dívida" aria-label={`Excluir dívida ${d.name}`} onClick={()=>setDelId(d.id)} style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)"}}>✕</button>
-                  </div>
+                  <MoreButton label={`Ações da dívida ${d.name}`} onClick={()=>setMenuDivId(d.id)}/>
                 </div>
 
-                <div style={{marginBottom:10}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
-                    <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>Progresso de quitação</span>
-                    <span style={{fontSize:"var(--fs-md)",fontWeight:700,color:pct>=80?"var(--success)":pct>=50?"var(--warning)":"var(--danger)"}}>{pct}%</span>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:10}}>
+                  <div role="progressbar" aria-label={`Progresso de quitação de ${d.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{flex:1,height:6,background:"var(--track)",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${pct}%`,background:pct>=80?"var(--progress-success)":"linear-gradient(90deg,var(--danger),var(--orange))",borderRadius:3,transition:"width .6s"}}/>
                   </div>
-                  <div role="progressbar" aria-label={`Progresso de quitação de ${d.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} style={{height:8,background:"var(--track)",borderRadius:4,overflow:"hidden",border:"1px solid var(--border)"}}>
-                    <div style={{height:"100%",width:`${pct}%`,background:pct>=80?"var(--progress-success)":"linear-gradient(90deg,var(--danger),var(--orange))",borderRadius:4,transition:"width .6s"}}/>
-                  </div>
+                  <span style={{fontSize:"var(--fs-sm)",fontWeight:700,flexShrink:0,color:pct>=80?"var(--success)":pct>=50?"var(--warning)":"var(--danger)"}}>{pct}% quitado</span>
                 </div>
 
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                  <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-sm)",padding:"7px 8px",border:"1px solid var(--border-subtle)"}}><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:2}}>Total</div><div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:"var(--text-1)"}}>{fmt(d.totalAmount)}</div></div>
-                  <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-sm)",padding:"7px 8px",border:"1px solid var(--border-subtle)"}}><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:2}}>Parcela</div><div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:"var(--danger)"}}>{fmt(instVal)}</div></div>
-                  <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-sm)",padding:"7px 8px",border:"1px solid var(--border-subtle)"}}><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:2}}>Restante</div><div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:remaining<d.totalAmount*0.3?"var(--success)":"var(--warning)"}}>{fmt(remaining)}</div></div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginTop:10}}>
+                  <div><div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>Total</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--text-1)"}}>{fmt(d.totalAmount)}</div></div>
+                  <div><div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>Parcela</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--danger)"}}>{fmt(instVal)}</div></div>
+                  <div><div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>Restante</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:remaining<d.totalAmount*0.3?"var(--success)":"var(--warning)"}}>{fmt(remaining)}</div></div>
                 </div>
 
                 {isCurrent&&(
-                  <div style={{marginTop:10,display:"flex",alignItems:"center",justifyContent:"space-between",background:isPaidThisMonth?"var(--success-soft)":"var(--orange-soft)",borderRadius:9,padding:"9px 12px",border:`1px solid ${isPaidThisMonth?"var(--success-border)":"var(--orange-border)"}`}}>
-                    <div>
-                      <div style={{fontSize:"var(--fs-sm)",fontWeight:600,color:"var(--text-2)"}}>Parcela de {mLabel(NOW)}</div>
-                      <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>{currentDiff+1}/{d.installments} · {fmt(instVal)}</div>
+                  <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid var(--border-subtle)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontSize:"var(--fs-md)",fontWeight:600,color:"var(--text-2)"}}>Parcela de {mLabel(NOW)}</div>
+                      <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{currentDiff+1}/{d.installments} · {fmt(instVal)}</div>
                     </div>
-                    <button type="button" onClick={()=>toggleMonth(d,NOW)} className="statusToggleBtn" aria-pressed={!!isPaidThisMonth}
-                      style={{...S.badge,background:isPaidThisMonth?"var(--success-soft)":"var(--orange-soft)",color:isPaidThisMonth?"var(--success)":"var(--orange)",border:`1px solid ${isPaidThisMonth?"var(--success-border)":"var(--orange-border)"}`,cursor:"pointer",padding:"5px 10px",fontSize:"var(--fs-xs)"}}>
-                      {isPaidThisMonth?"✓ pago":"⏳ a pagar"}
-                    </button>
+                    {isPaidThisMonth?(
+                      <button type="button" onClick={()=>toggleMonth(d,NOW)} className="statusToggleBtn"
+                        aria-label={`Pago: marcar parcela de ${d.name} como pendente`} title="Pago — toque para marcar como pendente"
+                        style={{width:44,height:44,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-full)",border:"none",cursor:"pointer",background:"var(--success-soft)",color:"var(--success)"}}>
+                        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </button>
+                    ):(
+                      <button type="button" onClick={()=>toggleMonth(d,NOW)} className="statusToggleBtn"
+                        aria-label={`Marcar parcela de ${d.name} como paga`} title="Toque para marcar como paga"
+                        style={{flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"0 12px",minHeight:44,borderRadius:"var(--radius-md)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"var(--fs-sm)",fontWeight:700,background:"var(--orange-soft)",color:"var(--orange)"}}>
+                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>A pagar
+                      </button>
+                    )}
                   </div>
                 )}
 
-                {d.notes&&<div style={{marginTop:8,fontSize:"var(--fs-xs)",color:"var(--text-3)",fontStyle:"italic",paddingTop:6,borderTop:"1px solid var(--border-subtle)"}}>💬 {d.notes}</div>}
+                {d.notes&&<div style={{marginTop:8,fontSize:"var(--fs-sm)",color:"var(--text-3)",overflowWrap:"anywhere"}}>{d.notes}</div>}
               </div>
 
               {/* Installment chips */}
@@ -221,6 +226,15 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
           </div>
         )}
       </div>
+
+      {menuDivId&&(()=>{
+        const d=dividas.find(x=>x.id===menuDivId);
+        if(!d) return null;
+        return <ActionsSheet title={d.name} subtitle="Ações da dívida" onClose={()=>setMenuDivId(null)} actions={[
+          {key:"edit",label:"Editar",hint:"Alterar valor, parcelas, vencimento…",token:"accent",bg:"accent-surface",icon:ICONS.edit,onSelect:()=>openEdit(d)},
+          {key:"delete",label:"Excluir",hint:"Remove a dívida e todas as parcelas",token:"danger",bg:"danger-soft",icon:ICONS.delete,onSelect:()=>setDelId(d.id)},
+        ]}/>;
+      })()}
 
       {/* Delete modal */}
       {delId&&(

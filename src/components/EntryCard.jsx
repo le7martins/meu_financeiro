@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import S, { tint } from '../styles.js';
 import EntryActionsSheet from './EntryActionsSheet.jsx';
+import { MoreButton } from './ActionsSheet.jsx';
 import { fmt, fmtDate, mDiff, dueLine, eVal, originalMonthAmount } from '../utils.js';
 
 const chip = { fontSize: "var(--fs-sm)", fontWeight: 700, padding: "1px 6px", borderRadius: "var(--radius-xs)", flexShrink: 0 };
@@ -106,12 +107,7 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
           </div>
         </div>
         <div style={{...S.cardR,justifyContent:hasMenu?"space-between":"flex-end"}}>
-          {hasMenu&&(
-            <button type="button" className="iconBtn" aria-label={`Ações de ${entry.description}`} aria-haspopup="dialog" onClick={()=>setMenuOpen(true)}
-              style={{...S.iconBtn,width:44,height:36,background:"transparent",color:"var(--text-3)"}}>
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
-            </button>
-          )}
+          {hasMenu&&<MoreButton label={`Ações de ${entry.description}`} onClick={()=>setMenuOpen(true)}/>}
           {entry.isOpenFatura?(
             <span style={{...S.badge,background:"var(--info-soft)",color:"var(--info)",border:"1px solid var(--info-border)",padding:"4px 8px",fontSize:"var(--fs-sm)",display:"flex",alignItems:"center",gap:4}}>em aberto</span>
           ):paid?(

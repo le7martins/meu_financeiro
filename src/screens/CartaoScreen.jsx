@@ -5,6 +5,7 @@ import { getBillingMonth, buildFatura, getCardBillingMonths } from '../logic.js'
 import { fmt, fmtDate, mLabel, mShort, addM, todayISO, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
 import S, { tint } from "../styles.js";
+import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
 
 const btnCancel={flex:1,padding:"11px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"};
 const btnDanger={flex:1,padding:"11px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"};
@@ -18,6 +19,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const [activeCardId,setActiveCardId]=useState(null);
   const [editCardId,setEditCardId]=useState(null);
   const [delCardId,setDelCardId]=useState(null);
+  const [cardMenuId,setCardMenuId]=useState(null);
+  const [purchMenu,setPurchMenu]=useState(null);
   const [delPurchId,setDelPurchId]=useState(null);
   const [editPurch,setEditPurch]=useState(null);
   const [selectedBM,setSelectedBM]=useState({});
@@ -102,27 +105,24 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                     <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:"var(--text-1)"}}>{card.name}</div>
                     <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>Fecha dia {card.closeDay} · Vence dia {card.dueDay} do mês seguinte</div>
                   </div>
-                  <div style={{display:"flex",gap:5}}>
+                  <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
                     <button type="button" className="iconBtn" aria-label={`Nova compra no cartão ${card.name}`} title="Nova compra" onClick={()=>{setActiveCardId(card.id);setPurchForm(BLANK_PURCH);setShowPurchaseForm(true);}}
-                      style={{...S.iconBtn,background:tint(card.color,13),color:card.color,width:30,height:30,borderRadius:9}}>
-                      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      style={{...S.iconBtn,width:44,height:44,borderRadius:"var(--radius-full)",background:tint(card.color,13),color:card.color}}>
+                      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </button>
-                    <button type="button" className="iconBtn" title="Editar cartão" aria-label={`Editar cartão ${card.name}`} onClick={()=>openEditCard(card)}
-                      style={{...S.iconBtn,background:tint(card.color,13),color:card.color,width:30,height:30,borderRadius:9,fontSize:"var(--fs-base)"}}>✏</button>
-                    <button type="button" className="iconBtn" title="Excluir cartão" aria-label={`Excluir cartão ${card.name}`} onClick={()=>setDelCardId(card.id)} style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)",width:30,height:30,borderRadius:9}}>✕</button>
+                    <MoreButton label={`Ações do cartão ${card.name}`} onClick={()=>setCardMenuId(card.id)}/>
                   </div>
                 </div>
-                {card.limit>0&&(<div style={{marginTop:12}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                    <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Limite utilizado</span>
-                    <span style={{fontSize:"var(--fs-sm)",fontWeight:700,color:limitColor}}>{limitPct.toFixed(0)}%</span>
+                {card.limit>0&&(<div style={{marginTop:10}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <div role="progressbar" aria-label="Limite utilizado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(limitPct)} style={{flex:1,height:5,background:"var(--track)",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${limitPct}%`,background:limitColor,borderRadius:3,transition:"width .5s"}}/>
+                    </div>
+                    <span style={{fontSize:"var(--fs-sm)",fontWeight:700,color:limitColor,flexShrink:0}}>{limitPct.toFixed(0)}% do limite</span>
                   </div>
-                  <div role="progressbar" aria-label="Limite utilizado" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(limitPct)} style={{height:5,background:"var(--track)",borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${limitPct}%`,background:limitColor,borderRadius:3,transition:"width .5s"}}/>
-                  </div>
-                  <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                    <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Usado: {fmt(usedLimit)}</span>
-                    <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Disponível: {fmt(Math.max(0,card.limit-usedLimit))}</span>
+                  <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap",marginTop:5,fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>
+                    <span>Usado {fmt(usedLimit)}</span>
+                    <span>Disponível {fmt(Math.max(0,card.limit-usedLimit))}</span>
                   </div>
                 </div>)}
               </div>
@@ -138,13 +138,13 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                       <button type="button" key={bm} aria-pressed={isSel} onClick={()=>setSelectedBM(p=>({...p,[card.id]:bm}))}
                         style={{textAlign:"center",minWidth:62,background:isSel?tint(card.color,13):"var(--surface-sunken)",borderRadius:10,padding:"7px 5px",
                           border:`1.5px solid ${isSel?tint(card.color,60):"var(--border-subtle)"}`,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-                        <div style={{fontSize:"var(--fs-2xs)",color:isSel?card.color:isNow?"var(--text-2)":"var(--text-4)",fontWeight:isSel||isNow?700:400,marginBottom:3}}>
+                        <div style={{fontSize:"var(--fs-sm)",color:isSel?card.color:isNow?"var(--text-2)":"var(--text-4)",fontWeight:isSel||isNow?700:400,marginBottom:3}}>
                           {mShort(bm)}{isNow?" ●":""}
                         </div>
                         <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:f.total>0?(isSel?card.color:"var(--text-2)"):"var(--text-4)"}}>
                           {f.total>0?fmt(f.total):"—"}
                         </div>
-                        <div style={{fontSize:8,marginTop:2,color:f.paid?"var(--success)":f.open?"var(--warning)":f.total>0?"var(--orange)":"transparent"}}>
+                        <div style={{fontSize:"var(--fs-xs)",marginTop:2,color:f.paid?"var(--success)":f.open?"var(--warning)":f.total>0?"var(--orange)":"transparent"}}>
                           {f.paid?"✓ pago":f.open?"aberto":f.total>0?"a pagar":""}
                         </div>
                       </button>
@@ -157,15 +157,15 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
               <div style={{padding:"12px 14px 14px"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                   <div>
-                    <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:"var(--fs-2xs)",color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
-                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>
+                    <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:"var(--fs-sm)",color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
+                    <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1}}>
                       {selFat.open?`Fecha em ${fmtDate(selFat.closeDate)}`:selFat.total>0?`Vence ${fmtDate(selFat.dueDate)}`:"Sem compras"}
                     </div>
                   </div>
                   {selFat.total>0&&(
                     <div style={{textAlign:"right"}}>
                       <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
-                      <div style={{fontSize:"var(--fs-2xs)",marginTop:1,color:selFat.paid?"var(--success)":selFat.open?"var(--warning)":selFat.partial?"var(--warning)":"var(--orange)",fontWeight:600}}>
+                      <div style={{fontSize:"var(--fs-sm)",marginTop:1,color:selFat.paid?"var(--success)":selFat.open?"var(--warning)":selFat.partial?"var(--warning)":"var(--orange)",fontWeight:600}}>
                         {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":selFat.partial?`✓ ${fmt(selFat.paidAmount||0)} pago`:"⏳ a pagar"}
                       </div>
                     </div>
@@ -180,18 +180,13 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                     <div key={item.id+item.installmentNum} style={{display:"flex",alignItems:"center",gap:8,background:"var(--surface-sunken)",borderRadius:9,padding:"8px 10px",border:"1px solid var(--border-subtle)"}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
-                        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:1,display:"flex",gap:6}}>
-                          {item.total>1&&<span style={{color:card.color,fontWeight:600}}>📋 {item.installmentNum}/{item.total}x</span>}
-                          {item.total>1&&<span>Total: {fmt(item.amount*item.total)}</span>}
+                        <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1,display:"flex",gap:8}}>
+                          {item.total>1&&<span style={{color:card.color,fontWeight:600}}>{item.installmentNum}/{item.total}x</span>}
+                          {item.total>1&&<span>Total {fmt(item.amount*item.total)}</span>}
                         </div>
                       </div>
                       <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:card.color,flexShrink:0}}>{fmt(item.amount)}</div>
-                      {!selFat.paid&&(<>
-                        <button type="button" className="iconBtn" aria-label={`Editar compra ${item.description}`} onClick={()=>setEditPurch({...item,amount:String(parseFloat((item.amount*(item.total||1)).toFixed(2))),installments:String(item.total||1)})}
-                          style={{...S.iconBtn,background:"var(--accent-soft)",color:"var(--accent)",width:22,height:22,borderRadius:6,fontSize:"var(--fs-sm)"}}>✏</button>
-                        <button type="button" className="iconBtn" aria-label={`Excluir compra ${item.description}`} onClick={()=>setDelPurchId(item.id)}
-                          style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)",width:22,height:22,borderRadius:6,fontSize:"var(--fs-sm)"}}>✕</button>
-                      </>)}
+                      {!selFat.paid&&<MoreButton label={`Ações da compra ${item.description}`} onClick={()=>setPurchMenu(item)} style={{margin:"-4px -6px -4px 0"}}/>}
                     </div>
                   ))}
                 </div>
@@ -213,6 +208,19 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
           );
         })}
       </div>
+
+      {cardMenuId&&(()=>{
+        const card=cards.find(c=>c.id===cardMenuId);
+        if(!card) return null;
+        return <ActionsSheet title={card.name} subtitle="Ações do cartão" onClose={()=>setCardMenuId(null)} actions={[
+          {key:"edit",label:"Editar cartão",hint:"Nome, limite, fechamento e vencimento",token:"accent",bg:"accent-surface",icon:ICONS.edit,onSelect:()=>openEditCard(card)},
+          {key:"delete",label:"Excluir cartão",hint:"Remove o cartão e suas compras",token:"danger",bg:"danger-soft",icon:ICONS.delete,onSelect:()=>setDelCardId(card.id)},
+        ]}/>;
+      })()}
+      {purchMenu&&<ActionsSheet title={purchMenu.description} subtitle="Ações da compra" onClose={()=>setPurchMenu(null)} actions={[
+        {key:"edit",label:"Editar compra",hint:"Valor, parcelas, data e categoria",token:"accent",bg:"accent-surface",icon:ICONS.edit,onSelect:()=>setEditPurch({...purchMenu,amount:String(parseFloat((purchMenu.amount*(purchMenu.total||1)).toFixed(2))),installments:String(purchMenu.total||1)})},
+        {key:"delete",label:"Excluir compra",hint:"Remove a compra desta fatura",token:"danger",bg:"danger-soft",icon:ICONS.delete,onSelect:()=>setDelPurchId(purchMenu.id)},
+      ]}/>}
 
       {delCardId&&(
         <ModalShell title="Excluir cartão" onClose={()=>setDelCardId(null)} compact>
