@@ -102,8 +102,8 @@ self.addEventListener('fetch', e => {
 self.addEventListener('message', e => {
   if (e.data?.type === 'NOTIFY') {
     const { title, body, tag } = e.data;
-    self.registration.showNotification(title, {
-      body, tag,
+    self.registration.showNotification(String(title ?? 'CashUp').slice(0, 100), {
+      body: String(body ?? '').slice(0, 200), tag: String(tag ?? 'cashup').slice(0, 64),
       icon:    '/meu_financeiro/icon-192.png',
       badge:   '/meu_financeiro/badge-96.png',
       vibrate: [200, 100, 200],
