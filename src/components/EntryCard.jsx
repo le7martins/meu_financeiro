@@ -95,7 +95,7 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
               <svg {...svgProps} width="11" height="11" strokeWidth="2" style={{flexShrink:0}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
               <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteLine}</span>
             </div>}
-            {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:"var(--fs-sm)",color:"var(--success)",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
+            {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:"var(--fs-sm)",color:"var(--success)",marginTop:2}}>✓ {entry.type==="receita"?"Recebido":"Pago"} em {fmtDate(paidDt)}</div>}
           </div>
         </div>
         <div style={S.cardR}>

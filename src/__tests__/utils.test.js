@@ -50,8 +50,13 @@ describe('datas', () => {
   });
   test('dueLine: receita, paga, fatura aberta e outro ano', () => {
     const base = { statusForMonth: 'a_pagar', type: 'despesa', recurrence: 'none', date: '2026-11-05' };
-    expect(dueLine({ ...base, type: 'receita' }, '2026-11', '2026-11-03').text).toBe('Recebe em 2 dias · 05/11');
-    expect(dueLine({ ...base, type: 'receita' }, '2026-11', '2026-11-09').text).toBe('Recebimento 05/11 · há 4 dias');
+    const inc = { ...base, type: 'receita' };
+    expect(dueLine(inc, '2026-11', '2026-11-03')).toEqual({ text: 'Receber em 05/11 · em 2 dias', token: 'orange' });
+    expect(dueLine(inc, '2026-11', '2026-11-05').text).toBe('Receber em 05/11 · hoje');
+    expect(dueLine(inc, '2026-11', '2026-11-04').text).toBe('Receber em 05/11 · amanhã');
+    expect(dueLine(inc, '2026-11', '2026-10-20')).toEqual({ text: 'Receber em 05/11 · em 16 dias', token: null });
+    expect(dueLine(inc, '2026-11', '2026-11-09')).toEqual({ text: 'Receber em 05/11 · há 4 dias', token: 'danger' });
+    expect(dueLine({ ...inc, statusForMonth: 'pago' }, '2026-11', '2026-11-09')).toEqual({ text: 'Receber em 05/11', token: null });
     expect(dueLine({ ...base, statusForMonth: 'pago' }, '2026-11', '2026-11-09')).toEqual({ text: 'Vencimento 05/11', token: null });
     expect(dueLine({ ...base, isFatura: true, isOpenFatura: true }, '2026-11', '2026-11-01')).toEqual({ text: 'Fecha em 05/11', token: null });
     expect(dueLine({ ...base, date: '2027-01-10' }, '2027-01', '2026-12-30').text).toBe('Vence em 11 dias · 10/01/27');

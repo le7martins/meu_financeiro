@@ -36,10 +36,15 @@ export const dueLine = (entry,mk,today = todayISO()) => {
   const date = shortDate(ds,today);
   const income = entry.type==="receita";
   if(entry.isOpenFatura) return {text:`Fecha em ${date}`,token:null};
-  if(entry.statusForMonth==="pago") return {text:`${income?"Recebimento":"Vencimento"} ${date}`,token:null};
-  if(days<0) return {text:`${income?"Recebimento":"Venceu em"} ${date} · há ${plural(-days,"dia")}`,token:"danger"};
+  if(income){
+    if(entry.statusForMonth==="pago") return {text:`Receber em ${date}`,token:null};
+    const when = days<0?`há ${plural(-days,"dia")}`:days===0?"hoje":days===1?"amanhã":`em ${plural(days,"dia")}`;
+    return {text:`Receber em ${date} · ${when}`,token:days<0?"danger":days<=7?"orange":null};
+  }
+  if(entry.statusForMonth==="pago") return {text:`Vencimento ${date}`,token:null};
+  if(days<0) return {text:`Venceu em ${date} · há ${plural(-days,"dia")}`,token:"danger"};
   const when = days===0?"hoje":days===1?"amanhã":`em ${plural(days,"dia")}`;
-  return {text:`${income?"Recebe":"Vence"} ${when} · ${date}`,token:days<=7?"orange":null};
+  return {text:`Vence ${when} · ${date}`,token:days<=7?"orange":null};
 };
 // Valor do mês sem override: parcela, soma das ocorrências (semanal/quinzenal) ou o próprio valor.
 export const originalMonthAmount = (e) =>
