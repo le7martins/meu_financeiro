@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import HealthBar from '../components/HealthBar.jsx';
 import FaturasPlan from '../components/FaturasPlan.jsx';
+import Collapsible from '../components/Collapsible.jsx';
 import { getMonthEntries } from '../logic.js';
 import { tint } from '../styles.js';
 import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort, newId } from '../utils.js';
@@ -68,7 +69,6 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   const rec = me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
   const dep = me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
   const saldo = rec - dep;
-  const pago = me.filter(e=>e.type==="despesa"&&e.statusForMonth==="pago").reduce((s,e)=>s+eVal(e),0);
   const pendente = me.filter(e=>e.type==="despesa"&&e.statusForMonth==="a_pagar").reduce((s,e)=>s+eVal(e),0);
 
   const fixos = me.filter(e=>e.type==="despesa"&&e.isRecurring).reduce((s,e)=>s+eVal(e),0);
@@ -98,7 +98,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
   if (pendente > 0 && rec > 0 && (pendente/rec) > 0.3) score -= 10;
   score = Math.max(0, Math.min(100, score));
   const scoreColor = score>=80?"var(--success)":score>=60?"var(--warning)":"var(--danger)";
-  const scoreLabel = score>=80?"Saudável 💚":score>=60?"Atenção ⚠️":"Crítico 🚨";
+  const scoreLabel = score>=80?"Saudável":score>=60?"Atenção":"Crítico";
 
   // All categories with spending this month
   const catMap = {};
@@ -167,7 +167,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                   transform="rotate(-90 55 55)"
                   style={{stroke:scoreColor,transition:"stroke-dasharray .8s ease"}}/>
                 <text x="55" y="52" textAnchor="middle" fontSize="26" fontWeight="800" style={{fill:scoreColor}}>{score}</text>
-                <text x="55" y="68" textAnchor="middle" fontSize="10" style={{fill:"var(--chart-label)"}}>pontos</text>
+                <text x="55" y="68" textAnchor="middle" fontSize="11" style={{fill:"var(--chart-label)"}}>pontos</text>
               </svg>
             </div>
             {/* Info + sparkline */}
@@ -209,23 +209,6 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           </div>
         )}
 
-        {/* Resumo rápido */}
-        {rec>0&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-            {[
-              {label:"Recebido",value:rec,color:"var(--success)",icon:"↑"},
-              {label:"Gasto",value:dep,color:"var(--orange)",icon:"↓"},
-              {label:"Pago",value:pago,color:"var(--accent)",icon:"✓"},
-            ].map(({label,value,color,icon})=>(
-              <div key={label} style={{background:"var(--surface)",border:`1px solid ${tint(color,13)}`,borderRadius:"var(--radius-lg)",padding:"10px 10px",textAlign:"center"}}>
-                <div aria-hidden="true" style={{fontSize:"var(--fs-2xl)",marginBottom:4}}>{icon}</div>
-                <div style={{fontSize:"var(--fs-sm)",fontWeight:800,color}}>{fmtShort(value)}</div>
-                <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:2}}>{label}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Health bars */}
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           <HealthBar label="Gastos fixos / Renda" value={fixosPct} max={100} color={fixosPct>70?"var(--danger)":fixosPct>50?"var(--warning)":"var(--success)"} suffix="%" detail={`${fmt(fixos)} de ${fmt(rec)}`}/>
@@ -234,57 +217,190 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           {metaEcon>0&&<HealthBar label="Meta de economia" value={pct(economizado,metaEcon)} max={100} color="var(--purple)" suffix="%" detail={`${fmt(economizado)} de ${fmt(metaEcon)}`}/>}
         </div>
 
-        {/* Net worth */}
-        {(accounts.length>0||dividas.length>0)&&(()=>{
-          const totalAssets=accounts.reduce((s,acc)=>s+(accountBalances[acc.id]??acc.initialBalance??0),0);
-          const totalLiabilities=dividas.reduce((s,d)=>{
-            const instPaid=Math.min(d.installments,Math.max(0,mDiff(d.startMonth,nowMonth)));
-            return s+Math.max(0,d.totalAmount-instPaid*(d.totalAmount/d.installments));
-          },0);
-          const netWorth=totalAssets-totalLiabilities;
-          const pos=netWorth>=0;
-          return(
-            <div style={{background:"var(--success-soft)",border:"1px solid var(--success-border)",borderRadius:14,padding:"14px"}}>
-              <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--success)",marginBottom:12}}>🏛️ Patrimônio Líquido</div>
-              <div style={{textAlign:"center",marginBottom:14}}>
-                <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:3}}>Patrimônio líquido</div>
-                <div style={{fontSize:26,fontWeight:800,color:pos?"var(--success)":"var(--danger)",letterSpacing:"-1px"}}>{fmt(netWorth)}</div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:accounts.length>0?10:0}}>
-                <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px"}}>
-                  <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:4}}>↑ Ativos</div>
-                  <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--success)"}}>{fmt(totalAssets)}</div>
-                  {accounts.length>0&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{accounts.length} conta{accounts.length!==1?"s":""}</div>}
+        {/* Budget per category — enhanced */}
+        {budgetList.length>0&&(
+          <div style={{background:"var(--surface)",border:`1px solid ${hasBudgetOverrun?"var(--danger-border)":"var(--border)"}`,borderRadius:14,padding:"14px"}}>
+            <SectionTitle color={hasBudgetOverrun?"var(--danger)":"var(--accent)"}
+              extra={hasBudgetOverrun&&<span style={{fontSize:"var(--fs-2xs)",background:"var(--danger-soft)",color:"var(--danger)",border:"1px solid var(--danger-border)",borderRadius:5,padding:"2px 7px",fontWeight:700}}>⚠️ Orçamento estourado</span>}>
+              Orçamento por categoria
+            </SectionTitle>
+
+            {/* Summary totals row */}
+            {Object.keys(budgets).length>0&&(()=>{
+              const totalBudget = Object.values(budgets).reduce((s,v)=>s+(v||0),0);
+              const totalSpent  = budgetList.reduce((s,c)=>s+c.value,0);
+              const pctTot = totalBudget>0?Math.min(100,(totalSpent/totalBudget)*100):0;
+              return (
+                <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px",marginBottom:12,display:"flex",gap:14,alignItems:"center"}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                      <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Total gasto / orçamento</span>
+                      <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:pctTot>100?"var(--danger)":pctTot>80?"var(--warning)":"var(--success)"}}>{pctTot.toFixed(0)}%</span>
+                    </div>
+                    <div role="progressbar" aria-label="Total gasto / orçamento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pctTot)} style={{height:6,background:"var(--track)",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:`${pctTot}%`,background:pctTot>100?"var(--progress-danger)":pctTot>80?"var(--progress-warning)":"var(--progress-success)",borderRadius:3,transition:"width .6s"}}/>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:"var(--fs-md)",fontWeight:800,color:pctTot>100?"var(--danger)":"var(--text-1)"}}>{fmt(totalSpent)}</div>
+                    <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>de {fmt(totalBudget)}</div>
+                  </div>
                 </div>
-                <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px"}}>
-                  <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:4}}>↓ Passivos</div>
-                  <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:totalLiabilities>0?"var(--danger)":"var(--success)"}}>{fmt(totalLiabilities)}</div>
-                  {dividas.length>0&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{dividas.length} dívida{dividas.length!==1?"s":""}</div>}
-                </div>
-              </div>
-              {accounts.length>0&&(
-                <div style={{display:"flex",flexDirection:"column",gap:0}}>
-                  {accounts.map((acc,i)=>{
-                    const bal=accountBalances[acc.id]??acc.initialBalance??0;
-                    return(
-                      <div key={acc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:"1px solid var(--border-subtle)"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:7}}>
-                          <div style={{width:7,height:7,borderRadius:"50%",background:acc.color||"var(--success)"}}/>
-                          <span style={{fontSize:"var(--fs-md)",color:"var(--text-2)"}}>{acc.name}</span>
+              );
+            })()}
+
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {budgetListVisible.map((c,i)=>{
+                const budget=budgets[c.id]||0;
+                const pctUsed=budget>0?Math.min(120,(c.value/budget)*100):0;
+                const overrun = budget>0 && c.value>budget;
+                const barColor = overrun?"var(--danger)":pctUsed>80?"var(--warning)":c.color;
+                return(
+                  <div key={i} style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px",border:`1px solid ${overrun?"var(--danger-border)":budget>0?"var(--border-subtle)":"transparent"}`}}>
+                    {/* Header row */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:budget>0?7:5}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                      <span style={{fontSize:"var(--fs-md)",color:"var(--text-2)",flex:1,fontWeight:500}}>{c.name}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <span style={{fontSize:"var(--fs-md)",fontWeight:700,color:overrun?"var(--danger)":c.color}}>{fmt(c.value)}</span>
+                        {budget>0&&(
+                          <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>/ {fmt(budget)}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Progress bar — only when budget set */}
+                    {budget>0&&(
+                      <div style={{marginBottom:6}}>
+                        <div role="progressbar" aria-label={`Orçamento de ${c.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100,pctUsed))} style={{height:6,background:"var(--track)",borderRadius:3,overflow:"hidden",position:"relative"}}>
+                          <div style={{
+                            height:"100%",
+                            width:`${Math.min(100,pctUsed)}%`,
+                            background:overrun
+                              ?"var(--progress-danger)"
+                              :pctUsed>80
+                              ?"var(--progress-warning)"
+                              :`linear-gradient(90deg,${tint(c.color,60)},${c.color})`,
+                            borderRadius:3,
+                            transition:"width .5s"
+                          }}/>
                         </div>
-                        <span style={{fontSize:"var(--fs-md)",fontWeight:700,color:bal>=0?"var(--success)":"var(--danger)"}}>{fmt(bal)}</span>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
+                          <span style={{fontSize:"var(--fs-2xs)",color:barColor,fontWeight:600}}>
+                            {overrun
+                              ?`⚠️ +${fmt(c.value-budget)} acima`
+                              :pctUsed>80
+                              ?`⏳ ${fmt(budget-c.value)} restante`
+                              :`${(100-pctUsed).toFixed(0)}% livre`}
+                          </span>
+                          <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>{pctUsed.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Budget input */}
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",flexShrink:0}}>Limite:</span>
+                      <CurrencyInput
+                        value={budget}
+                        onChange={v=>onSaveBudgets({...budgets,[c.id]:v})}
+                        placeholder="0,00"
+                        aria-label={`Limite de ${c.name}`}
+                        style={budgetInpStyle}
+                      />
+                      {budget>0&&(
+                        <button onClick={()=>onSaveBudgets({...budgets,[c.id]:0})}
+                          style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:"var(--fs-lg)",padding:"0 4px",minWidth:36,minHeight:36,lineHeight:1,flexShrink:0}}
+                          title="Remover limite" aria-label={`Remover limite de ${c.name}`}>✕</button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Show more / less */}
+            {budgetList.length>6&&(
+              <button onClick={()=>setShowAllBudget(p=>!p)} aria-expanded={showAllBudget}
+                style={{width:"100%",marginTop:10,padding:"8px",background:"none",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)",color:"var(--text-3)",fontSize:"var(--fs-sm)",cursor:"pointer",fontFamily:"inherit"}}>
+                {showAllBudget?`▲ Mostrar menos`:`▼ Ver mais ${budgetList.length-6} categorias`}
+              </button>
+            )}
+
+            {/* Add budget hint when no budgets set */}
+            {Object.keys(budgets).filter(k=>budgets[k]>0).length===0&&(
+              <div style={{marginTop:8,fontSize:"var(--fs-sm)",color:"var(--text-3)",textAlign:"center",lineHeight:1.5}}>
+                Defina limites de orçamento para cada categoria e receba alertas quando ultrapassar
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Envelope planning */}
+        {(goals.monthly>0||Object.values(budgets).some(v=>v>0))&&(()=>{
+          const incomeTarget=goals.monthly||rec||0;
+          const totalAllocated=Object.values(budgets).reduce((s,v)=>s+(v||0),0);
+          const unallocated=incomeTarget-totalAllocated;
+          const allocPct=incomeTarget>0?Math.min(100,(totalAllocated/incomeTarget)*100):0;
+          const over=totalAllocated>incomeTarget;
+          const catsEnv=categories.filter(c=>budgets[c.id]>0).map(c=>({...c,budget:budgets[c.id],spent:catMap[c.id]||0})).sort((a,b)=>b.budget-a.budget);
+          return(
+            <div style={{background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:14,padding:"14px"}}>
+              <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--warning)",marginBottom:12}}>Planejamento do mês</div>
+              <div style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                  <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Envelopes alocados{incomeTarget>0?` / renda${goals.monthly>0?" meta":""}`:""}</span>
+                  <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:over?"var(--danger)":allocPct>=90?"var(--success)":"var(--warning)"}}>{allocPct.toFixed(0)}%</span>
+                </div>
+                <div role="progressbar" aria-label="Envelopes alocados" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(allocPct)} style={{height:8,background:"var(--track)",borderRadius:4,overflow:"hidden",marginBottom:5}}>
+                  <div style={{height:"100%",width:`${allocPct}%`,background:over?"var(--progress-danger)":"var(--progress-warning)",borderRadius:4,transition:"width .6s"}}/>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontSize:"var(--fs-xs)",color:over?"var(--danger)":"var(--text-2)",fontWeight:600}}>
+                    {over?`⚠️ +${fmt(totalAllocated-incomeTarget)} acima da renda`:`${fmt(Math.abs(unallocated))} ${unallocated>=0?"livre":"excedido"}`}
+                  </span>
+                  {incomeTarget>0&&<span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>{fmt(totalAllocated)} de {fmt(incomeTarget)}</span>}
+                </div>
+              </div>
+              {catsEnv.length>0&&(
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {catsEnv.map(c=>{
+                    const pctSpent=c.budget>0?Math.min(100,(c.spent/c.budget)*100):0;
+                    const pctOfIncome=incomeTarget>0?((c.budget/incomeTarget)*100):0;
+                    const overCat=c.spent>c.budget;
+                    return(
+                      <div key={c.id} style={{background:"var(--surface-sunken)",borderRadius:9,padding:"9px 11px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:c.color,flexShrink:0}}/>
+                          <span style={{fontSize:"var(--fs-sm)",color:"var(--text-2)",flex:1}}>{c.name}</span>
+                          {incomeTarget>0&&<span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginRight:4}}>{pctOfIncome.toFixed(0)}% da renda</span>}
+                          <span style={{fontSize:"var(--fs-sm)",fontWeight:700,color:overCat?"var(--danger)":c.color}}>{fmt(c.budget)}</span>
+                        </div>
+                        <div role="progressbar" aria-label={`Gasto em ${c.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pctSpent)} style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${pctSpent}%`,background:overCat?"var(--danger)":pctSpent>80?"var(--warning)":c.color,borderRadius:2,transition:"width .5s"}}/>
+                        </div>
+                        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:3,textAlign:"right"}}>gasto {fmt(c.spent)} · {pctSpent.toFixed(0)}%</div>
                       </div>
                     );
                   })}
+                </div>
+              )}
+              {catsEnv.length===0&&(
+                <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",textAlign:"center",padding:"4px 0",lineHeight:1.6}}>
+                  Defina orçamentos por categoria para usar o método envelope
                 </div>
               )}
             </div>
           );
         })()}
 
+        {/* Faturas dos cartões: mês atual + próximos meses */}
+        {cards.length>0&&<FaturasPlan cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} nowMonth={nowMonth} budget={budgets.cartao}/>}
+
+        <Collapsible title="Metas e reserva" hint="Meta de renda e economia, reserva de emergência e objetivos de poupança">
         {/* Financial goals */}
         <div style={{background:"var(--accent-soft)",border:"1px solid var(--accent-border)",borderRadius:14,padding:"14px"}}>
-          <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--accent)",marginBottom:12}}>🎯 Metas financeiras</div>
+          <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--accent)",marginBottom:12}}>Metas financeiras</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div>
               <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Meta de renda mensal</div>
@@ -315,7 +431,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
 
         {/* Emergency reserve */}
         <div style={{background:"var(--success-soft)",border:"1px solid var(--success-border)",borderRadius:14,padding:"14px"}}>
-          <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--success)",marginBottom:4}}>🏦 Reserva de Emergência</div>
+          <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--success)",marginBottom:4}}>Reserva de emergência</div>
           <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:12}}>
             Recomendado: 3–6× despesas fixas
             {fixos>0&&<span style={{color:"var(--success)",fontWeight:600}}> ({fmt(fixos*3)} – {fmt(fixos*6)})</span>}
@@ -358,7 +474,7 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
         {/* Savings goals with target date */}
         <div style={{background:"var(--purple-soft)",border:"1px solid var(--purple-border)",borderRadius:14,padding:"14px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:goalsList.length>0||showGoalForm?12:0}}>
-            <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--purple)"}}>🏁 Objetivos de poupança</div>
+            <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--purple)"}}>Objetivos de poupança</div>
             {!showGoalForm&&<button onClick={()=>{setGoalDraft(blankDraft());setShowGoalForm(true);}}
               style={{fontSize:"var(--fs-sm)",fontWeight:700,color:"var(--purple)",background:"var(--purple-soft)",border:"1px solid var(--purple-border)",borderRadius:7,padding:"4px 10px",minHeight:32,cursor:"pointer",fontFamily:"inherit"}}>
               + Novo
@@ -468,185 +584,58 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           )}
         </div>
 
-        {/* Budget per category — enhanced */}
-        {budgetList.length>0&&(
-          <div style={{background:"var(--surface)",border:`1px solid ${hasBudgetOverrun?"var(--danger-border)":"var(--border)"}`,borderRadius:14,padding:"14px"}}>
-            <SectionTitle color={hasBudgetOverrun?"var(--danger)":"var(--accent)"}
-              extra={hasBudgetOverrun&&<span style={{fontSize:"var(--fs-2xs)",background:"var(--danger-soft)",color:"var(--danger)",border:"1px solid var(--danger-border)",borderRadius:5,padding:"2px 7px",fontWeight:700}}>⚠️ Orçamento estourado</span>}>
-              💰 Orçamento por Categoria
-            </SectionTitle>
+        </Collapsible>
 
-            {/* Summary totals row */}
-            {Object.keys(budgets).length>0&&(()=>{
-              const totalBudget = Object.values(budgets).reduce((s,v)=>s+(v||0),0);
-              const totalSpent  = budgetList.reduce((s,c)=>s+c.value,0);
-              const pctTot = totalBudget>0?Math.min(100,(totalSpent/totalBudget)*100):0;
-              return (
-                <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px",marginBottom:12,display:"flex",gap:14,alignItems:"center"}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                      <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Total gasto / orçamento</span>
-                      <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:pctTot>100?"var(--danger)":pctTot>80?"var(--warning)":"var(--success)"}}>{pctTot.toFixed(0)}%</span>
-                    </div>
-                    <div role="progressbar" aria-label="Total gasto / orçamento" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pctTot)} style={{height:6,background:"var(--track)",borderRadius:3,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:`${pctTot}%`,background:pctTot>100?"var(--progress-danger)":pctTot>80?"var(--progress-warning)":"var(--progress-success)",borderRadius:3,transition:"width .6s"}}/>
-                    </div>
-                  </div>
-                  <div style={{textAlign:"right",flexShrink:0}}>
-                    <div style={{fontSize:"var(--fs-md)",fontWeight:800,color:pctTot>100?"var(--danger)":"var(--text-1)"}}>{fmt(totalSpent)}</div>
-                    <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>de {fmt(totalBudget)}</div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {budgetListVisible.map((c,i)=>{
-                const budget=budgets[c.id]||0;
-                const pctUsed=budget>0?Math.min(120,(c.value/budget)*100):0;
-                const overrun = budget>0 && c.value>budget;
-                const barColor = overrun?"var(--danger)":pctUsed>80?"var(--warning)":c.color;
-                return(
-                  <div key={i} style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px",border:`1px solid ${overrun?"var(--danger-border)":budget>0?"var(--border-subtle)":"transparent"}`}}>
-                    {/* Header row */}
-                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:budget>0?7:5}}>
-                      <div style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                      <span style={{fontSize:"var(--fs-md)",color:"var(--text-2)",flex:1,fontWeight:500}}>{c.name}</span>
-                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                        <span style={{fontSize:"var(--fs-md)",fontWeight:700,color:overrun?"var(--danger)":c.color}}>{fmt(c.value)}</span>
-                        {budget>0&&(
-                          <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>/ {fmt(budget)}</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Progress bar — only when budget set */}
-                    {budget>0&&(
-                      <div style={{marginBottom:6}}>
-                        <div role="progressbar" aria-label={`Orçamento de ${c.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100,pctUsed))} style={{height:6,background:"var(--track)",borderRadius:3,overflow:"hidden",position:"relative"}}>
-                          <div style={{
-                            height:"100%",
-                            width:`${Math.min(100,pctUsed)}%`,
-                            background:overrun
-                              ?"var(--progress-danger)"
-                              :pctUsed>80
-                              ?"var(--progress-warning)"
-                              :`linear-gradient(90deg,${tint(c.color,60)},${c.color})`,
-                            borderRadius:3,
-                            transition:"width .5s"
-                          }}/>
-                        </div>
-                        <div style={{display:"flex",justifyContent:"space-between",marginTop:3}}>
-                          <span style={{fontSize:"var(--fs-2xs)",color:barColor,fontWeight:600}}>
-                            {overrun
-                              ?`⚠️ +${fmt(c.value-budget)} acima`
-                              :pctUsed>80
-                              ?`⏳ ${fmt(budget-c.value)} restante`
-                              :`${(100-pctUsed).toFixed(0)}% livre`}
-                          </span>
-                          <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>{pctUsed.toFixed(0)}%</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Budget input */}
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",flexShrink:0}}>Limite:</span>
-                      <CurrencyInput
-                        value={budget}
-                        onChange={v=>onSaveBudgets({...budgets,[c.id]:v})}
-                        placeholder="0,00"
-                        aria-label={`Limite de ${c.name}`}
-                        style={budgetInpStyle}
-                      />
-                      {budget>0&&(
-                        <button onClick={()=>onSaveBudgets({...budgets,[c.id]:0})}
-                          style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:"var(--fs-lg)",padding:"0 4px",minWidth:36,minHeight:36,lineHeight:1,flexShrink:0}}
-                          title="Remover limite" aria-label={`Remover limite de ${c.name}`}>✕</button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Show more / less */}
-            {budgetList.length>6&&(
-              <button onClick={()=>setShowAllBudget(p=>!p)} aria-expanded={showAllBudget}
-                style={{width:"100%",marginTop:10,padding:"8px",background:"none",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)",color:"var(--text-3)",fontSize:"var(--fs-sm)",cursor:"pointer",fontFamily:"inherit"}}>
-                {showAllBudget?`▲ Mostrar menos`:`▼ Ver mais ${budgetList.length-6} categorias`}
-              </button>
-            )}
-
-            {/* Add budget hint when no budgets set */}
-            {Object.keys(budgets).filter(k=>budgets[k]>0).length===0&&(
-              <div style={{marginTop:8,fontSize:"var(--fs-sm)",color:"var(--text-3)",textAlign:"center",lineHeight:1.5}}>
-                💡 Defina limites de orçamento para cada categoria e receba alertas quando ultrapassar
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Envelope planning */}
-        {(goals.monthly>0||Object.values(budgets).some(v=>v>0))&&(()=>{
-          const incomeTarget=goals.monthly||rec||0;
-          const totalAllocated=Object.values(budgets).reduce((s,v)=>s+(v||0),0);
-          const unallocated=incomeTarget-totalAllocated;
-          const allocPct=incomeTarget>0?Math.min(100,(totalAllocated/incomeTarget)*100):0;
-          const over=totalAllocated>incomeTarget;
-          const catsEnv=categories.filter(c=>budgets[c.id]>0).map(c=>({...c,budget:budgets[c.id],spent:catMap[c.id]||0})).sort((a,b)=>b.budget-a.budget);
+        <Collapsible title="Patrimônio" hint="Contas, dívidas e patrimônio líquido">
+        {/* Net worth */}
+        {(accounts.length>0||dividas.length>0)&&(()=>{
+          const totalAssets=accounts.reduce((s,acc)=>s+(accountBalances[acc.id]??acc.initialBalance??0),0);
+          const totalLiabilities=dividas.reduce((s,d)=>{
+            const instPaid=Math.min(d.installments,Math.max(0,mDiff(d.startMonth,nowMonth)));
+            return s+Math.max(0,d.totalAmount-instPaid*(d.totalAmount/d.installments));
+          },0);
+          const netWorth=totalAssets-totalLiabilities;
+          const pos=netWorth>=0;
           return(
-            <div style={{background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:14,padding:"14px"}}>
-              <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--warning)",marginBottom:12}}>📋 Planejamento do mês</div>
-              <div style={{marginBottom:14}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                  <span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Envelopes alocados{incomeTarget>0?` / renda${goals.monthly>0?" meta":""}`:""}</span>
-                  <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:over?"var(--danger)":allocPct>=90?"var(--success)":"var(--warning)"}}>{allocPct.toFixed(0)}%</span>
+            <div style={{background:"var(--success-soft)",border:"1px solid var(--success-border)",borderRadius:14,padding:"14px"}}>
+              <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--success)",marginBottom:12}}>Patrimônio líquido</div>
+              <div style={{textAlign:"center",marginBottom:14}}>
+                <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:3}}>Patrimônio líquido</div>
+                <div style={{fontSize:26,fontWeight:800,color:pos?"var(--success)":"var(--danger)",letterSpacing:"-1px"}}>{fmt(netWorth)}</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:accounts.length>0?10:0}}>
+                <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px"}}>
+                  <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:4}}>↑ Ativos</div>
+                  <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--success)"}}>{fmt(totalAssets)}</div>
+                  {accounts.length>0&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{accounts.length} conta{accounts.length!==1?"s":""}</div>}
                 </div>
-                <div role="progressbar" aria-label="Envelopes alocados" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(allocPct)} style={{height:8,background:"var(--track)",borderRadius:4,overflow:"hidden",marginBottom:5}}>
-                  <div style={{height:"100%",width:`${allocPct}%`,background:over?"var(--progress-danger)":"var(--progress-warning)",borderRadius:4,transition:"width .6s"}}/>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between"}}>
-                  <span style={{fontSize:"var(--fs-xs)",color:over?"var(--danger)":"var(--text-2)",fontWeight:600}}>
-                    {over?`⚠️ +${fmt(totalAllocated-incomeTarget)} acima da renda`:`${fmt(Math.abs(unallocated))} ${unallocated>=0?"livre":"excedido"}`}
-                  </span>
-                  {incomeTarget>0&&<span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>{fmt(totalAllocated)} de {fmt(incomeTarget)}</span>}
+                <div style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"10px 12px"}}>
+                  <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:4}}>↓ Passivos</div>
+                  <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:totalLiabilities>0?"var(--danger)":"var(--success)"}}>{fmt(totalLiabilities)}</div>
+                  {dividas.length>0&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{dividas.length} dívida{dividas.length!==1?"s":""}</div>}
                 </div>
               </div>
-              {catsEnv.length>0&&(
-                <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                  {catsEnv.map(c=>{
-                    const pctSpent=c.budget>0?Math.min(100,(c.spent/c.budget)*100):0;
-                    const pctOfIncome=incomeTarget>0?((c.budget/incomeTarget)*100):0;
-                    const overCat=c.spent>c.budget;
+              {accounts.length>0&&(
+                <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                  {accounts.map((acc)=>{
+                    const bal=accountBalances[acc.id]??acc.initialBalance??0;
                     return(
-                      <div key={c.id} style={{background:"var(--surface-sunken)",borderRadius:9,padding:"9px 11px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
-                          <div style={{width:7,height:7,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                          <span style={{fontSize:"var(--fs-sm)",color:"var(--text-2)",flex:1}}>{c.name}</span>
-                          {incomeTarget>0&&<span style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginRight:4}}>{pctOfIncome.toFixed(0)}% da renda</span>}
-                          <span style={{fontSize:"var(--fs-sm)",fontWeight:700,color:overCat?"var(--danger)":c.color}}>{fmt(c.budget)}</span>
+                      <div key={acc.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderTop:"1px solid var(--border-subtle)"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:7}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:acc.color||"var(--success)"}}/>
+                          <span style={{fontSize:"var(--fs-md)",color:"var(--text-2)"}}>{acc.name}</span>
                         </div>
-                        <div role="progressbar" aria-label={`Gasto em ${c.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pctSpent)} style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${pctSpent}%`,background:overCat?"var(--danger)":pctSpent>80?"var(--warning)":c.color,borderRadius:2,transition:"width .5s"}}/>
-                        </div>
-                        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:3,textAlign:"right"}}>gasto {fmt(c.spent)} · {pctSpent.toFixed(0)}%</div>
+                        <span style={{fontSize:"var(--fs-md)",fontWeight:700,color:bal>=0?"var(--success)":"var(--danger)"}}>{fmt(bal)}</span>
                       </div>
                     );
                   })}
-                </div>
-              )}
-              {catsEnv.length===0&&(
-                <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",textAlign:"center",padding:"4px 0",lineHeight:1.6}}>
-                  Defina orçamentos por categoria para usar o método envelope
                 </div>
               )}
             </div>
           );
         })()}
 
-        {/* Faturas dos cartões: mês atual + próximos meses */}
-        {cards.length>0&&<FaturasPlan cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} nowMonth={nowMonth} budget={budgets.cartao}/>}
+        </Collapsible>
 
         {/* Empty state */}
         {rec===0&&dep===0&&(

@@ -19,7 +19,7 @@ export default function HealthModal({ open, healthScore, selMonth, onClose }) {
                     strokeDasharray={`${(healthScore.score/100)*289} 289`} strokeLinecap="round"
                     transform="rotate(-90 55 55)" style={{transition:"stroke-dasharray .8s ease"}}/>
                   <text x="55" y="52" textAnchor="middle" fontSize="26" fontWeight="800" style={{fill:healthScore.color}}>{healthScore.score}</text>
-                  <text x="55" y="68" textAnchor="middle" fontSize="10" style={{fill:"var(--chart-label)"}}>pontos</text>
+                  <text x="55" y="68" textAnchor="middle" fontSize="11" style={{fill:"var(--chart-label)"}}>pontos</text>
                 </svg>
               </div>
               <div style={{fontSize:"var(--fs-3xl)",fontWeight:700,color:healthScore.color}}>{healthScore.level==="Saudável"?"Saudável 💚":healthScore.level==="Atenção"?"Atenção ⚠️":"Crítico 🚨"}</div>

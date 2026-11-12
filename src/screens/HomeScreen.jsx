@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import S, { tint } from '../styles.js';
-import { fmt, fmtDate, MNAMES, addM, eVal } from '../utils.js';
+import { fmt, fmtDate, MNAMES, mLabel, addM, eVal } from '../utils.js';
 import { getMonthEntries } from '../logic.js';
 import EntryCard from '../components/EntryCard.jsx';
 import FiltersSheet from '../components/FiltersSheet.jsx';
@@ -70,7 +70,7 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
   const grouped = useMemo(() => {
     if (!groupBy) return null;
     const map = {};
-    filtered.forEach(e => { if (!map[e.category]) map[e.category] = { items: [], total: 0 }; map[e.category].items.push(e); map[e.category].total += eVal(e); });
+    filtered.forEach(e => { if (!map[e.category]) map[e.category] = { items: [], total: 0 }; map[e.category].items.push(e); if (e.type === "despesa") map[e.category].total += eVal(e); });
     return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
   }, [filtered, groupBy]);
 
@@ -175,7 +175,7 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
                 {accumSaldo!==null&&(
                   <div style={{textAlign:"right",marginLeft:"auto"}}>
                     <div className="heroMuted" style={{fontSize:"var(--fs-sm)",color:"var(--hero-text-3)",marginBottom:2}}>
-                      Saldo acumulado{accumSaldoCapped&&<span title="Calculado apenas nos últimos 36 meses (limite do histórico)" style={{marginLeft:4,color:"var(--warning)"}}>⚠ 36m</span>}
+                      Acumulado até {mLabel(selMonth)}{accumSaldoCapped&&<span title="Calculado apenas nos últimos 36 meses (limite do histórico)" style={{marginLeft:4,color:"var(--warning)"}}>⚠ 36m</span>}
                     </div>
                     <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:(saldo+accumSaldo)>=0?"var(--success)":"var(--danger)"}}>{fmt(saldo+accumSaldo)}</div>
                   </div>
@@ -323,15 +323,16 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
           {grouped
             ?grouped.map(([catId,{items,total}])=>{
               const budget=budgets[catId];
-              const budgetPct=budget>0?Math.min(100,(total/budget)*100):null;
+              const budgetRaw=budget>0?(total/budget)*100:null;
+              const budgetPct=budgetRaw===null?null:Math.min(100,budgetRaw);
               return(
               <div key={catId} style={{marginBottom:8}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0 5px",borderBottom:"1px solid var(--border-subtle)",marginBottom:6}}>
                   <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:catColor(catId)}}/>
                   <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:catColor(catId),textTransform:"uppercase",letterSpacing:"0.06em",flex:1}}>{catName(catId)}</div>
-                  <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--accent)"}}>{fmt(total)}{budget>0&&<span style={{fontSize:"var(--fs-2xs)",color:budgetPct>100?"var(--danger)":"var(--text-3)",marginLeft:4}}>/ {fmt(budget)}</span>}</div>
+                  <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--accent)"}}>{fmt(total)}{budget>0&&<span style={{fontSize:"var(--fs-2xs)",color:budgetRaw>100?"var(--danger)":"var(--text-3)",marginLeft:4}}>/ {fmt(budget)}</span>}</div>
                 </div>
-                {budget>0&&<div style={{height:3,background:"var(--track)",borderRadius:2,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${budgetPct}%`,background:budgetPct>100?"var(--danger)":budgetPct>80?"var(--warning)":catColor(catId),borderRadius:2,transition:"width .5s"}}/></div>}
+                {budget>0&&<div style={{height:3,background:"var(--track)",borderRadius:2,overflow:"hidden",marginBottom:6}}><div style={{height:"100%",width:`${budgetPct}%`,background:budgetRaw>100?"var(--danger)":budgetPct>80?"var(--warning)":catColor(catId),borderRadius:2,transition:"width .5s"}}/></div>}
                 {items.map(renderCard)}
               </div>
             )})

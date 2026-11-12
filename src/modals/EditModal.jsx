@@ -3,6 +3,7 @@ import CatSelector from '../components/CatSelector.jsx';
 import Field, { useDialog } from "../components/Field.jsx";
 import { fmt, eVal, mLabel, originalMonthAmount } from '../utils.js';
 import S from "../styles.js";
+import { MonthIcon, FutureIcon } from '../components/ScopeIcons.jsx';
 
 export default function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClose}){
   const [desc,setDesc]=useState(entry.description);
@@ -71,8 +72,8 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
           <div role="group" aria-labelledby="e-aplicar" style={{marginTop:4}}>
             <div id="e-aplicar" style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Aplicar em</div>
             <div style={{display:"flex",gap:8}}>
-              <button type="button" onClick={()=>save("this")} disabled={!valid} style={{...S.scopeBtn,opacity:valid?1:0.45,flex:1,borderColor:"var(--accent-border)",color:"var(--accent)",background:"var(--accent-surface)"}}><span aria-hidden="true" style={{fontSize:"var(--fs-2xl)"}}>📅</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Só este mês</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{mLabel(monthKey)}</div></div></button>
-              <button type="button" onClick={()=>save("future")} disabled={!valid} style={{...S.scopeBtn,opacity:valid?1:0.45,flex:1,borderColor:`var(--${ac}-border)`,color:`var(--${ac})`,background:`var(--${ac}-soft)`}}><span aria-hidden="true" style={{fontSize:"var(--fs-2xl)"}}>📆</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Este e próximos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>a partir de {mLabel(monthKey)}</div></div></button>
+              <button type="button" onClick={()=>save("this")} disabled={!valid} style={{...S.scopeBtn,opacity:valid?1:0.45,flex:1,borderColor:"var(--accent-border)",color:"var(--accent)",background:"var(--accent-surface)"}}><MonthIcon/><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Só este mês</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{mLabel(monthKey)}</div></div></button>
+              <button type="button" onClick={()=>save("future")} disabled={!valid} style={{...S.scopeBtn,opacity:valid?1:0.45,flex:1,borderColor:`var(--${ac}-border)`,color:`var(--${ac})`,background:`var(--${ac}-soft)`}}><FutureIcon/><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Este e próximos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>a partir de {mLabel(monthKey)}</div></div></button>
             </div>
           </div>
         ):(

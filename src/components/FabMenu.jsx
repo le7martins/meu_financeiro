@@ -1,9 +1,17 @@
+import { useState, useEffect } from 'react';
 import { tint } from '../styles.js';
 
 const rowStyle = {width:"100%",display:"flex",alignItems:"center",gap:14,padding:"14px 18px",minHeight:56,background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit",borderTop:"1px solid var(--border-subtle)"};
 
 // Botão flutuante (mobile) com folha de escolha Receita / Despesa.
 export default function FabMenu({ open, setOpen, onOpenForm }) {
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => { const y = window.scrollY; if (Math.abs(y - last) < 8) return; setHidden(y > last && y > 120); last = y; };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   return (
         <div className="appFabWrap">
           {/* Backdrop escurecido com blur */}
@@ -78,7 +86,7 @@ export default function FabMenu({ open, setOpen, onOpenForm }) {
             aria-expanded={!!open}
             aria-controls="fabSheet"
             onClick={()=>setOpen(p=>!p)}
-            style={{position:"fixed",bottom:82,right:16,width:54,height:54,borderRadius:"var(--radius-full)",background:"var(--fab-bg)",border:"1.5px solid var(--fab-border)",color:"var(--btn-success-text)",cursor:"pointer",boxShadow:"var(--fab-shadow)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s",transform:open?"rotate(45deg) scale(1.05)":"rotate(0deg) scale(1)"}}>
+            style={{position:"fixed",bottom:82,right:16,width:54,height:54,borderRadius:"var(--radius-full)",background:"var(--fab-bg)",border:"1.5px solid var(--fab-border)",color:"var(--btn-success-text)",cursor:"pointer",boxShadow:"var(--fab-shadow)",zIndex:49,display:"flex",alignItems:"center",justifyContent:"center",transition:"transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s,opacity .2s",transform:open?"rotate(45deg) scale(1.05)":hidden?"translateY(120px)":"rotate(0deg) scale(1)",opacity:hidden&&!open?0:1,pointerEvents:hidden&&!open?"none":"auto"}}>
             <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>

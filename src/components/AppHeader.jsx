@@ -10,12 +10,12 @@ const SYNC = {
 
 export default function AppHeader({ fbUser, syncStatus, healthScore, activeTab, onShowHealth, searchOpen, onToggleSearch, theme, onToggleTheme }) {
   const sync = SYNC[syncStatus] || SYNC.offline;
-  const iconBtn = {display:"flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:9,cursor:"pointer",fontFamily:"inherit"};
+  const iconBtn = {display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,borderRadius:"var(--radius-md)",cursor:"pointer",fontFamily:"inherit"};
   return (
       <header style={S.header}>
         <div style={S.headerLeft}>
           <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:32,height:32,borderRadius:"var(--radius-sm)",objectFit:"cover"}}/>
-          <div><div style={S.appName}>CashUp</div><div style={S.appSub}>Controle seus lançamentos</div></div>
+          <div style={{minWidth:0}}><div className="appName" style={S.appName}>CashUp</div><div className="appSub" style={S.appSub}>Controle seus lançamentos</div></div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {/* Demo badge */}
@@ -30,12 +30,12 @@ export default function AppHeader({ fbUser, syncStatus, healthScore, activeTab, 
               {syncStatus==="saving"&&<div aria-hidden="true" style={{width:7,height:7,borderRadius:"var(--radius-full)",background:"currentColor",animation:"pulse 1s ease-in-out infinite"}}/>}
               {syncStatus==="saved"&&<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
               {(syncStatus==="offline"||syncStatus==="error")&&<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>}
-              <span style={{fontSize:"var(--fs-2xs)",fontWeight:700}}>{sync.label}</span>
+              <span className="syncLabel" style={{fontSize:"var(--fs-2xs)",fontWeight:700}}>{sync.label}</span>
             </div>
           )}
           {/* Health indicator in header — clicável */}
           {healthScore&&activeTab==="lancamentos"&&(
-            <button type="button" onClick={onShowHealth} aria-label={`Saúde financeira: ${healthScore.level}`} aria-haspopup="dialog" style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface)",border:`1px solid ${tint(healthScore.color,27)}`,borderRadius:"var(--radius-sm)",padding:"5px 10px",minHeight:36,cursor:"pointer",fontFamily:"inherit"}}>
+            <button type="button" onClick={onShowHealth} aria-label={`Saúde financeira: ${healthScore.level}`} aria-haspopup="dialog" style={{display:"flex",alignItems:"center",gap:5,background:"var(--surface)",border:`1px solid ${tint(healthScore.color,27)}`,borderRadius:"var(--radius-sm)",padding:"5px 10px",minHeight:44,cursor:"pointer",fontFamily:"inherit"}}>
               <div aria-hidden="true" style={{width:7,height:7,borderRadius:"var(--radius-full)",background:healthScore.color,boxShadow:`0 0 6px ${healthScore.color}`}}/>
               <span style={{fontSize:"var(--fs-xs)",color:healthScore.color,fontWeight:700}}>{healthScore.level}</span>
             </button>

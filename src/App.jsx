@@ -280,10 +280,19 @@ function MainApp({ fbUser, onLogout }){
     setShowForm(true);
   },[]);
 
+  // Para o "Desfazer" ler a lista ATUAL (e não a de quando o toast foi criado)
+  const entriesRef=useRef(entries);
+  entriesRef.current=entries;
   const handleDelete=useCallback((entryId,scope)=>{
-    const snap=entries;
+    const before=entries.find(e=>e.id===entryId);
     save.entries(deleteEntry(entries,entryId,scope,selMonth));
-    setDelTarget(null);toast("Lançamento removido","info","Desfazer",()=>save.entries(snap));
+    setDelTarget(null);
+    toast("Lançamento removido","info","Desfazer",()=>{
+      if(!before) return;
+      const cur=entriesRef.current;
+      // restaura só este lançamento; edições feitas nos outros ficam como estão
+      save.entries(cur.some(e=>e.id===before.id)?cur.map(e=>e.id===before.id?before:e):[before,...cur]);
+    });
   },[entries,selMonth,save,toast]);
 
   const handlePayFatura=useCallback((entry,amount,partial)=>{

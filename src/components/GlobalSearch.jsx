@@ -23,14 +23,17 @@ export default function GlobalSearch({ open, query, setQuery, onClose, onPick, e
               {(()=>{
                 const q=query.trim().toLowerCase();
                 if(!q) return <div style={{padding:"24px",textAlign:"center",color:"var(--text-3)",fontSize:"var(--fs-md)"}}>Digite para buscar em todos os meses e abas</div>;
-                const allEntries=entries.filter(e=>e.description.toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q)||(e.category||'').toLowerCase().includes(q));
+                const catName=(id)=>(categories.find(c=>c.id===id)?.name||id||'').toLowerCase();
+                const allEntries=entries.filter(e=>e.description.toLowerCase().includes(q)||(e.notes||'').toLowerCase().includes(q)||catName(e.category).includes(q)||(e.tags||[]).some(t=>t.toLowerCase().includes(q)));
                 const allDividas=dividas.filter(d=>d.name.toLowerCase().includes(q));
-                const results=[
+                const all=[
                   ...allEntries.map(e=>({...e,_type:'entry'})),
                   ...allDividas.map(d=>({...d,_type:'divida'}))
-                ].slice(0,30);
+                ];
+                const results=all.slice(0,30);
+                const extra=all.length-results.length;
                 if(!results.length) return <div style={{padding:"24px",textAlign:"center",color:"var(--text-3)",fontSize:"var(--fs-md)"}}>Nenhum resultado para "{query}"</div>;
-                return results.map((r,i)=>{
+                const rows=results.map((r,i)=>{
                   const mk=r.date?r.date.substring(0,7):r.startMonth;
                   const cat=categories.find(c=>c.id===(r.category||r._type));
                   const color=cat?.color||(r._type==='divida'?"var(--danger)":"var(--accent)");
@@ -47,11 +50,12 @@ export default function GlobalSearch({ open, query, setQuery, onClose, onPick, e
                         <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{mLabel(mk)}{cat?` · ${cat.name}`:''}</div>
                       </div>
                       <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:r.type==="receita"?"var(--success)":r._type==="divida"?"var(--danger)":"var(--text-2)",flexShrink:0}}>
-                        {r.type==="receita"?"+":"-"}{fmt(r.amount||r.totalAmount||0)}
+                        {r.type==="receita"?"+":""}{fmt(r.amount||r.totalAmount||0)}
                       </div>
                     </div>
                   );
                 });
+                return(<>{rows}{extra>0&&<div style={{padding:"12px 14px",fontSize:"var(--fs-sm)",color:"var(--text-3)",textAlign:"center"}}>+{extra} resultado{extra>1?"s":""} — refine a busca</div>}</>);
               })()}
             </div>
           </div>

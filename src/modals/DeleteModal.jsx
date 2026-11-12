@@ -1,5 +1,6 @@
 import S from '../styles.js';
 import { useDialog } from '../components/Field.jsx';
+import { MonthIcon, FutureIcon, AllIcon } from '../components/ScopeIcons.jsx';
 
 export default function DeleteModal({entry,onDelete,onClose}){
   const isRec=entry.isRecurring;
@@ -15,9 +16,9 @@ export default function DeleteModal({entry,onDelete,onClose}){
         </div>
         {isRec?(
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
-            <button type="button" onClick={()=>onDelete(entry.id,"this")} style={{...S.scopeBtn,borderColor:"var(--accent-border)",color:"var(--accent)",background:"var(--accent-surface)"}}><span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>📅</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Só este mês</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>Os outros meses permanecem</div></div></button>
-            <button type="button" onClick={()=>onDelete(entry.id,"future")} style={{...S.scopeBtn,borderColor:"var(--orange-border)",color:"var(--orange)",background:"var(--orange-soft)"}}><span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>📆</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Este e os próximos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>Meses anteriores permanecem</div></div></button>
-            <button type="button" onClick={()=>onDelete(entry.id,"all")} style={{...S.scopeBtn,borderColor:"var(--danger-border)",color:"var(--danger)",background:"var(--danger-soft)"}}><span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>🗑️</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Todos os meses</div></div></button>
+            <button type="button" onClick={()=>onDelete(entry.id,"this")} style={{...S.scopeBtn,borderColor:"var(--accent-border)",color:"var(--accent)",background:"var(--accent-surface)"}}><MonthIcon/><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Só este mês</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>Os outros meses permanecem</div></div></button>
+            <button type="button" onClick={()=>onDelete(entry.id,"future")} style={{...S.scopeBtn,borderColor:"var(--orange-border)",color:"var(--orange)",background:"var(--orange-soft)"}}><FutureIcon/><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Este e os próximos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>Meses anteriores permanecem</div></div></button>
+            <button type="button" onClick={()=>onDelete(entry.id,"all")} style={{...S.scopeBtn,borderColor:"var(--danger-border)",color:"var(--danger)",background:"var(--danger-soft)"}}><AllIcon/><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Todos os meses</div></div></button>
           </div>
         ):(
           <div style={{display:"flex",gap:8}}>

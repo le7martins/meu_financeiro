@@ -24,6 +24,9 @@ export const CSS=`
   @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+  /* Telas estreitas: nome (a logo já traz o nome), subtítulo e texto do status de sync saem para os botões caberem */
+  @media (max-width: 420px) { .appSub, .appName, .syncLabel { display: none; } }
+
   /* ── Responsive: tablet (≥720px) ── */
   @media (min-width: 720px) {
     .appRoot { max-width: 720px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; }
@@ -140,7 +143,7 @@ export const CSS=`
 
     /* Tipografia */
     --font-sans: 'DM Sans', sans-serif;
-    --fs-2xs: 9px;  --fs-xs: 10px; --fs-sm: 11px; --fs-md: 12px; --fs-base: 13px;
+    --fs-2xs: 11px; --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-base: 13px;
     --fs-lg: 14px;  --fs-xl: 15px; --fs-2xl: 16px; --fs-3xl: 18px; --fs-4xl: 20px;
     --fs-5xl: 22px; --fs-6xl: 28px; --fs-7xl: 36px;
 

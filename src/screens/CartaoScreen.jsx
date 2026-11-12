@@ -3,7 +3,7 @@ import Field, { ModalShell } from "../components/Field.jsx";
 import PartialFatModal from '../modals/PartialFatModal.jsx';
 import { buildFatura, getCardBillingMonths, faturaDueOffset, cardUsedLimit } from '../logic.js';
 import { payFatura } from '../entryActions.js';
-import { fmt, fmtDate, mLabel, mShort, addM, todayISO, newId } from '../utils.js';
+import { fmt, fmtDate, mLabel, mShort, addM, todayISO, daysUntil, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
 import S, { tint } from "../styles.js";
 import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
@@ -156,8 +156,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                         <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:f.total>0?(isSel?card.color:"var(--text-2)"):"var(--text-4)"}}>
                           {f.total>0?fmt(f.total):"—"}
                         </div>
-                        <div style={{fontSize:"var(--fs-xs)",marginTop:2,color:f.paid?"var(--success)":f.open?"var(--warning)":f.total>0?"var(--orange)":"transparent"}}>
-                          {f.paid?"✓ pago":f.open?"aberto":f.total>0?"a pagar":""}
+                        <div style={{fontSize:"var(--fs-xs)",marginTop:2,color:f.total<=0?"transparent":f.paid?"var(--success)":f.open?"var(--warning)":f.dueDate<todayISO()?"var(--danger)":"var(--orange)"}}>
+                          {f.total<=0?"":f.paid?"✓ pago":f.open?"aberto":f.dueDate<todayISO()?"vencida":"a pagar"}
                         </div>
                       </button>
                     );
@@ -170,9 +170,13 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                   <div>
                     <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{mLabel(selBM)}{selBM>nowMonth&&<span style={{marginLeft:6,fontSize:"var(--fs-sm)",color:card.color,fontWeight:500}}>parcelas futuras</span>}</div>
-                    <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1}}>
-                      {selFat.open?`Fecha em ${fmtDate(selFat.closeDate)}`:selFat.total>0?`Vence ${fmtDate(selFat.dueDate)}`:"Sem compras"}
-                    </div>
+                    {(()=>{
+                      const late=!selFat.open&&selFat.total>0&&!selFat.paid&&selFat.dueDate<todayISO();
+                      const days=late?-daysUntil(selFat.dueDate,todayISO()):0;
+                      return <div style={{fontSize:"var(--fs-sm)",color:late?"var(--danger)":"var(--text-3)",fontWeight:late?700:400,marginTop:1}}>
+                        {selFat.open?`Fecha em ${fmtDate(selFat.closeDate)} · vence ${fmtDate(selFat.dueDate)}`:selFat.total>0?(late?`Venceu em ${fmtDate(selFat.dueDate)} · há ${days} dia${days!==1?"s":""}`:`Vence ${fmtDate(selFat.dueDate)}`):"Sem compras"}
+                      </div>;
+                    })()}
                   </div>
                   {selFat.total>0&&(
                     <div style={{textAlign:"right"}}>
@@ -268,6 +272,10 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
             <Field label="Dia fechamento" style={{flex:1}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={cardForm.closeDay} onChange={e=>setCardForm(p=>({...p,closeDay:e.target.value}))}/></Field>
             <Field label="Dia vencimento" style={{flex:1}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={cardForm.dueDay} onChange={e=>setCardForm(p=>({...p,dueDay:e.target.value}))}/></Field>
           </div>
+          {(()=>{const c=clampDay(cardForm.closeDay,20),d=clampDay(cardForm.dueDay,5);return(
+            <div style={{marginBottom:13,fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-sunken)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)",padding:"8px 10px",lineHeight:1.5}}>
+              Compras até o dia {c} entram na fatura que vence no dia {d}{faturaDueOffset(c,d)?" do mês seguinte":" do mesmo mês"}. As compras depois do dia {c} vão para a fatura seguinte.
+            </div>);})()}
           <Field label="Cor do cartão">
             <div role="group" aria-label="Cor do cartão" style={{display:"flex",gap:7,flexWrap:"wrap"}}>
               {CARD_COLORS.map(c=>(

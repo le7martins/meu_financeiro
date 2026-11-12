@@ -223,7 +223,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                   return(
                     <button type="button" key={m} onClick={()=>toggleMonth(d,m)} aria-pressed={!!isPaid} aria-label={`${mLabel(m)} — ${isPaid?"Pago":"Pendente"}`} title={`${mLabel(m)} — ${isPaid?"Pago":"Pendente"}`}
                       style={{flexShrink:0,width:40,height:40,borderRadius:9,border:`1.5px solid ${isNow?"var(--accent)":(isPaid?"var(--success-border)":"var(--border)")}`,background:isPaid?"var(--success-soft)":isNow?"var(--accent-soft)":"var(--surface-sunken)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:2,transition:"all .15s"}}>
-                      <span style={{fontSize:8,color:isPaid?"var(--success)":isNow?"var(--accent)":"var(--text-4)",fontWeight:700,lineHeight:1}}>{mShort(m)}</span>
+                      <span style={{fontSize:"var(--fs-xs)",color:isPaid?"var(--success)":isNow?"var(--accent)":"var(--text-4)",fontWeight:700,lineHeight:1}}>{mShort(m)}</span>
                       <span style={{fontSize:"var(--fs-sm)",color:isPaid?"var(--success)":isNow?"var(--accent)":"var(--text-4)",lineHeight:1,fontWeight:600}}>{isPaid?"✓":i+1}</span>
                     </button>
                   );
