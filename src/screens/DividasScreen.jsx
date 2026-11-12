@@ -3,11 +3,11 @@ import Field, { ModalShell } from "../components/Field.jsx";
 import MonthPicker from '../components/MonthPicker.jsx';
 import { getNow, mLabel, mShort, addM, mDiff, fmt, newId, installmentAmount } from '../utils.js';
 import { debtStats } from '../logic.js';
-import S, { tint } from "../styles.js";
+import S from "../styles.js";
 import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
 import CurrencyInput from "../components/CurrencyInput.jsx";
 
-export default function DividasScreen({dividas,setDividas,categories,nowMonth,toast}){
+export default function DividasScreen({dividas,setDividas,nowMonth,toast}){
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [delId,setDelId]=useState(null);
@@ -16,9 +16,6 @@ export default function DividasScreen({dividas,setDividas,categories,nowMonth,to
   const [showQuitadas,setShowQuitadas]=useState(false);
   const BLANK_D={name:"",totalAmount:"",installments:12,startMonth:nowMonth,dueDay:"10",category:"divida",notes:""};
   const [dform,setDform]=useState(BLANK_D);
-  const despCats=categories.filter(c=>c.type==="both"||c.type==="despesa");
-  const catColor=(id)=>(categories.find(c=>c.id===id)||{color:"var(--danger)"}).color;
-  const catName =(id)=>(categories.find(c=>c.id===id)||{name:id}).name;
   const NOW=getNow();
 
   const nInst=parseInt(dform.installments);
@@ -28,7 +25,7 @@ export default function DividasScreen({dividas,setDividas,categories,nowMonth,to
   const handleSave=()=>{
     if(!canSave) return;
     const total=parseFloat(dform.totalAmount);
-    const base={...dform,name:dform.name.trim(),totalAmount:total,installments:nInst,dueDay:String(dueDayN)};
+    const base={...dform,category:"divida",name:dform.name.trim(),totalAmount:total,installments:nInst,dueDay:String(dueDayN)};
     if(editId){
       let dropped=0;
       setDividas(dividas.map(d=>{
@@ -84,7 +81,7 @@ export default function DividasScreen({dividas,setDividas,categories,nowMonth,to
 
   const openNew=()=>{setDform(BLANK_D);setEditId(null);setShowForm(true);};
   const closeForm=()=>{setShowForm(false);setEditId(null);};
-  const openEdit=(d)=>{setDform({name:d.name,totalAmount:String(d.totalAmount),installments:d.installments,startMonth:d.startMonth,dueDay:d.dueDay||"10",category:d.category||"divida",notes:d.notes||""});setEditId(d.id);setShowForm(true);};
+  const openEdit=(d)=>{setDform({name:d.name,totalAmount:String(d.totalAmount),installments:d.installments,startMonth:d.startMonth,dueDay:d.dueDay||"10",category:"divida",notes:d.notes||""});setEditId(d.id);setShowForm(true);};
 
   return(
     <div style={{paddingBottom:90}}>
@@ -138,7 +135,6 @@ export default function DividasScreen({dividas,setDividas,categories,nowMonth,to
           const isCurrent=currentDiff>=0&&currentDiff<st.n;
           const isPaidThisMonth=d.paidMonths?.includes(NOW);
           const isCelebrating=celebrate===d.id;
-          const cc=catColor(d.category);
 
           return(
             <div key={d.id} style={{background:"var(--surface)",border:`1px solid ${isCelebrating?"var(--success-border)":"var(--border-subtle)"}`,borderRadius:14,overflow:"hidden",transition:"border-color .5s"}}>
@@ -153,7 +149,6 @@ export default function DividasScreen({dividas,setDividas,categories,nowMonth,to
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize:"var(--fs-lg)",fontWeight:700,color:"var(--text-1)",minHeight:20,lineHeight:"20px"}}>{d.name}</div>
                     <div style={{marginTop:3,fontSize:"var(--fs-sm)",color:"var(--text-3)",display:"flex",columnGap:10,rowGap:2,flexWrap:"wrap",alignItems:"center"}}>
-                      <span style={{display:"inline-flex",alignItems:"center",gap:5}}><span aria-hidden="true" style={{width:7,height:7,borderRadius:"var(--radius-full)",background:cc}}/>{catName(d.category)}</span>
                       <span>{paid}/{d.installments} parcelas</span>
                       <span>até {mLabel(endMonth)}</span>
                     </div>
@@ -291,20 +286,6 @@ export default function DividasScreen({dividas,setDividas,categories,nowMonth,to
           <div style={{display:"flex",gap:10}}>
             <Field label="Início" style={{flex:1}}><MonthPicker value={dform.startMonth} onChange={v=>setDform(p=>({...p,startMonth:v}))} now={nowMonth}/></Field>
             <Field label="Dia venc." style={{flex:"0 0 90px"}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={dform.dueDay} onChange={e=>setDform(p=>({...p,dueDay:e.target.value}))}/></Field>
-          </div>
-          <div style={{marginBottom:13}} role="group" aria-labelledby="divida-cat-lbl">
-            <span id="divida-cat-lbl" style={S.lbl}>Categoria</span>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {despCats.map(cat=>{
-                const sel=dform.category===cat.id;
-                return(
-                  <button type="button" key={cat.id} aria-pressed={sel} onClick={()=>setDform(p=>({...p,category:cat.id}))}
-                    style={{padding:"5px 9px",borderRadius:7,border:`1px solid ${sel?cat.color:"transparent"}`,background:sel?tint(cat.color,13):"var(--surface-hover)",color:sel?cat.color:"var(--text-3)",fontSize:"var(--fs-sm)",cursor:"pointer",fontWeight:500}}>
-                    <span aria-hidden="true" style={{width:6,height:6,borderRadius:"50%",background:cat.color,display:"inline-block",marginRight:5,verticalAlign:"middle"}}/>{cat.name}
-                  </button>
-                );
-              })}
-            </div>
           </div>
           <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52}} placeholder="Banco, contrato, anotação..." value={dform.notes} onChange={e=>setDform(p=>({...p,notes:e.target.value}))}/></Field>
           <button type="button" onClick={handleSave} className="submitBtn"

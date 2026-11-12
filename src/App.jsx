@@ -402,7 +402,7 @@ function MainApp({ fbUser, onLogout }){
       <Suspense fallback={<div style={{flex:1}}/>}>
         {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} accumSaldo={accumNow} today={today} toast={toast}/>}
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={save.cards} cardPurchases={cardPurchases} setCardPurchases={save.cardPurchases} cardFaturas={cardFaturas} setCardFaturas={save.cardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
-        {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={save.dividas} categories={categories} nowMonth={NOW} toast={toast}/>}
+        {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={save.dividas} nowMonth={NOW} toast={toast}/>}
         {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={save.goals} budgets={budgets} onSaveBudgets={save.budgets} todayWidget={todayWidget} accounts={accounts} accountBalances={accountBalancesMap}/>}
         {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth}
           onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportRange={(from,to)=>handleExportCSV(from,to)} onExportPDF={()=>handleExportPDF(selMonth)}

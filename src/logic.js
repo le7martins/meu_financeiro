@@ -179,7 +179,7 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
       const isPaid=d.paidMonths?.includes(monthKey)||false;
       res.push({id:`divida_${d.id}_${monthKey}`,description:d.name,amount:instVal,displayAmount:instVal,
         date:dateInMonth(monthKey,d.dueDay||10),type:"despesa",status:isPaid?"pago":"a_pagar",statusForMonth:isPaid?"pago":"a_pagar",
-        category:d.category||"outro",recurrence:"installment",isRecurring:true,isDivida:true,dividaId:d.id,
+        category:"divida",recurrence:"installment",isRecurring:true,isDivida:true,dividaId:d.id,
         installmentNum:diff+1,installments:d.installments,recurLabel:`${diff+1}/${d.installments}×`,notes:d.notes||""});
     }
   }
