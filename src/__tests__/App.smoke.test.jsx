@@ -21,6 +21,7 @@ vi.mock('../db', () => ({
   subscribeData: () => () => {},
   saveUserProfile: vi.fn(),
   wipeLocalData: vi.fn(),
+  subscribeAnnouncement: (cb) => { cb(null); return () => {}; },
   isEmailAllowed: (...a) => isEmailAllowed(...a),
 }));
 

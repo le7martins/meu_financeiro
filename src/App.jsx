@@ -29,6 +29,7 @@ import BottomNav from './components/BottomNav.jsx';
 import FabMenu from './components/FabMenu.jsx';
 import GlobalSearch from './components/GlobalSearch.jsx';
 import ToastStack from './components/ToastStack.jsx';
+import AnnouncementBanner from './components/AnnouncementBanner.jsx';
 import Confetti from './components/Confetti.jsx';
 import HealthModal from './modals/HealthModal.jsx';
 import FaturaPayModal from './modals/FaturaPayModal.jsx';
@@ -415,6 +416,7 @@ function MainApp({ fbUser, onLogout }){
       <AppHeader fbUser={fbUser} syncStatus={syncStatus} healthScore={healthScore} activeTab={activeTab}
         onShowHealth={()=>setShowHealth(true)} searchOpen={showGlobalSearch} onToggleSearch={()=>setShowGlobalSearch(p=>!p)}
         theme={theme} onToggleTheme={()=>save.theme(theme==="dark"?"light":"dark")}/>
+      {!fbUser._isDemo&&<AnnouncementBanner/>}
 
       <GlobalSearch open={showGlobalSearch} query={globalSearch} setQuery={setGlobalSearch}
         onClose={()=>setShowGlobalSearch(false)} onPick={(mk)=>{setSelMonth(mk);setActiveTab('lancamentos');}}

@@ -93,3 +93,15 @@ export async function loadAllowedEmails() {
 }
 export const allowEmail = (email) => setDoc(allowDoc(email), { addedAt: new Date().toISOString() });
 export const revokeEmail = (email) => deleteDoc(allowDoc(email));
+
+// ─── Aviso global (config/announcement) ──────────────────────
+// O admin publica; todos os convidados leem. { text, updatedAt }
+const announcementDoc = () => doc(db, 'config', 'announcement');
+export function subscribeAnnouncement(cb) {
+  return onSnapshot(announcementDoc(),
+    snap => cb(snap.exists() ? snap.data() : null),
+    () => cb(null)); // sem permissão/offline: simplesmente sem aviso
+}
+export const publishAnnouncement = (text) =>
+  setDoc(announcementDoc(), { text: String(text).trim().slice(0, 300), updatedAt: new Date().toISOString() });
+export const clearAnnouncement = () => deleteDoc(announcementDoc());

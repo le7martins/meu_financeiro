@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
-import { loadAllProfiles, loadAllowedEmails, allowEmail, revokeEmail, ADMIN_EMAIL } from '../db';
+import { loadAllProfiles, loadAllowedEmails, allowEmail, revokeEmail, publishAnnouncement, clearAnnouncement, subscribeAnnouncement, ADMIN_EMAIL } from '../db';
 
 const DAY = 86400000;
 const norm = (e) => String(e || '').trim().toLowerCase();
@@ -16,6 +16,9 @@ export default function AdminScreen() {
   const [msg,      setMsg]      = useState('');
   const [busy,     setBusy]     = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [notice,   setNotice]   = useState('');
+  const [current,  setCurrent]  = useState(null);
+  useEffect(() => subscribeAnnouncement(a => { setCurrent(a); setNotice(n => n || a?.text || ''); }), []);
 
   const load = useCallback(async () => {
     try {
@@ -82,6 +85,21 @@ export default function AdminScreen() {
             </button>
           )}
           {msg && <div role="status" style={{ marginTop: 8, fontSize: 'var(--fs-sm)', color: 'var(--text-2)' }}>{msg}</div>}
+        </div>
+
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '13px 14px' }}>
+          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>📢 Aviso para todos</div>
+          <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-3)', marginBottom: 8, lineHeight: 1.4 }}>
+            Aparece como uma faixa no topo do app de quem está liberado. Cada pessoa pode dispensar.{current ? ' Há um aviso publicado agora.' : ''}
+          </div>
+          <textarea aria-label="Texto do aviso" maxLength={300} placeholder="Ex.: o app terá manutenção hoje às 22h." value={notice} onChange={e => setNotice(e.target.value)}
+            style={{ width: '100%', minHeight: 64, resize: 'none', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px', color: 'var(--text-1)', fontSize: 'var(--fs-base)', fontFamily: 'inherit', boxSizing: 'border-box' }}/>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button type="button" disabled={busy || !notice.trim()} style={{ ...smallBtn('accent'), opacity: notice.trim() ? 1 : 0.5 }}
+              onClick={() => run(() => publishAnnouncement(notice), 'Aviso publicado.')}>Publicar</button>
+            {current && <button type="button" disabled={busy} style={smallBtn('danger')}
+              onClick={() => run(async () => { await clearAnnouncement(); setNotice(''); }, 'Aviso removido.')}>Remover aviso</button>}
+          </div>
         </div>
 
         {profiles.map(p => {

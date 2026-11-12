@@ -29,6 +29,15 @@ service cloud.firestore {
       allow list, create, update, delete: if isAdmin();
     }
 
+    // Aviso global: o admin publica, qualquer convidado lê.
+    match /config/{docId} {
+      allow get: if docId == 'announcement' && isAllowed();
+      allow create, update, delete: if docId == 'announcement' && isAdmin()
+        && (request.method == 'delete'
+            || (request.resource.data.keys().hasOnly(['text', 'updatedAt'])
+                && request.resource.data.text is string && request.resource.data.text.size() <= 300));
+    }
+
     // Dados financeiros: somente o próprio usuário, só nos 6 documentos que o app usa,
     // com formato { v: ... } e limites de tamanho (o teto do Firestore é 1 MB por documento).
     function validDocId(docId) {
