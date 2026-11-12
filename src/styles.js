@@ -8,7 +8,7 @@
 export const tint = (color, pct) => `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 
 const S={
-  root:       {minHeight:"100vh",background:"var(--bg)",color:"var(--text-1)",fontFamily:"var(--font-sans)",paddingBottom:72},
+  root:       {minHeight:"100vh",background:"var(--bg)",color:"var(--text-1)",fontFamily:"var(--font-sans)",paddingBottom:"calc(152px + env(safe-area-inset-bottom, 0px))"},
   header:     {display:"flex",alignItems:"center",justifyContent:"space-between",padding:"16px 20px 8px",borderBottom:"1px solid var(--border-subtle)"},
   headerLeft: {display:"flex",alignItems:"center",gap:12},
   appName:    {fontSize:"var(--fs-4xl)",fontWeight:800,color:"var(--text-1)",letterSpacing:"-0.5px"},

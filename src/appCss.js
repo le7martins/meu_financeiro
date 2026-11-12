@@ -184,7 +184,7 @@ export const CSS=`
     --text-1: #e2e8f0;
     --text-2: #cbd5e1;
     --text-3: #94a3b8;
-    --text-4: #64748b;
+    --text-4: #7a8ca3;
     --text-placeholder: #666677;
     --text-on-accent: #080c12;
 

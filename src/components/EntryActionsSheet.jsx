@@ -15,10 +15,12 @@ const ACTIONS = [
 
 // Menu de ações de um lançamento (painel que sobe da base). Renderizado no body para não
 // herdar o transform do card nem receber o gesto de deslizar dele.
-export default function EntryActionsSheet({ entry, onEdit, onClone, onDelete, onClose }) {
+export default function EntryActionsSheet({ entry, flags = [], onEdit, onClone, onDelete, onClose }) {
   const { dialogProps, titleId } = useDialog(onClose);
   const handlers = { edit: onEdit, clone: onClone, delete: onDelete };
   const stop = (e) => e.stopPropagation();
+  const tags = entry.tags || [];
+  const hasDetails = entry.notes || tags.length > 0 || flags.length > 0;
   return createPortal(
     <div className="appOverlay" style={{ ...S.overlay, fontFamily: 'var(--font-sans)', color: 'var(--text-1)' }} onClick={e => e.target === e.currentTarget && onClose()}
       onTouchStart={stop} onTouchMove={stop} onTouchEnd={stop}>
@@ -31,6 +33,13 @@ export default function EntryActionsSheet({ entry, onEdit, onClone, onDelete, on
           </div>
           <button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button>
         </div>
+        {hasDetails && (
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 6, fontSize: 'var(--fs-md)', color: 'var(--text-2)' }}>
+            {flags.map(f => <div key={f.key} style={{ color: `var(--${f.token})`, fontWeight: 600 }}><span aria-hidden="true">{f.glyph} </span>{f.text}</div>)}
+            {entry.notes && <div style={{ overflowWrap: 'anywhere' }}>{entry.notes}</div>}
+            {tags.length > 0 && <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{tags.map(t => <span key={t} style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--accent)', background: 'var(--accent-soft)', borderRadius: 'var(--radius-xs)', padding: '2px 7px' }}>#{t}</span>)}</div>}
+          </div>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {ACTIONS.map(a => (
             <button key={a.key} type="button" onClick={() => { onClose(); handlers[a.key](entry); }}

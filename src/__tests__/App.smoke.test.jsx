@@ -56,7 +56,7 @@ describe('App (fumaça)', () => {
     const card = await findCard('Conta de Luz');
     fireEvent.click(within(card).getByText('A pagar'));
     await waitFor(() => expect(lastSave('entries')?.find(e => e.id === 'e1').status).toBe('pago'));
-    expect(within(card).getByText('Pago')).toBeTruthy();
+    expect(within(card).getByLabelText(/^Pago:/)).toBeTruthy();
   });
 
   test('trocar o tema preserva as contas no doc de settings (regressão)', async () => {
@@ -70,8 +70,19 @@ describe('App (fumaça)', () => {
   test('busca filtra a lista', async () => {
     render(<App />);
     await findCard('Conta de Luz');
-    fireEvent.change(screen.getByPlaceholderText('Buscar por descrição ou observação...'), { target: { value: 'luz' } });
+    fireEvent.change(screen.getByLabelText('Buscar lançamentos'), { target: { value: 'luz' } });
     expect(cardWith('Salário')).toBeNull();
+    expect(cardWith('Conta de Luz')).toBeTruthy();
+  });
+
+  test('painel de filtros: filtra por tipo e limpa', async () => {
+    render(<App />);
+    await findCard('Conta de Luz');
+    fireEvent.click(screen.getByLabelText('Filtros'));
+    fireEvent.click(screen.getByRole('button', { name: /^Receitas/ }));
+    expect(cardWith('Conta de Luz')).toBeNull();
+    expect(cardWith('Salário')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Limpar' }));
     expect(cardWith('Conta de Luz')).toBeTruthy();
   });
 

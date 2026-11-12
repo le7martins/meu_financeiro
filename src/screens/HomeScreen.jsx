@@ -4,6 +4,7 @@ import { fmt, fmtDate, MNAMES, addM, eVal } from '../utils.js';
 import { getMonthEntries } from '../logic.js';
 import GradCard from '../components/GradCard.jsx';
 import EntryCard from '../components/EntryCard.jsx';
+import FiltersSheet from '../components/FiltersSheet.jsx';
 
 // Estado de UI da aba Contas. Fica no App (via hook) para os filtros
 // sobreviverem à troca de abas.
@@ -14,12 +15,13 @@ export function useHomeUi() {
   const [groupBy,      setGroupBy]      = useState(false);
   const [filterCat,    setFilterCat]    = useState("all");
   const [filterTag,    setFilterTag]    = useState("all");
-  const [showUpcoming, setShowUpcoming] = useState(true);
-  const [showOverdue,  setShowOverdue]  = useState(false); // vencidos ocultos por padrão
+  const [showUpcoming, setShowUpcoming] = useState(false);
+  const [showOverdue,  setShowOverdue]  = useState(false); // listas de vencimento recolhidas por padrão
   return { filter, setFilter, sortBy, setSortBy, search, setSearch, groupBy, setGroupBy, filterCat, setFilterCat,
     filterTag, setFilterTag, showUpcoming, setShowUpcoming, showOverdue, setShowOverdue };
 }
 
+const SR_ONLY = {position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)",whiteSpace:"nowrap"};
 const normStr = (s) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, ""); // remove acentos (marcas combinantes)
 const sumBy = (list, type) => list.filter(e => e.type === type).reduce((s, e) => s + eVal(e), 0);
 
@@ -30,6 +32,7 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
   const { filter, setFilter, sortBy, setSortBy, search, setSearch, groupBy, setGroupBy, filterCat, setFilterCat,
     filterTag, setFilterTag, showUpcoming, setShowUpcoming, showOverdue, setShowOverdue } = ui;
   const NOW = today.substring(0, 7);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const getCat   = (id) => categories.find(c => c.id === id) || { color: "var(--text-4)", name: id };
   const catColor = (id) => getCat(id).color;
@@ -88,6 +91,25 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
     ["a_pagar", "Pendente Pagamento", monthEntries.filter(e => e.statusForMonth === "a_pagar").length],
     ["pago", "Pagos", monthEntries.filter(e => e.statusForMonth === "pago").length],
   ];
+
+  const SORT_LABEL = { date: "Data", amount: "Valor", status: "Status", name: "Nome" };
+  const usedCategories = categories.filter(c => monthEntries.some(e => e.category === c.id));
+  const activeChips = [
+    filter !== "all" && { key: "status", label: FILTERS.find(f => f[0] === filter)?.[1] || filter, clear: () => setFilter("all") },
+    filterCat !== "all" && { key: "cat", label: catName(filterCat), clear: () => setFilterCat("all") },
+    filterTag !== "all" && { key: "tag", label: `#${filterTag}`, clear: () => setFilterTag("all") },
+    sortBy !== "date" && { key: "sort", label: `Ordem: ${SORT_LABEL[sortBy]}`, clear: () => setSortBy("date") },
+    groupBy && { key: "group", label: "Agrupado", clear: () => setGroupBy(false) },
+  ].filter(Boolean);
+  const clearFilters = () => { setFilter("all"); setFilterCat("all"); setFilterTag("all"); setSortBy("date"); setGroupBy(false); };
+
+  const dueToggle = (token, label, open, onClick, controls) => (
+    <button type="button" onClick={onClick} aria-expanded={!!open} aria-controls={controls}
+      style={{flex:1,minWidth:0,display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,minHeight:44,padding:"0 12px",borderRadius:"var(--radius-md)",border:`1px solid var(--${token}-border)`,background:`var(--${token}-soft)`,color:`var(--${token})`,fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>
+      <span>{label}</span>
+      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{transform:open?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+  );
 
   const renderCard = (entry) => (
     <EntryCard key={`${entry.id}-${selMonth}`} entry={entry} selMonth={selMonth} catColor={catColor} catName={catName}
@@ -186,13 +208,11 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
         )}
 
         {/* 4 grad cards */}
-        <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,padding:"0 14px 10px"}}>
+        <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 14px 8px"}}>
           <GradCard label="Receitas" value={fmt(totRec)} color="var(--success)" bg="var(--success-soft)" empty={totRec===0}
-            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}
-            onAdd={()=>{onOpenForm("receita");}}/>
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}/>
           <GradCard label="Despesas" value={fmt(totDesp)} color="var(--orange)" bg="var(--orange-soft)" empty={totDesp===0}
-            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>}
-            onAdd={()=>{onOpenForm("despesa");}}/>
+            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>}/>
           <GradCard label="Pago" value={fmt(totPago)} color="var(--accent)" bg="var(--accent-soft)" empty={totPago===0}
             icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 9"/></svg>}/>
           <GradCard label="A pagar" value={fmt(totPend)} color="var(--warning)" bg="var(--warning-soft)" empty={totPend===0}
@@ -201,9 +221,9 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
         {/* Payment progress bar */}
         {totDesp>0&&(
           <div style={{padding:"0 14px 8px"}}>
-            <div style={{background:"var(--surface)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-md)",padding:"9px 12px"}}>
+            <div style={{background:"var(--surface)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-md)",padding:"7px 12px"}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-4)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Progresso pagamentos</span>
+                <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Progresso pagamentos</span>
                 <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:totPago>=totDesp?"var(--success)":totPend>0?"var(--warning)":"var(--accent)"}}>
                   {totDesp>0?((totPago/totDesp)*100).toFixed(0):0}% pago
                 </span>
@@ -218,69 +238,39 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
         )}
 
 
-        {/* ── Vencidos ─────────────────────────────────────────── */}
-        {overdueDue.length>0&&(
-          <div style={{padding:"0 14px 6px"}}>
-            <button type="button" onClick={()=>setShowOverdue(p=>!p)} aria-expanded={!!showOverdue} aria-controls="overdueList"
-              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",minHeight:40,background:"none",border:"none",cursor:"pointer",padding:"0 0 4px",fontFamily:"inherit"}}>
-              <div style={{display:"flex",alignItems:"center",gap:7}}>
-                <span style={{fontSize:"var(--fs-xs)",color:"var(--danger)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}><svg aria-hidden="true" style={{flexShrink:0}} width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg> Contas Vencidas</span>
-                <span style={{fontSize:"var(--fs-2xs)",background:"var(--danger)",color:"var(--danger-on)",padding:"2px 7px",borderRadius:4,fontWeight:800}}>{overdueDue.length}</span>
-              </div>
-              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round"
-                style={{transform:showOverdue?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,stroke:"var(--danger)"}}>
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-            {showOverdue&&(
-              <div id="overdueList" style={{display:"flex",flexDirection:"column",gap:5}}>
-                {overdueDue.map((e,i)=>{
-                  const delay=Math.abs(e._days);
-                  return(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--danger-soft)",border:"1.5px solid var(--danger-border)",borderRadius:"var(--radius-md)",padding:"9px 11px"}}>
-                      <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
-                        <div style={{fontSize:"var(--fs-2xs)",color:"var(--danger)",marginTop:1}}>{fmtDate(e._due)}</div>
-                      </div>
-                      <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--orange)",flexShrink:0}}>{fmt(eVal(e))}</div>
-                      <div style={{fontSize:"var(--fs-2xs)",fontWeight:800,color:"var(--danger)",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:4,padding:"2px 7px",flexShrink:0,whiteSpace:"nowrap"}}>{delay}d atraso</div>
+        {/* ── Vencidas / próximos: uma linha; toque abre a lista ── */}
+        {(overdueDue.length>0||upcomingDue.length>0)&&(
+          <div style={{padding:"0 14px 8px"}}>
+            <div style={{display:"flex",gap:8}}>
+              {overdueDue.length>0&&dueToggle("danger",`${overdueDue.length} ${overdueDue.length===1?"vencida":"vencidas"}`,showOverdue,()=>setShowOverdue(p=>!p),"overdueList")}
+              {upcomingDue.length>0&&dueToggle("warning",`${upcomingDue.length} ${upcomingDue.length===1?"próximo":"próximos"}`,showUpcoming,()=>setShowUpcoming(p=>!p),"upcomingList")}
+            </div>
+            {showOverdue&&overdueDue.length>0&&(
+              <div id="overdueList" style={{display:"flex",flexDirection:"column",gap:5,marginTop:6}}>
+                {overdueDue.map((e,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",padding:"9px 11px"}}>
+                    <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
+                      <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)",marginTop:1}}>{fmtDate(e._due)} · {Math.abs(e._days)}d de atraso</div>
                     </div>
-                  );
-                })}
+                    <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--text-1)",flexShrink:0}}>{fmt(eVal(e))}</div>
+                  </div>
+                ))}
               </div>
             )}
-          </div>
-        )}
-
-        {/* ── Próximos vencimentos ─────────────────────────────── */}
-        {upcomingDue.length>0&&(
-          <div style={{padding:"0 14px 10px"}}>
-            <button type="button" onClick={()=>setShowUpcoming(p=>!p)} aria-expanded={!!showUpcoming} aria-controls="upcomingList"
-              style={{display:"flex",alignItems:"center",justifyContent:"space-between",width:"100%",minHeight:40,background:"none",border:"none",cursor:"pointer",padding:"0 0 4px",fontFamily:"inherit"}}>
-              <div style={{display:"flex",alignItems:"center",gap:7}}>
-                <span style={{fontSize:"var(--fs-xs)",color:"var(--warning)",textTransform:"uppercase",letterSpacing:"0.08em",fontWeight:700}}><svg aria-hidden="true" style={{flexShrink:0}} width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Próximos Vencimentos</span>
-                <span style={{fontSize:"var(--fs-2xs)",background:"var(--warning)",color:"var(--warning-on)",padding:"2px 7px",borderRadius:4,fontWeight:800}}>{upcomingDue.length}</span>
-              </div>
-              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round"
-                style={{transform:showUpcoming?"rotate(180deg)":"rotate(0deg)",transition:"transform .2s",flexShrink:0,stroke:"var(--warning)"}}>
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-            {showUpcoming&&(
-              <div id="upcomingList" style={{display:"flex",flexDirection:"column",gap:5}}>
+            {showUpcoming&&upcomingDue.length>0&&(
+              <div id="upcomingList" style={{display:"flex",flexDirection:"column",gap:5,marginTop:6}}>
                 {upcomingDue.map((e,i)=>{
-                  const dayColor=e._days===0?"var(--orange)":e._days<=3?"var(--warning)":"var(--accent)";
-                  const dayLabel=e._days===0?"Hoje":`${e._days}d`;
+                  const soon=e._days<=7;
                   return(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:e._days===0?"var(--orange-soft)":"var(--surface)",border:`1.5px solid ${tint(dayColor,20)}`,borderRadius:"var(--radius-md)",padding:"9px 11px"}}>
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"var(--surface)",border:`1px solid ${soon?"var(--orange-border)":"var(--border)"}`,borderRadius:"var(--radius-md)",padding:"9px 11px"}}>
                       <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:e.isFatura?e.cardColor:catColor(e.category),flexShrink:0}}/>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.description}</div>
-                        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:1}}>{fmtDate(e._due)}</div>
+                        <div style={{fontSize:"var(--fs-sm)",color:soon?"var(--orange)":"var(--text-3)",fontWeight:soon?700:500,marginTop:1}}>{fmtDate(e._due)} · {e._days===0?"hoje":e._days===1?"amanhã":`em ${e._days} dias`}</div>
                       </div>
-                      <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:e.type==="receita"?"var(--success)":"var(--orange)",flexShrink:0}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
-                      <div style={{fontSize:"var(--fs-2xs)",fontWeight:700,color:dayColor,background:tint(dayColor,9),border:`1px solid ${tint(dayColor,20)}`,borderRadius:4,padding:"2px 7px",flexShrink:0}}>{dayLabel}</div>
+                      <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:e.type==="receita"?"var(--success)":"var(--text-1)",flexShrink:0}}>{e.type==="receita"?"+":""}{fmt(eVal(e))}</div>
                     </div>
                   );
                 })}
@@ -289,58 +279,42 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
           </div>
         )}
 
-        {/* Search + controls — always visible */}
+        {/* Busca + botão de filtros */}
         <div style={{padding:"0 14px 8px",display:"flex",flexDirection:"column",gap:7}}>
-          <div style={{position:"relative"}}>
-            <svg aria-hidden="true" style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)"}} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input style={{...S.inp,paddingLeft:30,paddingRight:search?80:12,fontSize:"var(--fs-md)"}} aria-label="Buscar lançamentos" placeholder="Buscar por descrição ou observação..." value={search} onChange={e=>setSearch(e.target.value)}/>
-            {search&&(
-              <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:2}}>
-                <span aria-label={`${filtered.length} resultados`} style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",background:"var(--surface-2)",borderRadius:4,padding:"1px 5px",fontWeight:600}}>{filtered.length}</span>
-                <button type="button" onClick={()=>setSearch("")} aria-label="Limpar busca" style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:"var(--fs-lg)",lineHeight:1,width:32,height:32,display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">✕</span></button>
-              </div>
-            )}
-          </div>
           <div style={{display:"flex",gap:8}}>
-            <select aria-label="Filtrar lançamentos" value={filter} onChange={e=>setFilter(e.target.value)} style={{...S.selInput,flex:2}}>
-              {FILTERS.map(([val,label,count])=>(
-                <option key={val} value={val}>{label} ({count})</option>
-              ))}
-            </select>
-            <select aria-label="Ordenar por" value={sortBy} onChange={e=>setSortBy(e.target.value)} style={{...S.selInput,flex:1}}>
-              <option value="date">Data</option>
-              <option value="amount">Valor</option>
-              <option value="status">Status</option>
-              <option value="name">Nome</option>
-            </select>
-            <button type="button" onClick={()=>setGroupBy(p=>!p)} className="fTab" aria-label="Agrupar por categoria" title="Agrupar por categoria" aria-pressed={!!groupBy} style={{...S.fTab,...(groupBy?S.fTabActive:{}),padding:"5px 10px",minWidth:40,minHeight:36,justifyContent:"center",fontSize:"var(--fs-sm)",flexShrink:0}}><span aria-hidden="true">⊞</span></button>
+            <div style={{position:"relative",flex:1,minWidth:0}}>
+              <svg aria-hidden="true" style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)"}} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input style={{...S.inp,minHeight:44,paddingLeft:34,paddingRight:search?80:12,fontSize:"var(--fs-md)"}} aria-label="Buscar lançamentos" placeholder="Buscar lançamentos…" value={search} onChange={e=>setSearch(e.target.value)}/>
+              {search&&(
+                <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:2}}>
+                  <span aria-hidden="true" style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-2)",borderRadius:4,padding:"1px 5px",fontWeight:600}}>{filtered.length}</span>
+                  <button type="button" onClick={()=>setSearch("")} aria-label="Limpar busca" style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:"var(--fs-lg)",lineHeight:1,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">✕</span></button>
+                </div>
+              )}
+            </div>
+            <button type="button" onClick={()=>setFiltersOpen(true)} aria-haspopup="dialog"
+              aria-label={activeChips.length>0?`Filtros, ${activeChips.length} ativo${activeChips.length>1?"s":""}`:"Filtros"}
+              style={{position:"relative",flexShrink:0,width:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-md)",cursor:"pointer",fontFamily:"inherit",
+                background:activeChips.length>0?"var(--accent-surface)":"var(--surface)",border:`1px solid ${activeChips.length>0?"var(--accent)":"var(--border)"}`,color:activeChips.length>0?"var(--accent)":"var(--text-2)"}}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+              {activeChips.length>0&&<span aria-hidden="true" style={{position:"absolute",top:-5,right:-5,minWidth:18,height:18,padding:"0 4px",borderRadius:"var(--radius-full)",background:"var(--accent)",color:"var(--success-on)",fontSize:"var(--fs-xs)",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{activeChips.length}</span>}
+            </button>
           </div>
-          {/* Category filter chips */}
-          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-            {[{id:"all",name:"Todas"},...categories.filter(c=>{const used=monthEntries.some(e=>e.category===c.id);return used;})].map(c=>{
-              const cc=c.color||"var(--accent)";
-              const on=filterCat===c.id;
-              return(
-              <button type="button" key={c.id} onClick={()=>setFilterCat(c.id)} aria-pressed={on}
-                style={{padding:"4px 10px",minHeight:30,borderRadius:"var(--radius-xs)",border:`1px solid ${on?cc:"var(--border-subtle)"}`,background:on?tint(cc,13):"transparent",color:on?cc:"var(--text-3)",fontSize:"var(--fs-xs)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                {c.id!=="all"&&<span aria-hidden="true" style={{width:5,height:5,borderRadius:"var(--radius-full)",background:c.color,display:"inline-block",marginRight:4,verticalAlign:"middle"}}/>}{c.name}
-              </button>
-            );})}
-          </div>
-          {/* Tag filter chips — só aparece se houver tags no mês */}
-          {allTags.length>0&&(
-            <div style={{display:"flex",gap:5,flexWrap:"wrap",paddingTop:2,borderTop:"1px solid var(--border-subtle)"}}>
-              <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-4)",alignSelf:"center",marginRight:2,textTransform:"uppercase",letterSpacing:"0.06em"}}>Tags:</span>
-              {allTags.map(t=>(
-                <button type="button" key={t} onClick={()=>setFilterTag(filterTag===t?"all":t)} aria-pressed={filterTag===t}
-                  style={{padding:"4px 9px",minHeight:30,borderRadius:5,border:`1px solid ${filterTag===t?"var(--accent)":"var(--border-strong)"}`,background:filterTag===t?"var(--accent-soft)":"transparent",color:filterTag===t?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-xs)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                  #{t}
+          {activeChips.length>0&&(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {activeChips.map(c=>(
+                <button type="button" key={c.key} onClick={c.clear} aria-label={`Remover filtro ${c.label}`}
+                  style={{minHeight:36,padding:"0 10px",borderRadius:"var(--radius-xs)",border:"1px solid var(--accent-border)",background:"var(--accent-surface)",color:"var(--accent)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                  {c.label} <span aria-hidden="true">✕</span>
                 </button>
               ))}
-              {filterTag!=="all"&&<button type="button" onClick={()=>setFilterTag("all")} style={{padding:"4px 8px",minHeight:30,borderRadius:5,border:"none",background:"none",color:"var(--danger)",fontSize:"var(--fs-xs)",cursor:"pointer",fontFamily:"inherit"}}>✕ limpar</button>}
             </div>
           )}
         </div>
+        {filtersOpen&&<FiltersSheet statusOptions={FILTERS} filter={filter} setFilter={setFilter} sortBy={sortBy} setSortBy={setSortBy} groupBy={groupBy} setGroupBy={setGroupBy}
+          categories={usedCategories} filterCat={filterCat} setFilterCat={setFilterCat} allTags={allTags} filterTag={filterTag} setFilterTag={setFilterTag}
+          resultCount={filtered.length} canClear={activeChips.length>0} onClear={clearFilters} onClose={()=>setFiltersOpen(false)}/>}
+        <div role="status" aria-live="polite" style={SR_ONLY}>{filtered.length} {filtered.length===1?"lançamento":"lançamentos"}</div>
 
         {/* Banner — mês passado */}
         {selMonth<NOW&&(

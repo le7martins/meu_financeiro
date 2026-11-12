@@ -24,6 +24,7 @@ export const daysUntil = (ds, today = todayISO()) => { if(!ds)return null; retur
 export const dueDateFor = (entry, mk) =>
   entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura ? dateInMonth(mk, entry.date.split("-")[2]) : entry.date;
 // Linha única de vencimento do card: texto com data e contagem + token de cor (null = neutro).
+// Dois níveis de alerta: vermelho = atrasado, laranja = vence em até 7 dias.
 const plural = (n,w) => `${n} ${w}${n===1?"":"s"}`;
 const shortDate = (ds,today) => { const [y,m,d]=ds.split("-"); return `${d}/${m}${y===today.slice(0,4)?"":"/"+y.slice(2)}`; };
 export const dueLine = (entry,mk,today = todayISO()) => {
@@ -36,7 +37,7 @@ export const dueLine = (entry,mk,today = todayISO()) => {
   if(entry.statusForMonth==="pago") return {text:`${income?"Recebimento":"Vencimento"} ${date}`,token:null};
   if(days<0) return {text:`${income?"Recebimento":"Venceu em"} ${date} · há ${plural(-days,"dia")}`,token:"danger"};
   const when = days===0?"hoje":days===1?"amanhã":`em ${plural(days,"dia")}`;
-  return {text:`${income?"Recebe":"Vence"} ${when} · ${date}`,token:days<=3?"orange":days<=7?"warning":null};
+  return {text:`${income?"Recebe":"Vence"} ${when} · ${date}`,token:days<=7?"orange":null};
 };
 // Valor do mês sem override: parcela, soma das ocorrências (semanal/quinzenal) ou o próprio valor.
 export const originalMonthAmount = (e) =>

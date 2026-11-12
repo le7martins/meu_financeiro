@@ -41,7 +41,9 @@ describe('datas', () => {
     const line = (today) => dueLine(e, '2026-11', today);
     expect(line('2026-11-05')).toEqual({ text: 'Vence hoje · 05/11', token: 'orange' });
     expect(line('2026-11-04')).toEqual({ text: 'Vence amanhã · 05/11', token: 'orange' });
-    expect(line('2026-11-01')).toEqual({ text: 'Vence em 4 dias · 05/11', token: 'warning' });
+    expect(line('2026-11-01')).toEqual({ text: 'Vence em 4 dias · 05/11', token: 'orange' });
+    expect(line('2026-10-29')).toEqual({ text: 'Vence em 7 dias · 05/11', token: 'orange' });
+    expect(line('2026-10-28')).toEqual({ text: 'Vence em 8 dias · 05/11', token: null });
     expect(line('2026-10-20')).toEqual({ text: 'Vence em 16 dias · 05/11', token: null });
     expect(line('2026-11-07')).toEqual({ text: 'Venceu em 05/11 · há 2 dias', token: 'danger' });
     expect(line('2026-11-06').text).toBe('Venceu em 05/11 · há 1 dia');

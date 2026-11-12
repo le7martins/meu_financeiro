@@ -3,6 +3,22 @@ import S, { tint } from '../styles.js';
 import EntryActionsSheet from './EntryActionsSheet.jsx';
 import { fmt, fmtDate, mDiff, dueLine, eVal, originalMonthAmount } from '../utils.js';
 
+const chip = { fontSize: "var(--fs-sm)", fontWeight: 700, padding: "1px 6px", borderRadius: "var(--radius-xs)", flexShrink: 0 };
+const svgProps = { "aria-hidden": true, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeLinecap: "round", strokeLinejoin: "round" };
+
+// Avisos do lançamento: aparecem como um ícone ao lado do valor; o texto completo vai no painel ⋯.
+function entryFlags(entry, origAmt, hasAmtOverride, budgets, catTotals) {
+  const flags = [];
+  if (hasAmtOverride) flags.push({ key: "adj", glyph: "⚙", token: "warning", text: `Valor ajustado neste mês (original ${fmt(origAmt)})` });
+  const lim = budgets[entry.category];
+  if (entry.type === "despesa" && lim) {
+    const spent = catTotals[entry.category] || 0;
+    if (spent > lim) flags.push({ key: "over", glyph: "⚠", token: "danger", text: `Orçamento da categoria estourado: ${fmt(spent)} de ${fmt(lim)}` });
+    else if (spent / lim >= 0.8) flags.push({ key: "near", glyph: "⚡", token: "orange", text: `${((spent / lim) * 100).toFixed(0)}% do orçamento da categoria: ${fmt(spent)} de ${fmt(lim)}` });
+  }
+  return flags;
+}
+
 // Card de um lançamento do mês. Deslizar para o lado alterna pago/a pagar.
 export default function EntryCard({ entry, selMonth, catColor, catName, budgets, catTotals, onToggle, onClone, onEdit, onDelete }) {
     const [menuOpen,setMenuOpen]=useState(false);
@@ -13,6 +29,12 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
     const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
     const origAmt=originalMonthAmount(entry);
     const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
+    const flags=entryFlags(entry,origAmt,hasAmtOverride,budgets,catTotals);
+    const hasMenu=!entry.isDivida&&!entry.isFatura;
+    const paid=entry.statusForMonth==="pago";
+    const isFixed=entry.recurrence==="fixed";
+    const tags=entry.tags||[];
+    const noteLine=[entry.notes,...tags.map(t=>`#${t}`)].filter(Boolean).join(" · ");
     const canSwipe=!entry.isOpenFatura;
     const onTouchStart=(ev)=>{ ev.currentTarget._tx=ev.touches[0].clientX; ev.currentTarget._ty=ev.touches[0].clientY; };
     const onTouchMove=(ev)=>{
@@ -35,73 +57,73 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
       const dy=ev.changedTouches[0].clientY-(ev.currentTarget._ty||0);
       if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.5) onToggle(entry);
     };
-    const chipBase={fontSize:"var(--fs-2xs)",fontWeight:700,padding:"1px 6px",borderRadius:4,cursor:"default"};
     return(
       <div className="eCard"
         style={{...S.card,borderLeft:`3px solid ${borderColor}`,...openStyle}}
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div style={S.cardL}>
-          <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:entry.isFatura?entry.cardColor:catColor(entry.category),flexShrink:0,marginTop:3}}/>
+          <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:entry.isFatura?entry.cardColor:catColor(entry.category),flexShrink:0,marginTop:5}}/>
           <div style={{minWidth:0,flex:1}}>
-            <div style={S.cardTitle}>{entry.description}</div>
-            <div style={S.cardMeta}>
-              {!entry.isFatura&&<span style={{...S.tag,color:catColor(entry.category),borderColor:tint(catColor(entry.category),27),background:tint(catColor(entry.category),9)}}>{catName(entry.category)}</span>}
-              {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"var(--danger)":"var(--accent)",borderColor:entry.isDivida?"var(--danger-border)":"var(--accent-border)",background:entry.isDivida?"var(--danger-soft)":"var(--accent-surface)"}}>{entry.recurLabel}</span>}
+            <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0}}>
+              <div style={S.cardTitle}>{entry.description}</div>
+              {isFixed&&<svg {...svgProps} role="img" aria-label="Fixo: repete todo mês" width="12" height="12" strokeWidth="2.4" style={{flexShrink:0,color:"var(--text-3)"}}><title>Fixo: repete todo mês</title><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>}
+              {entry.recurrence!=="none"&&!isFixed&&<span style={{...chip,color:entry.isDivida?"var(--danger)":"var(--accent)",background:entry.isDivida?"var(--danger-soft)":"var(--accent-surface)",border:`1px solid ${entry.isDivida?"var(--danger-border)":"var(--accent-border)"}`}}>{entry.recurLabel}</span>}
             </div>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:7,marginTop:3}}>
               <span style={{fontSize:"var(--fs-lg)",fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
                 {entry.type==="receita"?"+":""}{fmt(eVal(entry))}
               </span>
-              {hasAmtOverride&&(
-                <span title={`Valor original: ${fmt(origAmt)}`} style={{...chipBase,background:"var(--warning-soft)",border:"1px solid var(--warning-border)",color:"var(--warning)",letterSpacing:"0.03em"}}>
-                  ⚙ ajustado
-                </span>
-              )}
-              {(()=>{if(entry.type!=="despesa"||!budgets[entry.category])return null;const lim=budgets[entry.category];const spent=catTotals[entry.category]||0;if(spent>lim)return<span style={{...chipBase,background:"var(--danger-soft)",border:"1px solid var(--danger-border)",color:"var(--danger)"}}>⚠ estourado</span>;if(spent/lim>=0.8)return<span style={{...chipBase,background:"var(--orange-soft)",border:"1px solid var(--orange-border)",color:"var(--orange)"}}>⚡ {((spent/lim)*100).toFixed(0)}%</span>;return null;})()}
+              {flags.map(f=><span key={f.key} role="img" aria-label={f.text} title={f.text} style={{fontSize:"var(--fs-base)",lineHeight:1,color:`var(--${f.token})`}}>{f.glyph}</span>)}
             </div>
             {entry.recurrence==="installment"&&entry.installments>1&&(()=>{
               const cur=Math.min(entry.installments,Math.max(1,mDiff(entry.date.substring(0,7),selMonth)+1));
               const pct=cur/entry.installments;
               return(
-                <div style={{marginTop:5,display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{flex:1,height:3,background:"var(--border)",borderRadius:2,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:`${pct*100}%`,background:pct>=1?"var(--success)":"var(--accent)",borderRadius:2,transition:"width .4s"}}/>
-                  </div>
-                  <span style={{fontSize:"var(--fs-2xs)",color:"var(--text-4)",flexShrink:0}}>{cur}/{entry.installments}</span>
+                <div role="progressbar" aria-label={`Parcela ${cur} de ${entry.installments}`} aria-valuemin={0} aria-valuemax={entry.installments} aria-valuenow={cur}
+                  style={{marginTop:5,height:2,background:"var(--border)",borderRadius:1,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${pct*100}%`,background:pct>=1?"var(--success)":"var(--accent)",transition:"width .4s"}}/>
                 </div>
               );
             })()}
-            {due&&<div style={{marginTop:4,fontSize:"var(--fs-xs)",fontWeight:due.token?700:500,color:due.token?`var(--${due.token})`:entry.isOpenFatura?entry.cardColor:"var(--text-4)"}}>{due.text}</div>}
-            {entry.notes&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:3,fontStyle:"italic",display:"flex",alignItems:"flex-start",gap:4}}><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:3,flexShrink:0}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>{entry.notes}</span></div>}
-            {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{(entry.tags||[]).map(t=><span key={t} style={{fontSize:"var(--fs-2xs)",padding:"1px 6px",borderRadius:4,background:"var(--accent-soft)",border:`1px solid ${tint("var(--accent)",13)}`,color:"var(--accent)",fontWeight:600}}>#{t}</span>)}</div>}
-            {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:"var(--fs-xs)",color:"var(--success)",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
+            {(!entry.isFatura||due)&&(
+              <div style={{marginTop:4,fontSize:"var(--fs-sm)",color:"var(--text-3)",display:"flex",columnGap:8,flexWrap:"wrap",alignItems:"baseline"}}>
+                {!entry.isFatura&&<span>{catName(entry.category)}</span>}
+                {due&&<span style={{fontWeight:due.token?700:500,color:due.token?`var(--${due.token})`:entry.isOpenFatura?entry.cardColor:"var(--text-3)"}}>{due.text}</span>}
+              </div>
+            )}
+            {noteLine&&<div style={{display:"flex",alignItems:"center",gap:5,marginTop:3,fontSize:"var(--fs-sm)",color:"var(--text-3)",minWidth:0}}>
+              <svg {...svgProps} width="11" height="11" strokeWidth="2" style={{flexShrink:0}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{noteLine}</span>
+            </div>}
+            {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:"var(--fs-sm)",color:"var(--success)",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
           </div>
         </div>
         <div style={S.cardR}>
-          {!entry.isDivida&&!entry.isFatura&&(
+          {hasMenu&&(
             <button type="button" className="iconBtn" aria-label={`Ações de ${entry.description}`} aria-haspopup="dialog" onClick={()=>setMenuOpen(true)}
-              style={{...S.iconBtn,background:"var(--surface-2)",color:"var(--text-2)"}}>
-              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              style={{...S.iconBtn,width:44,height:36,background:"transparent",color:"var(--text-3)"}}>
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
             </button>
           )}
           {entry.isOpenFatura?(
-            <span style={{...S.badge,background:"var(--info-soft)",color:"var(--info)",border:"1px solid var(--info-border)",padding:"4px 8px",fontSize:"var(--fs-xs)",display:"flex",alignItems:"center",gap:4}}><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:3,flexShrink:0}}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> em aberto</span>
+            <span style={{...S.badge,background:"var(--info-soft)",color:"var(--info)",border:"1px solid var(--info-border)",padding:"4px 8px",fontSize:"var(--fs-sm)",display:"flex",alignItems:"center",gap:4}}>em aberto</span>
+          ):paid?(
+            <button type="button" onClick={()=>onToggle(entry)} className="statusToggleBtn"
+              aria-label={`${entry.type==="receita"?"Recebido":"Pago"}: marcar ${entry.description} como ${entry.type==="receita"?"a receber":"a pagar"}`}
+              title={entry.type==="receita"?"Recebido — toque para marcar como a receber":"Pago — toque para marcar como a pagar"}
+              style={{width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-full)",border:"none",cursor:"pointer",background:"var(--success-soft)",color:"var(--success)",transition:"all .15s"}}>
+              <svg {...svgProps} width="18" height="18" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </button>
           ):(
-            <button type="button" onClick={()=>onToggle(entry)} className="statusToggleBtn" aria-pressed={entry.statusForMonth==="pago"}
-              title={entry.statusForMonth==="pago"?(entry.type==="receita"?"Clique para marcar como a receber":"Clique para marcar como a pagar"):(entry.type==="receita"?"Clique para marcar como recebido":"Clique para marcar como pago")}
-              style={{display:"flex",alignItems:"center",gap:5,padding:"5px 9px",minHeight:32,borderRadius:"var(--radius-sm)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"var(--fs-xs)",fontWeight:700,
-                background:entry.statusForMonth==="pago"?"var(--success-soft)":"var(--orange-soft)",
-                color:entry.statusForMonth==="pago"?"var(--success)":"var(--orange)",
-                transition:"all .15s"}}>
-              {entry.statusForMonth==="pago"?(
-                <><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>{entry.type==="receita"?"Recebido":"Pago"}</>
-              ):(
-                <><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{entry.type==="receita"?"A receber":"A pagar"}</>
-              )}
+            <button type="button" onClick={()=>onToggle(entry)} className="statusToggleBtn"
+              aria-label={`Marcar ${entry.description} como ${entry.type==="receita"?"recebido":"pago"}`}
+              title={entry.type==="receita"?"Toque para marcar como recebido":"Toque para marcar como pago"}
+              style={{display:"flex",alignItems:"center",gap:5,padding:"0 12px",minHeight:44,borderRadius:"var(--radius-md)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"var(--fs-sm)",fontWeight:700,background:"var(--orange-soft)",color:"var(--orange)",transition:"all .15s"}}>
+              <svg {...svgProps} width="12" height="12" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{entry.type==="receita"?"A receber":"A pagar"}
             </button>
           )}
         </div>
-        {menuOpen&&<EntryActionsSheet entry={entry} onEdit={onEdit} onClone={onClone} onDelete={onDelete} onClose={()=>setMenuOpen(false)}/>}
+        {menuOpen&&<EntryActionsSheet entry={entry} flags={flags} onEdit={onEdit} onClone={onClone} onDelete={onDelete} onClose={()=>setMenuOpen(false)}/>}
       </div>
     );
 }
