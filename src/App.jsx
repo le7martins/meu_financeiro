@@ -85,7 +85,7 @@ function App(){
 
 // ─── MainApp ─────────────────────────────────────────────────
 function MainApp({ fbUser, onLogout }){
-  const userData = useUserData(fbUser.uid);
+  const userData = useUserData(fbUser.uid, { cloud: !fbUser._isDemo });
   const { entries, dividas, cards, cardPurchases, cardFaturas, categories, notifSettings, theme, goals, budgets, accounts,
     save, dbReady, syncStatus, k } = userData;
   const today = useToday();

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { getMessaging, isSupported } from 'firebase/messaging';
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from 'firebase/app-check';
 
@@ -42,7 +42,15 @@ try {
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
+// Cache persistente (IndexedDB): gravações feitas offline sobrevivem a fechar a aba e são enviadas ao reconectar.
+function createDb() {
+  try {
+    return initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  } catch {
+    return getFirestore(app); // ambiente sem IndexedDB (ex.: navegação privada antiga)
+  }
+}
+export const db = createDb();
 
 // Messaging só funciona em contextos que suportam SW
 export const messaging = await isSupported().then(ok => ok ? getMessaging(app) : null).catch(() => null);

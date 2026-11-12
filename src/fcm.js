@@ -1,5 +1,5 @@
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { messaging, db } from './firebase';
 
 // VAPID key do Firebase Console → Project Settings → Cloud Messaging → Web Push certificates
@@ -11,7 +11,7 @@ export async function registerFCMToken(uid) {
     const sw = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw });
     if (token) {
-      await updateDoc(doc(db, 'userProfiles', uid), { fcmToken: token, fcmUpdated: new Date().toISOString() });
+      await setDoc(doc(db, 'userProfiles', uid), { fcmToken: token, fcmUpdated: new Date().toISOString() }, { merge: true });
     }
     return token;
   } catch (e) {

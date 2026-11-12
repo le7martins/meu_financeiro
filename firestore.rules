@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Painel admin: checado no servidor pelo e-mail verificado do token (não só no cliente).
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email == 'gomesmartins2302@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    // Dados financeiros: somente o próprio usuário.
+    match /users/{uid}/data/{docId} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Perfil: cada um lê/grava o seu; listar todos só o admin.
+    match /userProfiles/{uid} {
+      allow get, create, update: if signedIn() && request.auth.uid == uid;
+      allow get, list: if isAdmin();
+    }
+
+    // Todo o resto fechado (o cron de notificações usa Admin SDK e ignora as regras).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

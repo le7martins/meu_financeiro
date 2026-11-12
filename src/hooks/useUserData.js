@@ -28,7 +28,8 @@ const COLLECTIONS = {
   cardFaturas:   { fs: 'faturas',   ls: 'cfaturas',   def: {} },
 };
 
-export function useUserData(uid) {
+// cloud=false (modo demo): só cache local, nada vai ao Firestore.
+export function useUserData(uid, { cloud = true } = {}) {
   const k = useCallback((key) => `mf2_${uid}_${key}`, [uid]);
 
   // Estado inicial vem do cache local (funciona offline)
@@ -41,7 +42,8 @@ export function useUserData(uid) {
   const [dbReady, setDbReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState('idle'); // "idle"|"saving"|"saved"|"offline"
   const syncTimerRef = useRef(null);
-  const remoteWriteRef = useRef(false); // evita loop: write próprio → onSnapshot → setState
+  const pendingRef = useRef(0);          // gravações enviadas e ainda sem confirmação do servidor
+  const failedRef = useRef(new Set());   // docs cuja última gravação falhou
 
   const setField = useCallback((name, value, lsKey) => {
     setData(d => ({ ...d, [name]: value }));
@@ -63,6 +65,7 @@ export function useUserData(uid) {
     };
 
     async function bootstrap() {
+      if (!cloud) { setDbReady(true); return; }
       try {
         const cloud = await loadUserData(uid);
         if (cancelled) return; // logout durante a carga: não regrava o cache
@@ -87,7 +90,7 @@ export function useUserData(uid) {
       setDbReady(true);
       registerFCMToken(uid);
 
-      const accept = () => !remoteWriteRef.current && initialized; // ignora eco do próprio write
+      const accept = () => initialized;
       const offline = () => setSyncStatus('offline');
       unsubs = [
         ...Object.entries(COLLECTIONS).map(([name, c]) =>
@@ -98,19 +101,37 @@ export function useUserData(uid) {
 
     bootstrap();
     return () => { cancelled = true; unsubs.forEach(u => u && u()); };
-  }, [uid, k, setField, readSettingsFromCache]);
+  }, [uid, cloud, k, setField, readSettingsFromCache]);
 
   // ─── Gravação: estado + cache local + Firestore ──────────────
   const pushToCloud = useCallback((fsType, value) => {
-    setSyncStatus('saving');
-    remoteWriteRef.current = true;
+    if (!cloud) return;
+    pendingRef.current += 1;
+    setSyncStatus(navigator.onLine ? 'saving' : 'offline');
     saveData(uid, fsType, value).then(() => {
+      failedRef.current.delete(fsType);
+    }).catch((e) => {
+      failedRef.current.add(fsType);
+      console.warn('[Firestore] Falha ao salvar', fsType, e);
+    }).finally(() => {
+      pendingRef.current -= 1;
+      if (pendingRef.current > 0) return;
+      if (failedRef.current.size > 0) { setSyncStatus('error'); return; }
       setSyncStatus('saved');
       if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
       syncTimerRef.current = setTimeout(() => setSyncStatus('idle'), 2500);
-    }).catch(() => setSyncStatus('offline'))
-      .finally(() => { setTimeout(() => { remoteWriteRef.current = false; }, 500); });
-  }, [uid]);
+    });
+  }, [uid, cloud]);
+
+  // Sem rede o Firestore enfileira a gravação (e a promise só resolve ao reconectar): mostra "Offline".
+  useEffect(() => {
+    if (!cloud) return undefined;
+    const goOffline = () => { if (pendingRef.current > 0) setSyncStatus('offline'); };
+    const goOnline  = () => { if (pendingRef.current > 0) setSyncStatus('saving'); };
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => { window.removeEventListener('offline', goOffline); window.removeEventListener('online', goOnline); };
+  }, [cloud]);
 
   const saveCollection = useCallback((name, value) => {
     const c = COLLECTIONS[name];

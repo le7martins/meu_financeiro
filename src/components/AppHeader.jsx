@@ -4,7 +4,8 @@ import S, { tint } from '../styles.js';
 const SYNC = {
   saving:  { token: "info",    label: "Salvando", title: "Salvando..." },
   saved:   { token: "success", label: "Salvo",    title: "Salvo na nuvem" },
-  offline: { token: "danger",  label: "Offline",  title: "Offline — dados locais" },
+  offline: { token: "danger",  label: "Offline",  title: "Offline — salvo no aparelho, será enviado ao reconectar" },
+  error:   { token: "danger",  label: "Não salvo", title: "Falha ao salvar na nuvem — os dados estão só neste aparelho" },
 };
 
 export default function AppHeader({ fbUser, syncStatus, healthScore, activeTab, onShowHealth, searchOpen, onToggleSearch, theme, onToggleTheme }) {
@@ -28,7 +29,7 @@ export default function AppHeader({ fbUser, syncStatus, healthScore, activeTab, 
             <div role="status" title={sync.title} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",borderRadius:"var(--radius-xs)",color:`var(--${sync.token})`,background:`var(--${sync.token}-soft)`,border:`1px solid var(--${sync.token}-border)`,transition:"all .3s"}}>
               {syncStatus==="saving"&&<div aria-hidden="true" style={{width:7,height:7,borderRadius:"var(--radius-full)",background:"currentColor",animation:"pulse 1s ease-in-out infinite"}}/>}
               {syncStatus==="saved"&&<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-              {syncStatus==="offline"&&<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>}
+              {(syncStatus==="offline"||syncStatus==="error")&&<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/></svg>}
               <span style={{fontSize:"var(--fs-2xs)",fontWeight:700}}>{sync.label}</span>
             </div>
           )}

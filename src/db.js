@@ -18,10 +18,10 @@ export async function loadUserData(uid) {
   return Object.fromEntries(results.filter(([, v]) => v !== null));
 }
 
+// A promise só resolve com o servidor confirmando; rejeita em erro real (regras, tamanho, quota)
+// para o chamador poder avisar o usuário.
 export function saveData(uid, type, value) {
-  return setDoc(dataDoc(uid, type), { v: value }).catch(e =>
-    console.warn('[Firestore] Falha ao salvar', type, e)
-  );
+  return setDoc(dataDoc(uid, type), { v: value });
 }
 
 export async function hasCloudData(uid) {
@@ -41,7 +41,8 @@ export async function hasCloudData(uid) {
 export function subscribeData(uid, type, onData, onErr) {
   return onSnapshot(
     dataDoc(uid, type),
-    snap => { if (snap.exists()) onData(snap.data().v); },
+    // hasPendingWrites = eco de gravação local ainda não confirmada: o estado já está atualizado
+    snap => { if (!snap.metadata.hasPendingWrites && snap.exists()) onData(snap.data().v); },
     err  => { if (onErr) onErr(err); else console.warn('[Firestore] onSnapshot erro', type, err); }
   );
 }

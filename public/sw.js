@@ -28,8 +28,14 @@ messaging.onBackgroundMessage(payload => {
 });
 
 // ─── Cache / PWA ─────────────────────────────────────────────
-const CACHE = 'mf-v3';
-const SHELL = ['/meu_financeiro/', '/meu_financeiro/index.html', '/meu_financeiro/badge-96.png'];
+// - Navegação: rede primeiro; guarda a página mais recente para abrir offline.
+// - /assets/* (nome com hash, imutável): cache primeiro, preenchido conforme o uso.
+// - Demais arquivos do app (ícones, manifest): rede primeiro, cache como reserva.
+// - Outras origens (Firebase, fontes, gstatic) e métodos não-GET passam direto: o SDK precisa do erro de rede real.
+const CACHE = 'mf-v4';
+const BASE = '/meu_financeiro/';
+const SHELL = [BASE, BASE + 'index.html', BASE + 'badge-96.png', BASE + 'icon-192.png'];
+const MAX_ENTRIES = 120;
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -43,13 +49,53 @@ self.addEventListener('activate', e => {
   );
 });
 
+async function trim(cache) {
+  const keys = await cache.keys();
+  await Promise.all(keys.slice(0, Math.max(0, keys.length - MAX_ENTRIES)).map(k => cache.delete(k)));
+}
+
+// O clone precisa ser feito antes de qualquer await: depois o navegador já está lendo o corpo da resposta.
+function put(request, response) {
+  if (!response || !response.ok || response.type !== 'basic') return;
+  const copy = response.clone();
+  caches.open(CACHE)
+    .then(cache => cache.put(request, copy).then(() => trim(cache)))
+    .catch(() => {});
+}
+
+async function networkFirst(request, fallbackKey) {
+  try {
+    const response = await fetch(request);
+    put(fallbackKey || request, response);
+    return response;
+  } catch (err) {
+    const cached = await caches.match(fallbackKey || request);
+    if (cached) return cached;
+    throw err;
+  }
+}
+
+async function cacheFirst(request) {
+  const cached = await caches.match(request);
+  if (cached) return cached;
+  const response = await fetch(request);
+  put(request, response);
+  return response;
+}
+
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(
-    fetch(e.request).catch(() =>
-      caches.match(e.request).then(r => r || caches.match('/meu_financeiro/'))
-    )
-  );
+  const { request } = e;
+  if (request.method !== 'GET') return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || !url.pathname.startsWith(BASE)) return;
+
+  if (request.mode === 'navigate') {
+    e.respondWith(networkFirst(request, BASE));
+  } else if (url.pathname.startsWith(BASE + 'assets/')) {
+    e.respondWith(cacheFirst(request));
+  } else {
+    e.respondWith(networkFirst(request));
+  }
 });
 
 // Mensagem do app principal (notificação manual)
