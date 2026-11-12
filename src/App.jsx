@@ -6,7 +6,7 @@ import { onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
 import { fmt, fmtDate, mLabel, addM, eVal, loadLS, saveLS, daysInMonth } from './utils.js';
 import { BLANK } from './constants.js';
-import { getMonthEntries } from './logic.js';
+import { getMonthEntries, accumulatedBalance } from './logic.js';
 import { requestNotifPermission, fireNotification, checkAndNotify } from './notifications.js';
 import {
   toggleEntryStatus, toggleDividaMonth, applyEntryEdit, deleteEntry, payFatura, revertFatura,
@@ -164,6 +164,9 @@ function MainApp({ fbUser, onLogout }){
     } else if(!metaAtingida){ prevIncomeAlertRef.current=false; }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[dbReady,goals.monthly,totRec,selMonth]);
+
+  // Acumulado até o mês ATUAL (a Análise projeta a partir de hoje, independentemente do mês aberto em Contas)
+  const accumNow=useMemo(()=>accumulatedBalance({entries,dividas,cards,cardPurchases,cardFaturas},NOW,today)?.value??0,[entries,dividas,cards,cardPurchases,cardFaturas,NOW,today]);
 
   // Saldo por conta: saldo_inicial + receitas pagas - despesas pagas (entradas não-recorrentes)
   const accountBalances = useMemo(()=>{
@@ -397,7 +400,7 @@ function MainApp({ fbUser, onLogout }){
       )}
 
       <Suspense fallback={<div style={{flex:1}}/>}>
-        {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} accumSaldo={accumSaldo}/>}
+        {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} accumSaldo={accumNow} today={today} toast={toast}/>}
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={save.cards} cardPurchases={cardPurchases} setCardPurchases={save.cardPurchases} cardFaturas={cardFaturas} setCardFaturas={save.cardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
         {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={save.dividas} categories={categories} setCategories={save.categories} nowMonth={NOW} toast={toast}/>}
         {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={save.goals} budgets={budgets} onSaveBudgets={save.budgets} todayWidget={todayWidget} accounts={accounts} accountBalances={accountBalances}/>}

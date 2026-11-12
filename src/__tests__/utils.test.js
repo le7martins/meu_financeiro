@@ -96,7 +96,7 @@ describe('fmt: valores sem símbolo de moeda', () => {
     expect(fmt(-0.001)).toBe('0,00');
   });
   test('fmtShort sem símbolo', () => {
-    expect(fmtShort(1500)).toBe('1.5k');
+    expect(fmtShort(1500)).toBe('1,5k');
     expect(fmtShort(-250)).toBe('-250');
   });
 });

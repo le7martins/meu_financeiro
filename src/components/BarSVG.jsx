@@ -6,7 +6,7 @@ export default function BarSVG({ data, type, faded }) {
   const [tip, setTip] = useState(null);
   const handleEnter = useCallback((di, d, x) => setTip({ di, d, x }), []);
   const handleLeave = useCallback(() => setTip(null), []);
-  const W=320, H=180, PL=44, PB=24, PT=10, PR=8;
+  const W=340, H=190, PL=50, PB=26, PT=10, PR=8;
   const cW=W-PL-PR, cH=H-PB-PT;
   if (!data || data.length === 0) return null;
 
@@ -37,7 +37,7 @@ export default function BarSVG({ data, type, faded }) {
   };
 
   // Tooltip: posicionamento inteligente (não sai dos limites)
-  const TIP_W = 104, TIP_H = type === "evolucao" ? 64 : 50;
+  const TIP_W = 124, TIP_H = type === "evolucao" ? 72 : 56;
   const renderTip = () => {
     if (!tip) return null;
     const tx = Math.min(Math.max(tip.x - TIP_W / 2, PL), W - TIP_W - PR);
@@ -54,14 +54,14 @@ export default function BarSVG({ data, type, faded }) {
         <line x1={tip.x} y1={ty+TIP_H} x2={tip.x} y2={H-PB} strokeWidth="1" strokeDasharray="3 2"
           style={{ stroke:tint("var(--chart-1)",27) }}/>
         {/* mês */}
-        <text x={tx+TIP_W/2} y={ty+15} textAnchor="middle" fontSize="9" fontWeight="bold" style={{ fill:"var(--accent)" }}>{d.month}</text>
+        <text x={tx+TIP_W/2} y={ty+15} textAnchor="middle" fontSize="11" fontWeight="bold" style={{ fill:"var(--accent)" }}>{d.month}</text>
         {/* receita */}
-        <text x={tx+8} y={ty+28} fontSize="9" style={{ fill:"var(--success)" }}>↑ {fmtShort(d.receitas)}</text>
+        <text x={tx+8} y={ty+31} fontSize="11" style={{ fill:"var(--success)" }}>↑ {fmtShort(d.receitas)}</text>
         {/* despesa */}
-        <text x={tx+8} y={ty+40} fontSize="9" style={{ fill:"var(--orange)" }}>↓ {fmtShort(d.despesas)}</text>
+        <text x={tx+8} y={ty+45} fontSize="11" style={{ fill:"var(--orange)" }}>↓ {fmtShort(d.despesas)}</text>
         {/* saldo — só evolução */}
         {type === "evolucao" && (
-          <text x={tx+8} y={ty+52} fontSize="9" style={{ fill:d.saldo>=0?"var(--success)":"var(--danger)" }}>≈ {fmtShort(d.saldo)}</text>
+          <text x={tx+8} y={ty+59} fontSize="11" style={{ fill:d.saldo>=0?"var(--success)":"var(--danger)" }}>≈ {fmtShort(d.saldo)}</text>
         )}
       </g>
     );
@@ -86,7 +86,7 @@ export default function BarSVG({ data, type, faded }) {
         {yTicks.map((v, i) => (
           <g key={i}>
             <line x1={PL} x2={W-PR} y1={toY(v)} y2={toY(v)} strokeDasharray="3 3" style={{ stroke:"var(--chart-grid)" }}/>
-            <text x={PL-4} y={toY(v)+4} textAnchor="end" fontSize="9" style={{ fill:"var(--chart-label)" }}>{fmtShort(v)}</text>
+            <text x={PL-4} y={toY(v)+4} textAnchor="end" fontSize="11" style={{ fill:"var(--chart-label)" }}>{fmtShort(v)}</text>
           </g>
         ))}
         {minVal < 0 && <line x1={PL} x2={W-PR} y1={toY(0)} y2={toY(0)} strokeWidth="1" style={{ stroke:"var(--chart-axis)" }}/>}
@@ -144,9 +144,9 @@ export default function BarSVG({ data, type, faded }) {
         )}
 
         {/* Rótulos eixo X */}
-        {data.map((d, i) => (
-          <text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-6}
-            textAnchor="middle" fontSize="9"
+        {data.map((d, i) => (data.length > 12 && i % 2 === 1 && tip?.di !== i) ? null : (
+          <text key={i} x={PL+(i+0.5)*(cW/data.length)} y={H-7}
+            textAnchor="middle" fontSize="11"
             fontWeight={tip?.di===i?700:400}
             style={{ fill:tip?.di===i?"var(--accent)":"var(--chart-label)" }}>
             {d.month}

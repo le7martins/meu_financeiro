@@ -39,6 +39,24 @@ export function buildFatura(card,purchases,cardFaturas,billingMonth,today=todayI
   const partial=payRecord?.partial||false;
   return {card,billingMonth,items,total,closeDate,dueDate,open,paid,paidAmount,partial,key};
 }
+// Saldo acumulado dos meses ANTERIORES a `month` (até 36 meses). null = não há lançamentos anteriores.
+export function accumulatedBalance({entries,dividas,cards,cardPurchases,cardFaturas},month,today=todayISO()){
+  const allDates=[...entries.map(e=>e.date.substring(0,7)),...dividas.map(d=>d.startMonth)];
+  if(!allDates.length) return null;
+  const earliest=allDates.reduce((mn,m)=>m<mn?m:mn,month);
+  if(earliest>=month) return null;
+  const cap=addM(month,-36);
+  const capped=earliest<cap;
+  let total=0,cur=capped?cap:earliest;
+  while(cur<month){
+    for(const e of getMonthEntries(entries,dividas,cur,cards,cardPurchases,cardFaturas,today)){
+      const v=e.displayAmount??e.amount;
+      total+=e.type==="receita"?v:e.type==="despesa"?-v:0;
+    }
+    cur=addM(cur,1);
+  }
+  return {value:total,capped};
+}
 // Dívida: parcelas pagas DENTRO do período (meses órfãos não contam), restante em R$ e parcela regular.
 export function debtStats(d){
   const n=Math.max(1,parseInt(d.installments)||1);

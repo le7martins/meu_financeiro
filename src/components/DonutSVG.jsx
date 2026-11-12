@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { fmt, fmtShort } from '../utils.js';
-import { tint } from '../styles.js';
 
 export default function DonutSVG({data,total}){
   const [hover,setHover]=useState(null);
-  const CX=110,CY=90,R=70,r=44,W=280,H=180;
+  const CX=110,CY=90,R=78,r=50,W=220,H=180;
   let angle=-Math.PI/2;
   const slices=data.map(d=>{
     const pct=total>0?d.value/total:0;
@@ -33,41 +32,17 @@ export default function DonutSVG({data,total}){
       {/* Centro: dados do hover ou total */}
       {active?(
         <>
-          <text x={CX} y={CY-14} textAnchor="middle" fontSize="11" fontWeight="800" style={{fill:active.color}}>{(active.pct*100).toFixed(1)}%</text>
-          <text x={CX} y={CY+3}  textAnchor="middle" fontSize="10" fontWeight="700" style={{fill:"var(--text-1)"}}>{fmtShort(active.value)}</text>
-          <text x={CX} y={CY+18} textAnchor="middle" fontSize="9" style={{fill:active.color}}>{active.name}</text>
+          <text x={CX} y={CY-14} textAnchor="middle" fontSize="13" fontWeight="800" style={{fill:active.color}}>{(active.pct*100).toFixed(1)}%</text>
+          <text x={CX} y={CY+3}  textAnchor="middle" fontSize="12" fontWeight="700" style={{fill:"var(--text-1)"}}>{fmtShort(active.value)}</text>
+          <text x={CX} y={CY+18} textAnchor="middle" fontSize="11" style={{fill:active.color}}>{active.name.length>14?active.name.slice(0,13)+"…":active.name}</text>
         </>
       ):(
         <>
-          <text x={CX} y={CY-4} textAnchor="middle" fontSize="9" style={{fill:"var(--chart-label)"}}>Total</text>
-          <text x={CX} y={CY+12} textAnchor="middle" fontSize="11" fontWeight="700" style={{fill:"var(--text-1)"}}>{fmtShort(total)}</text>
+          <text x={CX} y={CY-4} textAnchor="middle" fontSize="11" style={{fill:"var(--chart-label)"}}>Total</text>
+          <text x={CX} y={CY+12} textAnchor="middle" fontSize="13" fontWeight="700" style={{fill:"var(--text-1)"}}>{fmtShort(total)}</text>
         </>
       )}
 
-      {/* Legenda lateral */}
-      {data.slice(0,6).map((d,i)=>{
-        const lx=CX+R+18, ly=20+i*26;
-        const pct=total>0?(d.value/total*100).toFixed(0):0;
-        return(
-          <g key={i} style={{cursor:"pointer"}}
-            onMouseEnter={()=>setHover(i)} onMouseLeave={()=>setHover(null)}
-            onTouchStart={e=>{e.stopPropagation();setHover(hover===i?null:i);}}>
-            <rect x={lx} y={ly-7} width={W-lx-4} height={20} rx="4"
-              fill={hover===i?tint(d.color,9):"transparent"}/>
-            <circle cx={lx+6} cy={ly+3} r="4" fill={d.color} opacity={hover===null||hover===i?1:0.4}/>
-            <text x={lx+14} y={ly+7} style={{fill:hover===i?d.color:"var(--chart-label)"}}
-              fontSize="9" fontWeight={hover===i?"700":"400"}
-              opacity={hover===null||hover===i?1:0.5}>
-              {d.name.length>10?d.name.slice(0,10)+"…":d.name}
-            </text>
-            <text x={W-6} y={ly+7} textAnchor="end" style={{fill:hover===i?d.color:"var(--chart-label)"}}
-              fontSize="9" fontWeight={hover===i?"700":"400"}
-              opacity={hover===null||hover===i?1:0.5}>
-              {pct}%
-            </text>
-          </g>
-        );
-      })}
     </svg>
   );
 }

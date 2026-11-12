@@ -2,7 +2,7 @@
 const NUM = new Intl.NumberFormat("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
 // Valores monetários sempre como 1.234,56 (sem símbolo de moeda).
 export const fmt      = (v) => NUM.format(Math.abs(v)<0.005?0:v);
-export const fmtShort = (v) => Math.abs(v)>=1000?`${(v/1000).toFixed(1)}k`:v.toFixed(0);
+export const fmtShort = (v) => Math.abs(v)>=1000?`${(v/1000).toFixed(1).replace('.',',')}k`:v.toFixed(0);
 export const fmtDate  = (d) => { const [y,m,day]=d.split("-"); return `${day}/${m}/${y}`; };
 export const MNAMES   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 export const mLabel   = (k) => { const [y,m]=k.split("-"); return `${MNAMES[+m-1]} ${y}`; };

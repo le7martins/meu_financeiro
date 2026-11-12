@@ -1,9 +1,8 @@
-import { useMemo, useRef } from 'react';
-import { getMonthEntries } from '../logic.js';
+import { useMemo } from 'react';
+import { getMonthEntries, accumulatedBalance } from '../logic.js';
 import { addM, daysUntil, dueDateFor, eVal } from '../utils.js';
 
 export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, today }) {
-  const accumCache = useRef({});
   const NOW = today.substring(0, 7);
 
   const monthEntries = useMemo(
@@ -16,26 +15,10 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
   const totPend = useMemo(() => monthEntries.filter(e => e.statusForMonth === 'a_pagar' && e.type === 'despesa').reduce((s, e) => s + eVal(e), 0), [monthEntries]);
   const totPago = useMemo(() => monthEntries.filter(e => e.statusForMonth === 'pago' && e.type === 'despesa').reduce((s, e) => s + eVal(e), 0), [monthEntries]);
 
-  const accumSaldoResult = useMemo(() => {
-    const allDates = [...entries.map(e => e.date.substring(0, 7)), ...dividas.map(d => d.startMonth)];
-    if (!allDates.length) return null;
-    const earliest = allDates.reduce((mn, m) => m < mn ? m : mn, selMonth);
-    if (earliest >= selMonth) return null;
-    const cap = addM(selMonth, -36);
-    const capped = earliest < cap;
-    const start = capped ? cap : earliest;
-    const cacheKey = `${selMonth}_${start}_${today}`;
-    if (accumCache.current[cacheKey] !== undefined) return { value: accumCache.current[cacheKey], capped };
-    let total = 0, cur = start;
-    while (cur < selMonth) {
-      const me = getMonthEntries(entries, dividas, cur, cards, cardPurchases, cardFaturas, today);
-      total += me.filter(e => e.type === 'receita').reduce((s, e) => s + eVal(e), 0)
-             - me.filter(e => e.type === 'despesa').reduce((s, e) => s + eVal(e), 0);
-      cur = addM(cur, 1);
-    }
-    accumCache.current = { [cacheKey]: total };
-    return { value: total, capped };
-  }, [entries, dividas, selMonth, cards, cardPurchases, cardFaturas, today]);
+  const accumSaldoResult = useMemo(
+    () => accumulatedBalance({ entries, dividas, cards, cardPurchases, cardFaturas }, selMonth, today),
+    [entries, dividas, selMonth, cards, cardPurchases, cardFaturas, today]
+  );
 
   const healthScore = useMemo(() => {
     if (totRec === 0) return null;

@@ -1,642 +1,95 @@
-import { useState, useMemo, useCallback } from 'react';
-import BarSVG from '../components/BarSVG.jsx';
-import DonutSVG from '../components/DonutSVG.jsx';
-import Leg from '../components/Leg.jsx';
+import { useState, useMemo } from 'react';
 import SumCard from '../components/SumCard.jsx';
 import MonthPicker from '../components/MonthPicker.jsx';
-import { getMonthEntries, buildFatura, getCardBillingMonths } from '../logic.js';
-import { fmt, fmtShort, mLabel, mShort, addM, eVal } from '../utils.js';
-import S, { tint } from '../styles.js';
+import OverviewTab from './chart/OverviewTab.jsx';
+import CategoriesTab from './chart/CategoriesTab.jsx';
+import ProjectionTab from './chart/ProjectionTab.jsx';
+import CompareTab from './chart/CompareTab.jsx';
+import CardsTab from './chart/CardsTab.jsx';
+import ReportCard from './chart/ReportCard.jsx';
+import { useChartSummary, sumMonths, categoryRanking } from './chart/summary.js';
+import { fmt, mLabel, addM } from '../utils.js';
+import S from '../styles.js';
 
-export default function ChartScreen({entries,dividas,categories,nowMonth,cards,cardPurchases,cardFaturas,accumSaldo}){
-  const [mode,setMode]=useState("mes");
-  const [specMonth,setSpecMonth]=useState(nowMonth);
-  const [fromMonth,setFromMonth]=useState(addM(nowMonth,-5));
-  const [toMonth,setToMonth]=useState(nowMonth);
-  const [showPicker,setShowPicker]=useState(false);
-  const [chartType,setChartType]=useState("barras");
-  const [catView,setCatView]=useState("despesa");
-  const [cmpA,setCmpA]=useState(nowMonth);
-  const [cmpB,setCmpB]=useState(addM(nowMonth,-1));
-  const [projMonths,setProjMonths]=useState(6);
-  const [histMeses,setHistMeses]=useState(6);
-  const [relMes,setRelMes]=useState(nowMonth);
-  const [gerandoRel,setGerandoRel]=useState(false);
+const TABS = [['geral', 'Visão geral'], ['categorias', 'Categorias'], ['projecao', 'Projeção'], ['comparar', 'Comparar'], ['cartoes', 'Cartões']];
+const PERIOD_TABS = ['geral', 'categorias', 'cartoes']; // abas que usam o período escolhido
 
-  const getCat  =(id)=>(categories.find(c=>c.id===id)||{color:"#9E9E9E",name:id});
-  const catColor=(id)=>getCat(id).color;
-  const catName =(id)=>getCat(id).name;
+// Análise: gráficos e relatórios. Todos os números vêm de getMonthEntries (mesma regra da tela de Contas).
+export default function ChartScreen({ entries, dividas, categories, nowMonth, cards, cardPurchases, cardFaturas, accumSaldo, today, toast }) {
+  const [tab, setTab] = useState('geral');
+  const [mode, setMode] = useState('mes');
+  const [specMonth, setSpecMonth] = useState(nowMonth);
+  const [fromMonth, setFromMonth] = useState(addM(nowMonth, -5));
+  const [toMonth, setToMonth] = useState(nowMonth);
 
-  const range=useMemo(()=>{
-    if(mode==="mes") return [specMonth];
-    const months=[],end=fromMonth<=toMonth?toMonth:fromMonth;
-    let cur=fromMonth<=toMonth?fromMonth:toMonth;
-    while(cur<=end){months.push(cur);cur=addM(cur,1);}
-    return months.slice(0,24);
-  },[mode,specMonth,fromMonth,toMonth]);
+  const catOf = useMemo(() => (id) => categories.find(c => c.id === id) || { color: 'var(--text-3)', name: id }, [categories]);
+  const summary = useChartSummary({ entries, dividas, cards, cardPurchases, cardFaturas, today });
 
-  const mData=(m)=>getMonthEntries(entries,dividas,m,cards,cardPurchases,cardFaturas);
+  const { range, truncated } = useMemo(() => {
+    if (mode === 'mes') return { range: [specMonth], truncated: false };
+    const lo = fromMonth <= toMonth ? fromMonth : toMonth, hi = fromMonth <= toMonth ? toMonth : fromMonth;
+    const months = []; for (let m = lo; m <= hi; m = addM(m, 1)) months.push(m);
+    return { range: months.slice(0, 24), truncated: months.length > 24 };
+  }, [mode, specMonth, fromMonth, toMonth]);
 
-  const monthlyData=useMemo(()=>range.map(m=>{
-    const me=mData(m);
-    const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-    const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-    return{month:range.length===1?mLabel(m):mShort(m),receitas:+rec.toFixed(2),despesas:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2)};
-  }),[entries,dividas,cards,cardPurchases,cardFaturas,range]);
+  const usesPeriod = PERIOD_TABS.includes(tab);
+  const totals = useMemo(() => sumMonths(summary, range), [summary, range]);
+  const insights = useMemo(() => {
+    if (range.length < 2) return null;
+    const maxM = range.reduce((best, m) => summary(m).dep > summary(best).dep ? m : best, range[0]);
+    return { maxM, maxDep: summary(maxM).dep, topCat: categoryRanking(summary, range, 'despesa', catOf)[0] || null };
+  }, [summary, range, catOf]);
 
-  const catData=useMemo(()=>{
-    const map={};
-    range.forEach(m=>mData(m).filter(e=>e.type===catView).forEach(e=>{map[e.category]=(map[e.category]||0)+eVal(e);}));
-    return Object.entries(map).map(([id,value])=>({id,name:catName(id),value:+value.toFixed(2),color:catColor(id)})).sort((a,b)=>b.value-a.value);
-  },[entries,dividas,cards,cardPurchases,cardFaturas,range,catView]);
+  const modeBtn = (m, label) => (
+    <button type="button" className="fTab" aria-pressed={mode === m} onClick={() => setMode(m)}
+      style={{ ...S.fTab, minHeight: 44, flex: 1, justifyContent: 'center', ...(mode === m ? S.fTabActive : {}) }}>{label}</button>
+  );
 
-  const totals=useMemo(()=>{
-    const all=range.flatMap(m=>mData(m));
-    const rec=all.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-    const dep=all.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-    return{rec,dep,saldo:rec-dep};
-  },[entries,dividas,cards,cardPurchases,cardFaturas,range]);
-
-  const projData=useMemo(()=>Array.from({length:projMonths},(_,i)=>{
-    const m=addM(nowMonth,i+1);
-    const me=mData(m);
-    const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-    const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-    return{month:mShort(m),receitas:+rec.toFixed(2),despesas:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2)};
-  }),[entries,dividas,cards,cardPurchases,cardFaturas,nowMonth,projMonths]);
-
-  const projCumData=useMemo(()=>{
-    const nowMe=mData(nowMonth);
-    const nowSaldo=nowMe.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0)-nowMe.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-    let running=+((accumSaldo||0)+nowSaldo).toFixed(2);
-    return projData.map(d=>{
-      running=+(running+d.saldo).toFixed(2);
-      return{...d,cumulative:running};
-    });
-  },[projData,accumSaldo,nowMonth,entries,dividas,cards,cardPurchases,cardFaturas]);
-
-  const histData=useMemo(()=>Array.from({length:histMeses},(_,i)=>{
-    const m=addM(nowMonth,i-histMeses+1);
-    const me=mData(m);
-    const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-    const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-    return{month:mShort(m),receitas:+rec.toFixed(2),despesas:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2),isCurrent:m===nowMonth};
-  }),[entries,dividas,cards,cardPurchases,cardFaturas,nowMonth,histMeses]);
-
-  const insights=useMemo(()=>{
-    if(range.length<2) return null;
-    let maxDepM=null,maxDep=0;
-    range.forEach(m=>{const dep=mData(m).filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);if(dep>maxDep){maxDep=dep;maxDepM=m;}});
-    return{maxDepM,maxDep,topCat:catData[0]||null};
-  },[entries,dividas,cards,cardPurchases,cardFaturas,range,catData]);
-
-  const cardCatData=useMemo(()=>{
-    const map={};
-    cardPurchases.forEach(p=>{const id=p.category||"outro";map[id]=(map[id]||0)+parseFloat(p.amount);});
-    const total=Object.values(map).reduce((s,v)=>s+v,0);
-    return{cats:Object.entries(map).map(([id,value])=>({id,name:catName(id),value:+value.toFixed(2),color:catColor(id)})).sort((a,b)=>b.value-a.value),total:+total.toFixed(2)};
-  },[cardPurchases,categories]);
-
-  const cmpData=useMemo(()=>{
-    const calc=(m)=>{
-      const me=mData(m);
-      const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-      const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-      const catMap={};
-      me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
-      const cats=Object.entries(catMap).map(([id,v])=>({id,name:catName(id),color:catColor(id),value:+v.toFixed(2)})).sort((a,b)=>b.value-a.value).slice(0,5);
-      return{rec:+rec.toFixed(2),dep:+dep.toFixed(2),saldo:+(rec-dep).toFixed(2),cats};
-    };
-    return{a:calc(cmpA),b:calc(cmpB)};
-  },[entries,dividas,cards,cardPurchases,cardFaturas,cmpA,cmpB]);
-
-  const cardMonthlyData=useMemo(()=>range.map(m=>{
-    const entry={month:range.length===1?mLabel(m):mShort(m)};
-    let tot=0;
-    cards.forEach(card=>{
-      const allBm=getCardBillingMonths(card,cardPurchases);
-      allBm.forEach(bm=>{
-        const fat=buildFatura(card,cardPurchases,cardFaturas,bm);
-        if(fat.dueDate.substring(0,7)===m&&fat.total>0){entry[card.id]=(entry[card.id]||0)+fat.total;tot+=fat.total;}
-      });
-    });
-    entry.total=+tot.toFixed(2);
-    return entry;
-  }),[cards,cardPurchases,cardFaturas,range]);
-
-  const gerarRelatorio=useCallback(async()=>{
-    setGerandoRel(true);
-    try{
-      const me=mData(relMes);
-      const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-      const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-      const saldo=rec-dep;
-      const pago=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="pago").reduce((s,e)=>s+eVal(e),0);
-      const pend=dep-pago;
-      const catMap={};
-      me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
-      const cats=Object.entries(catMap).map(([id,v])=>({name:catName(id),value:v,color:catColor(id)})).sort((a,b)=>b.value-a.value).slice(0,6);
-
-      const W=390,PAD=24;
-      const catH=cats.length*38+14;
-      const H=106+80+28+catH+70+36;
-      const cv=document.createElement('canvas');
-      cv.width=W*2;cv.height=H*2;
-      const ctx=cv.getContext('2d');
-      ctx.scale(2,2);
-
-      const rr=(x,y,w,h,r=8)=>{
-        ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
-        ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);
-        ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
-      };
-
-      // Fundo
-      ctx.fillStyle='#080c12';ctx.fillRect(0,0,W,H);
-      // Barra topo verde
-      ctx.fillStyle='#4ade80';ctx.fillRect(0,0,W,4);
-
-      // Logo
-      ctx.fillStyle='#4ade80';ctx.font='bold 20px system-ui,sans-serif';ctx.fillText('CashUp',PAD,38);
-      ctx.fillStyle='#556';ctx.font='11px system-ui,sans-serif';ctx.fillText('Relatório Mensal',PAD,54);
-      // Mês
-      ctx.fillStyle='#dde';ctx.font='bold 24px system-ui,sans-serif';ctx.fillText(mLabel(relMes),PAD,86);
-
-      // Cards resumo
-      const cW3=(W-PAD*2-8)/3;
-      [{l:'Receitas',v:rec,c:'#4ade80'},{l:'Despesas',v:dep,c:'#fb923c'},{l:'Saldo',v:saldo,c:saldo>=0?'#4ade80':'#f87171'}].forEach(({l,v,c},i)=>{
-        const x=PAD+i*(cW3+4),y=106,ch=64;
-        ctx.fillStyle='#0d1118';rr(x,y,cW3,ch);ctx.fill();
-        ctx.strokeStyle='#1a3a6e44';ctx.lineWidth=1;rr(x,y,cW3,ch);ctx.stroke();
-        ctx.fillStyle='#556';ctx.font='9px system-ui,sans-serif';ctx.fillText(l,x+8,y+16);
-        ctx.fillStyle=c;ctx.font='bold 11px system-ui,sans-serif';
-        const vs=fmt(v);ctx.fillText(vs,x+8,y+44);
-      });
-
-      // Categorias
-      let cy=106+64+24;
-      ctx.fillStyle='#556';ctx.font='9px system-ui,sans-serif';ctx.fillText('DESPESAS POR CATEGORIA',PAD,cy);
-      cy+=14;
-      const barW=W-PAD*2;const maxC=cats[0]?.value||1;
-      cats.forEach(({name,value,color})=>{
-        ctx.fillStyle='#ccd';ctx.font='11px system-ui,sans-serif';ctx.fillText(name,PAD,cy+10);
-        const vs=fmt(value);ctx.fillStyle=color;ctx.font='bold 10px system-ui,sans-serif';
-        ctx.fillText(vs,W-PAD-ctx.measureText(vs).width,cy+10);
-        ctx.fillStyle='#1a2840';rr(PAD,cy+14,barW,7,3);ctx.fill();
-        const fw=Math.max(7,(value/maxC)*barW);ctx.fillStyle=color;rr(PAD,cy+14,fw,7,3);ctx.fill();
-        cy+=38;
-      });
-
-      // Status pagamentos
-      cy+=4;
-      ctx.fillStyle='#556';ctx.font='9px system-ui,sans-serif';ctx.fillText('STATUS DE PAGAMENTOS',PAD,cy);
-      cy+=12;
-      ctx.fillStyle='#1a2840';rr(PAD,cy,barW,10,5);ctx.fill();
-      if(dep>0){const pw=Math.max(10,(pago/dep)*barW);ctx.fillStyle='#4ade80';rr(PAD,cy,pw,10,5);ctx.fill();}
-      cy+=22;
-      ctx.fillStyle='#4ade80';ctx.font='10px system-ui,sans-serif';ctx.fillText(`✓ Pago: ${fmt(pago)}`,PAD,cy);
-      ctx.fillStyle='#fb923c';ctx.fillText(`⏳ Pendente: ${fmt(pend)}`,PAD+140,cy);
-
-      // Rodapé
-      cy=H-16;
-      ctx.fillStyle='#334';ctx.font='9px system-ui,sans-serif';
-      ctx.fillText(`Gerado em ${new Date().toLocaleDateString('pt-BR')} · CashUp`,PAD,cy);
-
-      const blob=await new Promise(res=>cv.toBlob(res,'image/png'));
-      const file=new File([blob],`cashup-${relMes}.png`,{type:'image/png'});
-      if(navigator.canShare?.({files:[file]})){
-        await navigator.share({files:[file],title:`Relatório CashUp – ${mLabel(relMes)}`});
-      } else {
-        const url=URL.createObjectURL(blob);
-        const a=document.createElement('a');a.href=url;a.download=`cashup-${relMes}.png`;a.click();
-        setTimeout(()=>URL.revokeObjectURL(url),1000);
-      }
-    } catch(e){ if(e?.name!=='AbortError') console.error(e); }
-    setGerandoRel(false);
-  },[relMes,entries,dividas,cards,cardPurchases,cardFaturas,categories]);
-
-  return(
-    <div style={{paddingBottom:80,paddingTop:4}}>
-      <div style={{padding:"12px 14px 0"}}>
-        <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8}}>Período de análise</div>
-        <div style={{display:"flex",gap:6,marginBottom:12,position:"relative"}}>
-          <button onClick={()=>{setMode("mes");setShowPicker(p=>!p);}} className="fTab" aria-pressed={mode==="mes"} aria-haspopup="true" aria-expanded={showPicker&&mode==="mes"}
-            style={{...S.fTab,minHeight:40,flex:1,justifyContent:"center",gap:5,...(mode==="mes"?S.fTabActive:{})}}>
-            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            {mLabel(specMonth)}<svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <button onClick={()=>{setMode("periodo");setShowPicker(false);}} className="fTab" aria-pressed={mode==="periodo"}
-            style={{...S.fTab,minHeight:40,flex:1,justifyContent:"center",...(mode==="periodo"?S.fTabActive:{})}}>Período</button>
-          {showPicker&&mode==="mes"&&(
-            <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,width:"calc(50% - 3px)",background:"var(--surface)",border:"1px solid var(--accent-border)",borderRadius:"var(--radius-lg)",zIndex:20,overflow:"hidden",maxHeight:220,overflowY:"auto",boxShadow:"var(--shadow-md)"}}>
-              {Array.from({length:24},(_,i)=>addM(nowMonth,i-12)).map(m=>(
-                <button key={m} onClick={()=>{setSpecMonth(m);setShowPicker(false);}}
-                  style={{width:"100%",minHeight:40,padding:"9px 14px",background:m===specMonth?"var(--accent-soft)":"transparent",border:"none",color:m===specMonth?"var(--accent)":"var(--text-2)",fontSize:"var(--fs-md)",cursor:"pointer",textAlign:"left",fontFamily:"inherit",borderBottom:"1px solid var(--border-subtle)",fontWeight:m===specMonth?700:400}}>
-                  {mLabel(m)}{m===nowMonth?" ·":""}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        {mode==="periodo"&&(
-          <div style={{display:"flex",gap:10,marginBottom:12}}>
-            <div style={{flex:1}}><label style={{...S.lbl,marginBottom:5}}>De</label><MonthPicker value={fromMonth} onChange={setFromMonth} now={nowMonth}/></div>
-            <div style={{flex:1}}><label style={{...S.lbl,marginBottom:5}}>Até</label><MonthPicker value={toMonth} onChange={setToMonth} now={nowMonth}/></div>
-          </div>
-        )}
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 14px 10px"}}>
-        <SumCard label="Receitas" value={fmt(totals.rec)} color="var(--success)" icon="↑"/>
-        <SumCard label="Despesas" value={fmt(totals.dep)} color="var(--orange)" icon="↓"/>
-        <SumCard label="Saldo" value={fmt(totals.saldo)} color={totals.saldo>=0?"var(--success)":"var(--danger)"} icon={totals.saldo>=0?"◈":"▽"} wide/>
-      </div>
-
-      {insights&&(<div style={{padding:"0 14px 12px",display:"flex",flexDirection:"column",gap:6}}>
-        <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:11,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
-          <span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>📉</span>
-          <div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:2}}>Mês com maior gasto</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--orange)"}}>{mLabel(insights.maxDepM)} · {fmt(insights.maxDep)}</div></div>
-        </div>
-        {insights.topCat&&<div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:11,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
-          <span aria-hidden="true" style={{fontSize:"var(--fs-3xl)"}}>🏆</span>
-          <div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:2}}>Maior {catView==="despesa"?"gasto":"receita"} por categoria</div><div style={{fontSize:"var(--fs-md)",fontWeight:700,color:insights.topCat.color}}>{insights.topCat.name} · {fmt(insights.topCat.value)}</div></div>
-        </div>}
-      </div>)}
-
-      <div style={{display:"flex",gap:6,padding:"0 14px 12px",flexWrap:"wrap"}}>
-        {[["barras","Barras"],["evolucao","Evolução"],["pizza","Categorias"],["historico","📊 Histórico"],["projecao","Projeção"],["comparar","⚖️ Comparar"],["cartoes","💳 Cartões"],["anual","📅 Anual"]].map(([t,l])=>(
-          <button key={t} onClick={()=>setChartType(t)} className="fTab" aria-pressed={chartType===t} style={{...S.fTab,minHeight:40,flex:1,justifyContent:"center",minWidth:60,...(chartType===t?S.fTabActive:{})}}>{l}</button>
+  return (
+    <div style={{ paddingBottom: 'calc(152px + env(safe-area-inset-bottom, 0px))', paddingTop: 4 }}>
+      <div role="tablist" aria-label="Tipo de análise" className="hscroll" style={{ display: 'flex', gap: 6, padding: '12px 14px', overflowX: 'auto' }}>
+        {TABS.map(([t, l]) => (
+          <button key={t} type="button" role="tab" aria-selected={tab === t} className="fTab" onClick={() => setTab(t)}
+            style={{ ...S.fTab, minHeight: 44, flexShrink: 0, padding: '0 16px', justifyContent: 'center', ...(tab === t ? S.fTabActive : {}) }}>{l}</button>
         ))}
       </div>
 
-      <div style={{padding:"0 14px"}}>
-        {(chartType==="barras"||chartType==="evolucao")&&(<div style={S.chartBox}>
-          <div style={S.chartTitle}>{chartType==="barras"?"Receitas vs Despesas":"Evolução do Saldo"}</div>
-          <BarSVG data={monthlyData} type={chartType}/>
-          <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:10}}>
-            {chartType==="barras"?(<><Leg color="var(--chart-2)" label="Receitas"/><Leg color="var(--chart-4)" label="Despesas"/></>)
-              :(<><Leg color="var(--chart-2)" label="Receitas"/><Leg color="var(--chart-4)" label="Despesas"/><Leg color="var(--chart-1)" label="Saldo" dashed/></>)}
-          </div>
-        </div>)}
-
-        {chartType==="pizza"&&(<div style={S.chartBox}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-            <div style={S.chartTitle}>Por Categoria</div>
-            <div style={{display:"flex",gap:5}}>
-              {[["despesa","Despesas"],["receita","Receitas"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setCatView(v)} className="fTab" aria-pressed={catView===v}
-                  style={{...S.fTab,...(catView===v?S.fTabActive:{}),padding:"4px 9px",minHeight:36,fontSize:"var(--fs-xs)"}}>{l}</button>
-              ))}
-            </div>
-          </div>
-          {catData.length===0
-            ?<div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:"var(--fs-base)"}}>Sem dados no período</div>
-            :(<>
-              <DonutSVG data={catData} total={totals[catView==="despesa"?"dep":"rec"]}/>
-              <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
-                {catData.map((c,i)=>{
-                  const tot=totals[catView==="despesa"?"dep":"rec"];
-                  const pct=tot>0?((c.value/tot)*100).toFixed(1):0;
-                  return(<div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                    <div style={{flex:1,fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500}}>{c.name}</div>
-                    <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{pct}%</div>
-                    <div style={{fontSize:"var(--fs-md)",color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
-                  </div>);
-                })}
-              </div>
-            </>)
-          }
-        </div>)}
-
-        {/* ── Feature 7: Histórico mês a mês ─────────────────── */}
-        {chartType==="historico"&&(<div style={S.chartBox}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-            <div style={S.chartTitle}>Histórico Mensal</div>
-            <div style={{display:"flex",gap:5}}>
-              {[["6","6M"],["12","12M"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setHistMeses(parseInt(v))} className="fTab" aria-pressed={histMeses===parseInt(v)} aria-label={`Últimos ${l.replace("M"," meses")}`}
-                  style={{...S.fTab,...(histMeses===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",minHeight:36,fontSize:"var(--fs-xs)"}}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <BarSVG data={histData} type="barras"/>
-          <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:10}}>
-            <Leg color="var(--chart-2)" label="Receitas"/><Leg color="var(--chart-4)" label="Despesas"/>
-          </div>
-          {histData.length>=2&&(()=>{
-            const totR=histData.reduce((s,d)=>s+d.receitas,0);
-            const totD=histData.reduce((s,d)=>s+d.despesas,0);
-            const avgR=totR/histData.length;
-            const avgD=totD/histData.length;
-            const best=histData.reduce((mx,d)=>d.saldo>mx.saldo?d:mx,histData[0]);
-            return(
-              <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:6}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                  {[{l:`Média receita/${histMeses}M`,v:avgR,c:"var(--success)"},{l:`Média despesa/${histMeses}M`,v:avgD,c:"var(--orange)"},{l:`Melhor saldo`,v:best.saldo,c:best.saldo>=0?"var(--success)":"var(--danger)"}].map(({l,v,c})=>(
-                    <div key={l} style={{background:"var(--surface-sunken)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-sm)",padding:"8px 10px",textAlign:"center"}}>
-                      <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:3,lineHeight:1.3}}>{l}</div>
-                      <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:c}}>{fmtShort(v)}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:6}}>
-                  {histData.map((d,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:7,background:d.isCurrent?"var(--surface)":"transparent",border:d.isCurrent?"1px solid var(--border-subtle)":"none"}}>
-                      <span style={{fontSize:"var(--fs-xs)",color:d.isCurrent?"var(--text-1)":"var(--text-3)",fontWeight:d.isCurrent?700:400,width:28,flexShrink:0}}>{d.month}</span>
-                      <span style={{fontSize:"var(--fs-xs)",color:"var(--success)",flex:1}}>↑{fmtShort(d.receitas)}</span>
-                      <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",flex:1}}>↓{fmtShort(d.despesas)}</span>
-                      <span style={{fontSize:"var(--fs-xs)",fontWeight:600,color:d.saldo>=0?"var(--success)":"var(--danger)",width:54,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmtShort(d.saldo)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>)}
-
-        {/* ── Feature 4: Projeção de saldo ───────────────────── */}
-        {chartType==="projecao"&&(<div style={S.chartBox}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-            <div style={S.chartTitle}>Projeção de Saldo</div>
-            <div style={{display:"flex",gap:5}}>
-              {[["3","3M"],["6","6M"],["12","12M"]].map(([v,l])=>(
-                <button key={v} onClick={()=>setProjMonths(parseInt(v))} className="fTab" aria-pressed={projMonths===parseInt(v)} aria-label={`Próximos ${l.replace("M"," meses")}`}
-                  style={{...S.fTab,...(projMonths===parseInt(v)?S.fTabActive:{}),padding:"4px 10px",minHeight:36,fontSize:"var(--fs-xs)"}}>{l}</button>
-              ))}
-            </div>
-          </div>
-          <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:12}}>Baseado em lançamentos fixos, parcelados, dívidas e faturas</div>
-          <BarSVG data={projData} type="barras"/>
-          {projCumData.length>0&&(
-            <div style={{margin:"14px 0 10px",background:projCumData[projCumData.length-1].cumulative>=0?"var(--success-soft)":"var(--danger-soft)",border:`1px solid ${projCumData[projCumData.length-1].cumulative>=0?"var(--success-border)":"var(--danger-border)"}`,borderRadius:"var(--radius-md)",padding:"10px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Saldo acumulado em {projCumData[projCumData.length-1].month}</div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginTop:2}}>baseado nos últimos dados disponíveis</div></div>
-              <div style={{fontSize:"var(--fs-3xl)",fontWeight:800,color:projCumData[projCumData.length-1].cumulative>=0?"var(--success)":"var(--danger)"}}>{fmt(projCumData[projCumData.length-1].cumulative)}</div>
-            </div>
-          )}
-          <div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {projCumData.map((d,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"center",gap:6,background:"var(--surface-sunken)",borderRadius:"var(--radius-sm)",padding:"7px 10px",border:"1px solid var(--border-subtle)"}}>
-                <div style={{fontSize:"var(--fs-md)",fontWeight:600,color:"var(--accent)",width:28,flexShrink:0}}>{d.month}</div>
-                <div style={{fontSize:"var(--fs-xs)",color:"var(--success)",flex:1}}>↑{fmt(d.receitas)}</div>
-                <div style={{fontSize:"var(--fs-xs)",color:"var(--orange)",flex:1}}>↓{fmt(d.despesas)}</div>
-                <div style={{fontSize:"var(--fs-sm)",fontWeight:600,color:d.saldo>=0?"var(--success)":"var(--danger)",width:60,textAlign:"right"}}>{d.saldo>=0?"+":""}{fmt(d.saldo)}</div>
-                <div style={{width:1,height:14,background:"var(--border-subtle)",flexShrink:0}}/>
-                <div style={{fontSize:"var(--fs-sm)",fontWeight:700,color:d.cumulative>=0?"var(--success)":"var(--danger)",width:64,textAlign:"right"}}>{fmt(d.cumulative)}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{display:"flex",justifyContent:"flex-end",gap:12,marginTop:8}}>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:7,height:7,borderRadius:2,background:"var(--chart-1)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Saldo mensal</span></div>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:7,height:7,borderRadius:2,background:"var(--chart-2)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Acumulado</span></div>
-          </div>
-        </div>)}
-
-        {chartType==="comparar"&&(<div style={S.chartBox}>
-          <div style={S.chartTitle}>Comparar meses</div>
-          <div style={{display:"flex",gap:10,marginBottom:16}}>
-            {[[cmpA,setCmpA,"var(--accent)"],[cmpB,setCmpB,"var(--orange)"]].map(([m,setM,color],idx)=>(
-              <div key={idx} style={{flex:1,textAlign:"center"}}>
-                <div style={{fontSize:"var(--fs-xs)",color:color,fontWeight:700,marginBottom:5}}>{idx===0?"Mês A":"Mês B"}</div>
-                <div style={{display:"flex",alignItems:"center",gap:4,justifyContent:"center"}}>
-                  <button onClick={()=>setM(p=>addM(p,-1))} aria-label={`${idx===0?"Mês A":"Mês B"} anterior`} style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 6px",fontSize:"var(--fs-md)"}}>‹</button>
-                  <span style={{fontSize:"var(--fs-md)",fontWeight:700,color,minWidth:70,textAlign:"center"}}>{mShort(m)}</span>
-                  <button onClick={()=>setM(p=>addM(p,1))} aria-label={`${idx===0?"Mês A":"Mês B"} seguinte`} style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 6px",fontSize:"var(--fs-md)"}}>›</button>
-                </div>
-              </div>
-            ))}
-          </div>
-          {[["Receitas","rec","var(--success)"],["Despesas","dep","var(--orange)"],["Saldo","saldo","var(--accent)"]].map(([label,key,color])=>{
-            const va=cmpData.a[key],vb=cmpData.b[key];
-            const max=Math.max(Math.abs(va),Math.abs(vb),1);
-            const diff=va-vb;
-            return(
-              <div key={key} style={{marginBottom:14}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                  <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",fontWeight:600}}>{label}</span>
-                  <span style={{fontSize:"var(--fs-xs)",color:diff>0?"var(--success)":diff<0?"var(--danger)":"var(--text-3)",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
-                </div>
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <span style={{fontSize:"var(--fs-xs)",color:"var(--accent)",width:52,textAlign:"right"}}>{fmt(va)}</span>
-                  <div style={{flex:1,height:8,background:"var(--surface-sunken)",borderRadius:4,overflow:"hidden",position:"relative"}}>
-                    <div style={{position:"absolute",right:"50%",height:"100%",width:`${(Math.abs(va)/max)*50}%`,background:"var(--chart-1)",borderRadius:"4px 0 0 4px",opacity:0.8}}/>
-                    <div style={{position:"absolute",left:"50%",height:"100%",width:`${(Math.abs(vb)/max)*50}%`,background:"var(--chart-4)",borderRadius:"0 4px 4px 0",opacity:0.8}}/>
-                    <div style={{position:"absolute",left:"50%",top:0,width:1,height:"100%",background:"var(--border-subtle)"}}/>
-                  </div>
-                  <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",width:52}}>{fmt(vb)}</span>
-                </div>
-              </div>
-            );
-          })}
-          {cmpData.a.cats.length>0&&(
-            <div style={{marginTop:8}}>
-              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",fontWeight:600,marginBottom:8,textTransform:"uppercase",letterSpacing:"0.06em"}}>Top despesas</div>
-              {cmpData.a.cats.map(ca=>{
-                const cb=cmpData.b.cats.find(x=>x.id===ca.id);
-                const diff=(ca.value-(cb?.value||0));
-                return(
-                  <div key={ca.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:7}}>
-                    <div aria-hidden="true" style={{width:7,height:7,borderRadius:"50%",background:ca.color,flexShrink:0}}/>
-                    <span style={{flex:1,fontSize:"var(--fs-sm)",color:"var(--text-2)"}}>{ca.name}</span>
-                    <span style={{fontSize:"var(--fs-xs)",color:"var(--accent)",width:52,textAlign:"right"}}>{fmt(ca.value)}</span>
-                    <span style={{fontSize:"var(--fs-xs)",color:diff>0?"var(--danger)":diff<0?"var(--success)":"var(--text-3)",width:52,textAlign:"right",fontWeight:600}}>{diff>0?"+":""}{fmt(diff)}</span>
-                    <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",width:52}}>{fmt(cb?.value||0)}</span>
-                  </div>
-                );
-              })}
-              <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginTop:6}}>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:8,height:8,borderRadius:2,background:"var(--chart-1)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>{mShort(cmpA)}</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div aria-hidden="true" style={{width:8,height:8,borderRadius:2,background:"var(--chart-4)"}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>{mShort(cmpB)}</span></div>
-              </div>
-            </div>
-          )}
-        </div>)}
-
-        {chartType==="cartoes"&&(<div>
-          {cards.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:"var(--fs-base)"}}>Nenhum cartão cadastrado</div>}
-          {cards.length>0&&cardPurchases.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"var(--text-3)",fontSize:"var(--fs-base)"}}>Nenhuma compra lançada nos cartões</div>}
-          {cards.length>0&&cardPurchases.length>0&&(<>
-            <div style={{...S.chartBox,marginBottom:10}}>
-              <div style={S.chartTitle}>Faturas por mês</div>
-              <div style={{display:"flex",flexDirection:"column",gap:5,marginTop:8}}>
-                {cardMonthlyData.filter(d=>d.total>0).length===0&&<div style={{textAlign:"center",padding:"16px 0",color:"var(--text-3)",fontSize:"var(--fs-md)"}}>Sem faturas no período</div>}
-                {cardMonthlyData.map((d,i)=>{
-                  if(d.total===0) return null;
-                  return(
-                    <div key={i} style={{background:"var(--surface-sunken)",borderRadius:9,padding:"8px 12px",border:"1px solid var(--border-subtle)"}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
-                        <span style={{fontSize:"var(--fs-md)",fontWeight:600,color:"var(--text-1)"}}>{d.month}</span>
-                        <span style={{fontSize:"var(--fs-base)",fontWeight:800,color:"var(--orange)"}}>{fmt(d.total)}</span>
-                      </div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {cards.map(card=>d[card.id]>0&&(
-                          <span key={card.id} style={{fontSize:"var(--fs-xs)",padding:"2px 7px",borderRadius:5,background:tint(card.color,13),color:card.color,border:`1px solid ${tint(card.color,27)}`}}>
-                            {card.name}: {fmt(d[card.id])}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div style={S.chartBox}>
-              <div style={S.chartTitle}>Gastos por categoria</div>
-              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:10}}>Total gasto nos cartões: <strong style={{color:"var(--orange)"}}>{fmt(cardCatData.total)}</strong></div>
-              {cardCatData.cats.length===0
-                ?<div style={{textAlign:"center",padding:"24px 0",color:"var(--text-3)",fontSize:"var(--fs-md)"}}>Sem dados</div>
-                :(<>
-                  <DonutSVG data={cardCatData.cats} total={cardCatData.total}/>
-                  <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:10}}>
-                    {cardCatData.cats.map((c,i)=>{
-                      const pct=cardCatData.total>0?((c.value/cardCatData.total)*100).toFixed(1):0;
-                      return(<div key={i} style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",background:c.color,flexShrink:0}}/>
-                        <div style={{flex:1,fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500}}>{c.name}</div>
-                        <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{pct}%</div>
-                        <div style={{fontSize:"var(--fs-md)",color:c.color,fontWeight:700,minWidth:72,textAlign:"right"}}>{fmt(c.value)}</div>
-                      </div>);
-                    })}
-                  </div>
-                </>)
-              }
-            </div>
-            <div style={{...S.chartBox,marginTop:10}}>
-              <div style={S.chartTitle}>Total por cartão</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:8}}>
-                {cards.map(card=>{
-                  const total=cardPurchases.filter(p=>p.cardId===card.id).reduce((s,p)=>s+parseFloat(p.amount),0);
-                  if(total===0) return null;
-                  const pct=cardCatData.total>0?((total/cardCatData.total)*100).toFixed(0):0;
-                  return(
-                    <div key={card.id} style={{display:"flex",alignItems:"center",gap:10}}>
-                      <div aria-hidden="true" style={{width:10,height:10,borderRadius:"50%",background:card.color,flexShrink:0}}/>
-                      <div style={{flex:1}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                          <span style={{fontSize:"var(--fs-md)",color:"var(--text-1)",fontWeight:600}}>{card.name}</span>
-                          <span style={{fontSize:"var(--fs-md)",color:card.color,fontWeight:700}}>{fmt(total)}</span>
-                        </div>
-                        <div role="progressbar" aria-label={`${card.name}: ${pct}% do total`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Number(pct)} style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${pct}%`,background:card.color,borderRadius:2}}/>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>)}
-        </div>)}
-
-        {chartType==="anual"&&(()=>{
-          const year=specMonth.split("-")[0];
-          const months=Array.from({length:12},(_,i)=>`${year}-${String(i+1).padStart(2,"0")}`);
-          const rows=months.map(m=>{
-            const me=mData(m);
-            const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-            const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-            return{m,rec,dep,saldo:rec-dep};
-          });
-          const totRec=rows.reduce((s,r)=>s+r.rec,0);
-          const totDep=rows.reduce((s,r)=>s+r.dep,0);
-          const totSaldo=totRec-totDep;
-          const maxVal=Math.max(...rows.map(r=>Math.max(r.rec,r.dep)),1);
-          const MNAMES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-          return(
-            <div style={S.chartBox}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                <div style={S.chartTitle}>Resumo Anual {year}</div>
-                <div style={{display:"flex",gap:4}}>
-                  <button onClick={()=>{const y=parseInt(year)-1;setSpecMonth(`${y}-01`);}} aria-label="Ano anterior" style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 8px",fontSize:"var(--fs-md)"}}>‹</button>
-                  <button onClick={()=>{const y=parseInt(year)+1;setSpecMonth(`${y}-01`);}} aria-label="Próximo ano" style={{minWidth:36,minHeight:36,background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text-3)",cursor:"pointer",padding:"2px 8px",fontSize:"var(--fs-md)"}}>›</button>
-                </div>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
-                {[{l:"Receitas",v:totRec,c:"var(--success)"},{l:"Despesas",v:totDep,c:"var(--orange)"},{l:"Saldo",v:totSaldo,c:totSaldo>=0?"var(--success)":"var(--danger)"}].map(({l,v,c})=>(
-                  <div key={l} style={{background:"var(--surface-sunken)",borderRadius:"var(--radius-md)",padding:"8px 10px",textAlign:"center"}}>
-                    <div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",marginBottom:3}}>{l}</div>
-                    <div style={{fontSize:"var(--fs-sm)",fontWeight:800,color:c}}>{fmtShort(v)}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                {rows.map(({m,rec,dep,saldo},i)=>{
-                  const recPct=maxVal>0?(rec/maxVal)*100:0;
-                  const depPct=maxVal>0?(dep/maxVal)*100:0;
-                  const isCurrent=m===nowMonth;
-                  return(
-                    <div key={m} style={{background:isCurrent?"var(--surface-sunken)":"transparent",borderRadius:"var(--radius-sm)",padding:"5px 8px",border:isCurrent?"1px solid var(--border-subtle)":"none"}}>
-                      <div role="group" aria-label={`${MNAMES[i]}: receitas ${fmt(rec)}, despesas ${fmt(dep)}, saldo ${fmt(saldo)}`} style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{width:26,fontSize:"var(--fs-xs)",fontWeight:isCurrent?700:400,color:isCurrent?"var(--text-1)":"var(--text-3)",flexShrink:0}}>{MNAMES[i]}</div>
-                        <div style={{flex:1,display:"flex",flexDirection:"column",gap:2}}>
-                          <div style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:`${recPct}%`,background:tint("var(--chart-2)",53),borderRadius:2}}/>
-                          </div>
-                          <div style={{height:4,background:"var(--track)",borderRadius:2,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:`${depPct}%`,background:tint("var(--chart-4)",53),borderRadius:2}}/>
-                          </div>
-                        </div>
-                        <div style={{display:"flex",gap:8,flexShrink:0}}>
-                          <span style={{fontSize:"var(--fs-xs)",color:"var(--success)",minWidth:50,textAlign:"right"}}>{rec>0?fmtShort(rec):"-"}</span>
-                          <span style={{fontSize:"var(--fs-xs)",color:"var(--orange)",minWidth:50,textAlign:"right"}}>{dep>0?fmtShort(dep):"-"}</span>
-                          <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:saldo>=0?"var(--success)":"var(--danger)",minWidth:54,textAlign:"right"}}>{rec===0&&dep===0?"-":`${saldo>=0?"+":""}${fmtShort(saldo)}`}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{display:"flex",justifyContent:"flex-end",gap:14,marginTop:8}}>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:tint("var(--chart-2)",53)}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Receitas</span></div>
-                <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:8,height:4,borderRadius:1,background:tint("var(--chart-4)",53)}}/><span style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Despesas</span></div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── Feature 8: Relatório compartilhável ────────────── */}
-        <div style={{...S.chartBox,marginTop:chartType==="anual"?10:0}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-            <div>
-              <div style={S.chartTitle}>Relatório Mensal</div>
-              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>Gera imagem para compartilhar</div>
-            </div>
-            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" style={{stroke:"var(--accent)"}}><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          </div>
-          <div style={{marginBottom:14}}>
-            <label style={{...S.lbl,marginBottom:6}}>Mês do relatório</label>
-            <MonthPicker value={relMes} onChange={setRelMes} now={nowMonth}/>
-          </div>
-          {(()=>{
-            const me=mData(relMes);
-            const rec=me.filter(e=>e.type==="receita").reduce((s,e)=>s+eVal(e),0);
-            const dep=me.filter(e=>e.type==="despesa").reduce((s,e)=>s+eVal(e),0);
-            const pago=me.filter(e=>e.type==="despesa"&&e.statusForMonth==="pago").reduce((s,e)=>s+eVal(e),0);
-            const catMap={};
-            me.filter(e=>e.type==="despesa").forEach(e=>{catMap[e.category]=(catMap[e.category]||0)+eVal(e);});
-            const topCat=Object.entries(catMap).sort((a,b)=>b[1]-a[1])[0];
-            return(
-              <div style={{background:"var(--surface-sunken)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-md)",padding:"12px 14px",marginBottom:14}}>
-                <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:8,fontWeight:600}}>{mLabel(relMes)}</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Receitas</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--success)"}}>{fmt(rec)}</div></div>
-                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Despesas</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--orange)"}}>{fmt(dep)}</div></div>
-                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>Saldo</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:rec-dep>=0?"var(--success)":"var(--danger)"}}>{fmt(rec-dep)}</div></div>
-                  <div><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)"}}>% Pago</div><div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)"}}>{dep>0?((pago/dep)*100).toFixed(0):0}%</div></div>
-                </div>
-                {topCat&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)"}}>Maior gasto: <span style={{color:catColor(topCat[0]),fontWeight:600}}>{catName(topCat[0])} ({fmt(topCat[1])})</span></div>}
-              </div>
-            );
-          })()}
-          <button onClick={gerarRelatorio} disabled={gerandoRel}
-            style={{width:"100%",padding:"12px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-md)",color:"var(--primary-text)",fontSize:"var(--fs-base)",fontWeight:700,cursor:gerandoRel?"wait":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8,opacity:gerandoRel?0.6:1}}>
-            {gerandoRel?(
-              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>Gerando...</>
-            ):(
-              <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>Gerar e Compartilhar</>
-            )}
-          </button>
+      {usesPeriod && (<>
+        <div style={{ padding: '0 14px' }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>{modeBtn('mes', 'Mês')}{modeBtn('periodo', 'Período')}</div>
+          {mode === 'mes'
+            ? <div style={{ marginBottom: 12 }}><MonthPicker value={specMonth} onChange={setSpecMonth} now={nowMonth} /></div>
+            : (<div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+              <div style={{ flex: 1 }}><label style={{ ...S.lbl, marginBottom: 5 }}>De</label><MonthPicker value={fromMonth} onChange={setFromMonth} now={nowMonth} /></div>
+              <div style={{ flex: 1 }}><label style={{ ...S.lbl, marginBottom: 5 }}>Até</label><MonthPicker value={toMonth} onChange={setToMonth} now={nowMonth} /></div>
+            </div>)}
+          {truncated && <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--warning)', marginBottom: 10 }}>Período limitado a 24 meses (de {mLabel(range[0])} a {mLabel(range[range.length - 1])}).</div>}
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '0 14px 10px' }}>
+          <SumCard label="Receitas" value={fmt(totals.rec)} color="var(--success)" icon="↑" />
+          <SumCard label="Despesas" value={fmt(totals.dep)} color="var(--orange)" icon="↓" />
+          <SumCard label="Saldo" value={fmt(totals.saldo)} color={totals.saldo >= 0 ? 'var(--success)' : 'var(--danger)'} icon={totals.saldo >= 0 ? '◈' : '▽'} wide />
+        </div>
+        {insights && tab !== 'cartoes' && (
+          <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {[['Mês com maior gasto', `${mLabel(insights.maxM)} · ${fmt(insights.maxDep)}`, 'var(--orange)'],
+              insights.topCat && ['Maior gasto por categoria', `${insights.topCat.name} · ${fmt(insights.topCat.value)}`, insights.topCat.color]].filter(Boolean).map(([l, v, c]) => (
+              <div key={l} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 11, padding: '10px 12px' }}>
+                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-3)', marginBottom: 2 }}>{l}</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: c }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>)}
+
+      <div style={{ padding: '0 14px' }}>
+        {tab === 'geral' && <OverviewTab summary={summary} nowMonth={nowMonth} specMonth={specMonth} range={range} mode={mode} />}
+        {tab === 'categorias' && <CategoriesTab summary={summary} range={range} catOf={catOf} />}
+        {tab === 'projecao' && <ProjectionTab summary={summary} nowMonth={nowMonth} accumNow={accumSaldo} />}
+        {tab === 'comparar' && <CompareTab summary={summary} nowMonth={nowMonth} catOf={catOf} />}
+        {tab === 'cartoes' && <CardsTab cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} today={today} range={range} catOf={catOf} />}
+        <ReportCard summary={summary} nowMonth={nowMonth} catOf={catOf} toast={toast} />
       </div>
     </div>
   );
