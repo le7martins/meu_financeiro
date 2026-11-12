@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import S, { tint } from '../styles.js';
+import EntryActionsSheet from './EntryActionsSheet.jsx';
 import { fmt, fmtDate, mDiff, dueBadge, dueDateFor, eVal, originalMonthAmount } from '../utils.js';
 
 // Cores semânticas do badge de vencimento (dueBadge em utils.js ainda devolve hex).
@@ -6,6 +8,7 @@ const BADGE_TOKEN = { "#f87171": "danger", "#fb923c": "orange", "#facc15": "warn
 
 // Card de um lançamento do mês. Deslizar para o lado alterna pago/a pagar.
 export default function EntryCard({ entry, selMonth, catColor, catName, budgets, catTotals, onToggle, onClone, onEdit, onDelete }) {
+    const [menuOpen,setMenuOpen]=useState(false);
     const badge=dueBadge(entry,selMonth);
     const paidDt=entry.isRecurring?entry.paidDateByMonth?.[selMonth]:entry.paidDate;
     const borderColor=entry.type==="receita"?"var(--success-border)":entry.isDivida?"var(--danger-border)":entry.isFatura?tint(entry.cardColor,33):"var(--border)";
@@ -83,23 +86,12 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
           </div>
         </div>
         <div style={S.cardR}>
-          <div style={{display:"flex",gap:4}}>
-            {!entry.isDivida&&!entry.isFatura&&(
-              <button type="button" className="iconBtn" title="Clonar" aria-label={`Clonar ${entry.description}`} onClick={()=>onClone(entry)}
-                style={{...S.iconBtn,background:"var(--success-soft)",color:"var(--success)"}}>
-                <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-              </button>
-            )}
-            {!entry.isDivida&&!entry.isFatura&&(
-              <button type="button" className="iconBtn" aria-label={`Editar ${entry.description}`} onClick={()=>onEdit(entry)}
-                style={{...S.iconBtn,background:"var(--accent-soft)",color:"var(--accent)"}}>
-                <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>
-            )}
-            {!entry.isDivida&&!entry.isFatura&&(
-              <button type="button" className="iconBtn" aria-label={`Excluir ${entry.description}`} onClick={()=>onDelete(entry)} style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)"}}><span aria-hidden="true">✕</span></button>
-            )}
-          </div>
+          {!entry.isDivida&&!entry.isFatura&&(
+            <button type="button" className="iconBtn" aria-label={`Ações de ${entry.description}`} aria-haspopup="dialog" onClick={()=>setMenuOpen(true)}
+              style={{...S.iconBtn,background:"var(--surface-2)",color:"var(--text-2)"}}>
+              <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+            </button>
+          )}
           {entry.isOpenFatura?(
             <span style={{...S.badge,background:"var(--info-soft)",color:"var(--info)",border:"1px solid var(--info-border)",padding:"4px 8px",fontSize:"var(--fs-xs)",display:"flex",alignItems:"center",gap:4}}><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:3,flexShrink:0}}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> em aberto</span>
           ):(
@@ -117,6 +109,7 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
             </button>
           )}
         </div>
+        {menuOpen&&<EntryActionsSheet entry={entry} onEdit={onEdit} onClone={onClone} onDelete={onDelete} onClose={()=>setMenuOpen(false)}/>}
       </div>
     );
 }

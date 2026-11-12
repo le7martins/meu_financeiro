@@ -32,7 +32,7 @@ messaging.onBackgroundMessage(payload => {
 // - /assets/* (nome com hash, imutável): cache primeiro, preenchido conforme o uso.
 // - Demais arquivos do app (ícones, manifest): rede primeiro, cache como reserva.
 // - Outras origens (Firebase, fontes, gstatic) e métodos não-GET passam direto: o SDK precisa do erro de rede real.
-const CACHE = 'mf-v4';
+const CACHE = 'mf-v5';
 const BASE = '/meu_financeiro/';
 const SHELL = [BASE, BASE + 'index.html', BASE + 'badge-96.png', BASE + 'icon-192.png'];
 const MAX_ENTRIES = 120;
