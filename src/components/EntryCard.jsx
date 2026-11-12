@@ -37,7 +37,8 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
     const tags=entry.tags||[];
     const noteLine=[entry.notes,...tags.map(t=>`#${t}`)].filter(Boolean).join(" · ");
     const showPaidInMeta=paid&&paidDt&&!entry.isDivida&&!entry.isFatura;
-    const hasFooter=(!entry.isFatura||due)||noteLine;
+    const hasMeta=!!(due||showPaidInMeta);
+    const hasFooter=hasMeta||noteLine;
     const canSwipe=!entry.isOpenFatura;
     const onTouchStart=(ev)=>{ ev.currentTarget._tx=ev.touches[0].clientX; ev.currentTarget._ty=ev.touches[0].clientY; };
     const onTouchMove=(ev)=>{
@@ -67,10 +68,13 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
         <div style={{...S.cardL,alignItems:"stretch"}}>
           <div aria-hidden="true" style={{width:8,height:8,borderRadius:"var(--radius-full)",background:entry.isFatura?entry.cardColor:catColor(entry.category),flexShrink:0,marginTop:5,alignSelf:"flex-start"}}/>
           <div style={{minWidth:0,flex:1,display:"flex",flexDirection:"column"}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0,minHeight:18,lineHeight:"18px"}}>
+            <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",columnGap:8,minWidth:0,minHeight:18,lineHeight:"18px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0,maxWidth:"100%"}}>
               <div style={S.cardTitle}>{entry.description}</div>
               {isFixed&&<svg {...svgProps} role="img" aria-label="Fixo: repete todo mês" width="12" height="12" strokeWidth="2.4" style={{flexShrink:0,color:"var(--text-3)"}}><title>Fixo: repete todo mês</title><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>}
               {entry.recurrence!=="none"&&!isFixed&&<span style={{...chip,color:entry.isDivida?"var(--danger)":"var(--accent)",background:entry.isDivida?"var(--danger-soft)":"var(--accent-surface)",border:`1px solid ${entry.isDivida?"var(--danger-border)":"var(--accent-border)"}`}}>{entry.recurLabel}</span>}
+              </div>
+              {!entry.isFatura&&<span style={{fontSize:"var(--fs-sm)",fontWeight:500,color:"var(--text-3)",flexShrink:0,maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{catName(entry.category)}</span>}
             </div>
             <div style={{display:"flex",alignItems:"center",gap:7,marginTop:3,minHeight:20}}>
               <span style={{fontSize:"var(--fs-lg)",fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
@@ -90,9 +94,8 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
             })()}
             {hasFooter&&(
               <div style={{marginTop:"auto",paddingTop:4,display:"flex",flexDirection:"column",gap:2}}>
-                {(!entry.isFatura||due)&&(
+                {hasMeta&&(
                   <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",display:"flex",columnGap:8,flexWrap:"wrap",alignItems:"baseline"}}>
-                    {!entry.isFatura&&<span>{catName(entry.category)}</span>}
                     {showPaidInMeta
                       ?<span style={{fontWeight:600,color:"var(--success)"}}>✓ {entry.type==="receita"?"Recebido":"Pago"} em {fmtDate(paidDt)}</span>
                       :due&&<span style={{fontWeight:due.token?700:500,color:due.token?`var(--${due.token})`:entry.isOpenFatura?entry.cardColor:"var(--text-3)"}}>{due.text}</span>}
