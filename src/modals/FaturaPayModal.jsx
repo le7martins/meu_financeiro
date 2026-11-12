@@ -49,7 +49,7 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
         </div>
         {isPartial&&(
           <div style={{marginBottom:16}}>
-            <label htmlFor="fatura-valor" style={S.lbl}>Valor pago (R$)</label>
+            <label htmlFor="fatura-valor" style={S.lbl}>Valor pago</label>
             <input id="fatura-valor" style={S.inp} type="number" inputMode="decimal" min="0" max={entry.amount} step="0.01" value={partialAmt} onChange={e=>setPartialAmt(e.target.value)} aria-describedby={partialAmt&&partialN<entry.amount?"fatura-aviso":undefined}/>
             {partialAmt&&partialN<entry.amount&&(
               <div id="fatura-aviso" role="status" style={{marginTop:8,fontSize:"var(--fs-sm)",color:"var(--warning)",background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:"var(--radius-sm)",padding:"7px 10px"}}>

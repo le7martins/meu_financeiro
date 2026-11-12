@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { todayISO, daysUntil, dateInMonth, dueDateFor, dueLine, installmentAmount, addM, mDiff, newId } from '../utils.js';
+import { fmt, fmtShort, todayISO, daysUntil, dateInMonth, dueDateFor, dueLine, installmentAmount, addM, mDiff, newId } from '../utils.js';
 
 describe('todayISO', () => {
   test('usa a data local, não UTC (22h em Brasília continua sendo o mesmo dia)', () => {
@@ -78,3 +78,21 @@ test('newId gera ids únicos', () => {
   const ids = new Set(Array.from({ length: 1000 }, newId));
   expect(ids.size).toBe(1000);
 });
+
+describe('fmt: valores sem símbolo de moeda', () => {
+  test('formata como 1.234,56', () => {
+    expect(fmt(1234.5)).toBe('1.234,50');
+    expect(fmt(7)).toBe('7,00');
+    expect(fmt(1234567.891)).toBe('1.234.567,89');
+    expect(fmt(-2526.3)).toBe('-2.526,30');
+  });
+  test('zero e quase-zero não mostram sinal', () => {
+    expect(fmt(0)).toBe('0,00');
+    expect(fmt(-0.001)).toBe('0,00');
+  });
+  test('fmtShort sem símbolo', () => {
+    expect(fmtShort(1500)).toBe('1.5k');
+    expect(fmtShort(-250)).toBe('-250');
+  });
+});
+

@@ -10,25 +10,23 @@ import FiltersSheet from '../components/FiltersSheet.jsx';
 export function useHomeUi() {
   const [filter,       setFilter]       = useState("all");
   const [sortBy,       setSortBy]       = useState("date");
-  const [search,       setSearch]       = useState("");
   const [groupBy,      setGroupBy]      = useState(false);
   const [filterCat,    setFilterCat]    = useState("all");
   const [filterTag,    setFilterTag]    = useState("all");
   const [showUpcoming, setShowUpcoming] = useState(false);
   const [showOverdue,  setShowOverdue]  = useState(false); // listas de vencimento recolhidas por padrão
-  return { filter, setFilter, sortBy, setSortBy, search, setSearch, groupBy, setGroupBy, filterCat, setFilterCat,
+  return { filter, setFilter, sortBy, setSortBy, groupBy, setGroupBy, filterCat, setFilterCat,
     filterTag, setFilterTag, showUpcoming, setShowUpcoming, showOverdue, setShowOverdue };
 }
 
 const SR_ONLY = {position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)",whiteSpace:"nowrap"};
-const normStr = (s) => s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, ""); // remove acentos (marcas combinantes)
 const sumBy = (list, type) => list.filter(e => e.type === type).reduce((s, e) => s + eVal(e), 0);
 
 // Aba "Contas": navegação de mês, resumo, vencimentos, filtros e lista.
 export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, ui, accountBalances, onOpenForm, onToggle, onClone, onEdit, onDelete }) {
   const { entries, dividas, cards, cardPurchases, cardFaturas, categories, budgets, accounts } = data;
   const { monthEntries, totRec, totDesp, totPend, totPago, saldo, accumSaldo, accumSaldoCapped, overdueDue, upcomingDue } = stats;
-  const { filter, setFilter, sortBy, setSortBy, search, setSearch, groupBy, setGroupBy, filterCat, setFilterCat,
+  const { filter, setFilter, sortBy, setSortBy, groupBy, setGroupBy, filterCat, setFilterCat,
     filterTag, setFilterTag, showUpcoming, setShowUpcoming, showOverdue, setShowOverdue } = ui;
   const NOW = today.substring(0, 7);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -62,16 +60,12 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
       : monthEntries.filter(e => e.statusForMonth === filter);
     if (filterCat !== "all") list = list.filter(e => e.category === filterCat);
     if (filterTag !== "all") list = list.filter(e => (e.tags || []).includes(filterTag));
-    if (search.trim()) {
-      const q = normStr(search);
-      list = list.filter(e => normStr(e.description).includes(q) || normStr(e.notes || "").includes(q) || (e.tags || []).some(t => normStr(t).includes(q)));
-    }
     const pendingFirst = (e) => e.statusForMonth === "a_pagar" ? 0 : 1;
     if (sortBy === "amount") return [...list].sort((a, b) => eVal(b) - eVal(a));
     if (sortBy === "name") return [...list].sort((a, b) => a.description.localeCompare(b.description));
     if (sortBy === "status") return [...list].sort((a, b) => pendingFirst(a) - pendingFirst(b));
     return [...list].sort((a, b) => a.date.localeCompare(b.date));
-  }, [monthEntries, filter, filterCat, filterTag, search, sortBy]);
+  }, [monthEntries, filter, filterCat, filterTag, sortBy]);
 
   const grouped = useMemo(() => {
     if (!groupBy) return null;
@@ -101,6 +95,16 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
     groupBy && { key: "group", label: "Agrupado", clear: () => setGroupBy(false) },
   ].filter(Boolean);
   const clearFilters = () => { setFilter("all"); setFilterCat("all"); setFilterTag("all"); setSortBy("date"); setGroupBy(false); };
+
+  const filtersButton = (
+    <button type="button" onClick={()=>setFiltersOpen(true)} aria-haspopup="dialog"
+      aria-label={activeChips.length>0?`Filtros, ${activeChips.length} ativo${activeChips.length>1?"s":""}`:"Filtros"}
+      style={{position:"relative",flexShrink:0,marginLeft:"auto",width:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-md)",cursor:"pointer",fontFamily:"inherit",
+        background:activeChips.length>0?"var(--accent-surface)":"var(--surface)",border:`1px solid ${activeChips.length>0?"var(--accent)":"var(--border)"}`,color:activeChips.length>0?"var(--accent)":"var(--text-2)"}}>
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+      {activeChips.length>0&&<span aria-hidden="true" style={{position:"absolute",top:-5,right:-5,minWidth:18,height:18,padding:"0 4px",borderRadius:"var(--radius-full)",background:"var(--accent)",color:"var(--success-on)",fontSize:"var(--fs-xs)",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{activeChips.length}</span>}
+    </button>
+  );
 
   const dueToggle = (token, label, open, onClick, controls) => (
     <button type="button" onClick={onClick} aria-expanded={!!open} aria-controls={controls}
@@ -223,13 +227,23 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
           </div>
         </div>
 
-        {/* ── Vencidas / próximos: uma linha; toque abre a lista ── */}
-        {(overdueDue.length>0||upcomingDue.length>0)&&(
-          <div style={{padding:"0 14px 8px"}}>
-            <div style={{display:"flex",gap:8}}>
+        {/* ── Vencidas / próximos + filtros: uma linha; toque abre a lista ── */}
+        <div style={{padding:"0 14px 8px"}}>
+            <div style={{display:"flex",gap:8,alignItems:"stretch"}}>
               {overdueDue.length>0&&dueToggle("danger",`${overdueDue.length} ${overdueDue.length===1?"vencida":"vencidas"}`,showOverdue,()=>setShowOverdue(p=>!p),"overdueList")}
               {upcomingDue.length>0&&dueToggle("warning",`${upcomingDue.length} ${upcomingDue.length===1?"próximo":"próximos"}`,showUpcoming,()=>setShowUpcoming(p=>!p),"upcomingList")}
+              {filtersButton}
             </div>
+            {activeChips.length>0&&(
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+                {activeChips.map(c=>(
+                  <button type="button" key={c.key} onClick={c.clear} aria-label={`Remover filtro ${c.label}`}
+                    style={{minHeight:36,padding:"0 10px",borderRadius:"var(--radius-xs)",border:"1px solid var(--accent-border)",background:"var(--accent-surface)",color:"var(--accent)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                    {c.label} <span aria-hidden="true">✕</span>
+                  </button>
+                ))}
+              </div>
+            )}
             {showOverdue&&overdueDue.length>0&&(
               <div id="overdueList" style={{display:"flex",flexDirection:"column",gap:5,marginTop:6}}>
                 {overdueDue.map((e,i)=>(
@@ -262,40 +276,7 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
               </div>
             )}
           </div>
-        )}
 
-        {/* Busca + botão de filtros */}
-        <div style={{padding:"0 14px 8px",display:"flex",flexDirection:"column",gap:7}}>
-          <div style={{display:"flex",gap:8}}>
-            <div style={{position:"relative",flex:1,minWidth:0}}>
-              <svg aria-hidden="true" style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"var(--text-3)"}} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input style={{...S.inp,minHeight:44,paddingLeft:34,paddingRight:search?80:12,fontSize:"var(--fs-md)"}} aria-label="Buscar lançamentos" placeholder="Buscar lançamentos…" value={search} onChange={e=>setSearch(e.target.value)}/>
-              {search&&(
-                <div style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",display:"flex",alignItems:"center",gap:2}}>
-                  <span aria-hidden="true" style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-2)",borderRadius:4,padding:"1px 5px",fontWeight:600}}>{filtered.length}</span>
-                  <button type="button" onClick={()=>setSearch("")} aria-label="Limpar busca" style={{background:"none",border:"none",color:"var(--text-3)",cursor:"pointer",fontSize:"var(--fs-lg)",lineHeight:1,width:36,height:36,display:"flex",alignItems:"center",justifyContent:"center"}}><span aria-hidden="true">✕</span></button>
-                </div>
-              )}
-            </div>
-            <button type="button" onClick={()=>setFiltersOpen(true)} aria-haspopup="dialog"
-              aria-label={activeChips.length>0?`Filtros, ${activeChips.length} ativo${activeChips.length>1?"s":""}`:"Filtros"}
-              style={{position:"relative",flexShrink:0,width:44,minHeight:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-md)",cursor:"pointer",fontFamily:"inherit",
-                background:activeChips.length>0?"var(--accent-surface)":"var(--surface)",border:`1px solid ${activeChips.length>0?"var(--accent)":"var(--border)"}`,color:activeChips.length>0?"var(--accent)":"var(--text-2)"}}>
-              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
-              {activeChips.length>0&&<span aria-hidden="true" style={{position:"absolute",top:-5,right:-5,minWidth:18,height:18,padding:"0 4px",borderRadius:"var(--radius-full)",background:"var(--accent)",color:"var(--success-on)",fontSize:"var(--fs-xs)",fontWeight:800,display:"flex",alignItems:"center",justifyContent:"center"}}>{activeChips.length}</span>}
-            </button>
-          </div>
-          {activeChips.length>0&&(
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {activeChips.map(c=>(
-                <button type="button" key={c.key} onClick={c.clear} aria-label={`Remover filtro ${c.label}`}
-                  style={{minHeight:36,padding:"0 10px",borderRadius:"var(--radius-xs)",border:"1px solid var(--accent-border)",background:"var(--accent-surface)",color:"var(--accent)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
-                  {c.label} <span aria-hidden="true">✕</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         {filtersOpen&&<FiltersSheet statusOptions={FILTERS} filter={filter} setFilter={setFilter} sortBy={sortBy} setSortBy={setSortBy} groupBy={groupBy} setGroupBy={setGroupBy}
           categories={usedCategories} filterCat={filterCat} setFilterCat={setFilterCat} allTags={allTags} filterTag={filterTag} setFilterTag={setFilterTag}
           resultCount={filtered.length} canClear={activeChips.length>0} onClear={clearFilters} onClose={()=>setFiltersOpen(false)}/>}
@@ -313,11 +294,11 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
         <div style={S.list}>
           {filtered.length===0&&(
             <div style={S.empty}>
-              {search||filterCat!=="all"||filter!=="all"?(
+              {filterCat!=="all"||filter!=="all"||filterTag!=="all"?(
                 <>
                   <div aria-hidden="true" style={{fontSize:36,opacity:0.3,marginBottom:8}}>🔍</div>
-                  <div style={{color:"var(--text-4)",fontSize:"var(--fs-lg)",fontWeight:600}}>{search?"Nenhum resultado para busca":filterCat!=="all"?"Sem lançamentos nesta categoria":"Nenhum lançamento neste filtro"}</div>
-                  <div style={{color:"var(--text-4)",fontSize:"var(--fs-md)",marginTop:3}}>{search?"Tente outro termo":filterCat!=="all"?"Mude o filtro de categoria":"Remova o filtro para ver todos"}</div>
+                  <div style={{color:"var(--text-4)",fontSize:"var(--fs-lg)",fontWeight:600}}>{filterCat!=="all"?"Sem lançamentos nesta categoria":"Nenhum lançamento neste filtro"}</div>
+                  <div style={{color:"var(--text-4)",fontSize:"var(--fs-md)",marginTop:3}}>{filterCat!=="all"?"Mude o filtro de categoria":"Remova o filtro para ver todos"}</div>
                 </>
               ):(
                 /* Estado de tela vazia — primeiro uso / mês sem dados */

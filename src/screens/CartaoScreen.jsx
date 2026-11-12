@@ -166,7 +166,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                     <div style={{textAlign:"right"}}>
                       <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:card.color}}>{fmt(selFat.total)}</div>
                       <div style={{fontSize:"var(--fs-2xs)",marginTop:1,color:selFat.paid?"var(--success)":selFat.open?"var(--warning)":selFat.partial?"var(--warning)":"var(--orange)",fontWeight:600}}>
-                        {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":selFat.partial?`✓ R$${(selFat.paidAmount||0).toFixed(2)} pago`:"⏳ a pagar"}
+                        {selFat.paid?"✓ pago":selFat.open?"🔄 em aberto":selFat.partial?`✓ ${fmt(selFat.paidAmount||0)} pago`:"⏳ a pagar"}
                       </div>
                     </div>
                   )}
@@ -230,7 +230,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
       {showCardForm&&(
         <ModalShell title={editCardId?"Editar Cartão":"Novo Cartão"} onClose={closeCardForm}>
           <Field label="Nome do cartão" required><input style={S.inp} placeholder="Ex: Nubank, Inter..." value={cardForm.name} onChange={e=>setCardForm(p=>({...p,name:e.target.value}))}/></Field>
-          <Field label="Limite (R$)"><input style={S.inp} type="number" inputMode="decimal" placeholder="0,00" min="0" step="0.01" value={cardForm.limit} onChange={e=>setCardForm(p=>({...p,limit:e.target.value}))}/></Field>
+          <Field label="Limite"><input style={S.inp} type="number" inputMode="decimal" placeholder="0,00" min="0" step="0.01" value={cardForm.limit} onChange={e=>setCardForm(p=>({...p,limit:e.target.value}))}/></Field>
           <div style={{display:"flex",gap:10}}>
             <Field label="Dia fechamento" style={{flex:1}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={cardForm.closeDay} onChange={e=>setCardForm(p=>({...p,closeDay:e.target.value}))}/></Field>
             <Field label="Dia vencimento" style={{flex:1}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={28} value={cardForm.dueDay} onChange={e=>setCardForm(p=>({...p,dueDay:e.target.value}))}/></Field>
@@ -253,7 +253,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
         <ModalShell title="Nova Compra" subtitle={<div style={{fontSize:"var(--fs-sm)",color:activeCard.color,marginTop:2}}>💳 {activeCard.name}</div>} onClose={()=>setShowPurchaseForm(false)}>
           <Field label="Descrição" required><input style={S.inp} placeholder="Ex: Supermercado, Restaurante..." value={purchForm.description} onChange={e=>setPurchForm(p=>({...p,description:e.target.value}))}/></Field>
           <div style={{display:"flex",gap:10}}>
-            <Field label="Valor total (R$)" required style={{flex:1}}><input style={S.inp} type="number" inputMode="decimal" placeholder="0,00" min="0" step="0.01" value={purchForm.amount} onChange={e=>setPurchForm(p=>({...p,amount:e.target.value}))}/></Field>
+            <Field label="Valor total" required style={{flex:1}}><input style={S.inp} type="number" inputMode="decimal" placeholder="0,00" min="0" step="0.01" value={purchForm.amount} onChange={e=>setPurchForm(p=>({...p,amount:e.target.value}))}/></Field>
             <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={48} value={purchForm.installments} onChange={e=>setPurchForm(p=>({...p,installments:e.target.value}))}/></Field>
           </div>
           {purchForm.amount&&purchForm.installments>1&&(
@@ -310,7 +310,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
         <ModalShell title="Editar Compra" subtitle={ec&&<div style={{fontSize:"var(--fs-sm)",color:ec2,marginTop:2}}>💳 {ec.name}</div>} onClose={()=>setEditPurch(null)}>
           <Field label="Descrição"><input style={S.inp} value={editPurch.description} onChange={e=>setEditPurch(p=>({...p,description:e.target.value}))}/></Field>
           <div style={{display:"flex",gap:10}}>
-            <Field label="Valor total (R$)" style={{flex:1}}><input style={S.inp} type="number" inputMode="decimal" min="0" step="0.01" value={editPurch.amount} onChange={e=>setEditPurch(p=>({...p,amount:e.target.value}))}/></Field>
+            <Field label="Valor total" style={{flex:1}}><input style={S.inp} type="number" inputMode="decimal" min="0" step="0.01" value={editPurch.amount} onChange={e=>setEditPurch(p=>({...p,amount:e.target.value}))}/></Field>
             <Field label="Parcelas" style={{flex:"0 0 90px"}}><input style={S.inp} type="number" inputMode="numeric" min={1} max={48} value={editPurch.installments} onChange={e=>setEditPurch(p=>({...p,installments:e.target.value}))}/></Field>
           </div>
           <Field label="Data da compra"><input style={S.inp} type="date" value={editPurch.purchaseDate} onChange={e=>setEditPurch(p=>({...p,purchaseDate:e.target.value}))}/></Field>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import Toggle from '../components/Toggle.jsx';
-import { mLabel, newId } from '../utils.js';
+import { fmt, mLabel, newId } from '../utils.js';
 import S, { tint } from "../styles.js";
 import { ModalShell } from "../components/Field.jsx";
 function ProfileSection({title,children}){return(<div role="group" aria-label={title}><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
@@ -212,7 +212,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{acc.name}</div>
-                <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {acc.initialBalance?.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</div>
+                <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {fmt(acc.initialBalance||0)}</div>
               </div>
               <button type="button" aria-label={`Editar conta ${acc.name}`} title="Editar conta" onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text-3)",cursor:"pointer",padding:"4px",fontSize:"var(--fs-lg)"}}>✏️</button>
               <button type="button" aria-label={`Excluir conta ${acc.name}`} title="Excluir conta" onClick={()=>deleteAcc(acc.id)} style={{background:"transparent",border:"none",color:"var(--danger)",cursor:"pointer",padding:"4px",fontSize:"var(--fs-lg)"}}>✕</button>
@@ -242,7 +242,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="acc-saldo" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Saldo atual (R$)</label>
+                  <label htmlFor="acc-saldo" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Saldo atual</label>
                   <input id="acc-saldo" type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={accDisplay} onChange={handleAccAmt}
                     style={{width:"100%",boxSizing:"border-box",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",padding:"9px 11px",color:"var(--text-1)",fontSize:"var(--fs-base)",outline:"none",fontFamily:"inherit"}}/>
                 </div>
@@ -400,7 +400,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                   <span style={{color:"var(--text-3)",width:62,flexShrink:0}}>{dt||'— data ?'}</span>
                   <span style={{flex:1,color:"var(--text-2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{desc||'—'}</span>
                   {catRaw&&<span style={{color:"var(--accent)",flexShrink:0,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis"}}>{catRaw}</span>}
-                  <span style={{fontWeight:700,color:amt===null?'var(--danger)':amt<0?'var(--orange)':'var(--success)',flexShrink:0}}>{amt!==null?`${amt<0?'-':'+'} R$${Math.abs(amt).toFixed(2)}`:'—'}</span>
+                  <span style={{fontWeight:700,color:amt===null?'var(--danger)':amt<0?'var(--orange)':'var(--success)',flexShrink:0}}>{amt!==null?`${amt<0?'-':'+'} ${fmt(Math.abs(amt))}`:'—'}</span>
                 </div>
               );
             })}

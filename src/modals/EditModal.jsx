@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import CatSelector from '../components/CatSelector.jsx';
 import Field, { useDialog } from "../components/Field.jsx";
-import { eVal, mLabel, originalMonthAmount } from '../utils.js';
+import { fmt, eVal, mLabel, originalMonthAmount } from '../utils.js';
 import S from "../styles.js";
 
 export default function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClose}){
@@ -43,13 +43,13 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
         <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"var(--accent)",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
         <Field label="Descrição"><input style={S.inp} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
-        <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor (R$)"} htmlFor="e-valor">
+        <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor"} htmlFor="e-valor">
           <input id="e-valor" style={S.inp} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>
           {entry.isRecurring&&!entry.isDivida&&(
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:5}}>
               <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>
                 {entry.recurrence==="installment"?`Parcela ${entry.installmentNum}/${entry.installments} · `:"Recorrente · "}
-                valor padrão: <span style={{color:"var(--accent)",fontWeight:600}}>{origAmt.toLocaleString('pt-BR',{style:"currency",currency:"BRL"})}</span>
+                valor padrão: <span style={{color:"var(--accent)",fontWeight:600}}>{fmt(origAmt)}</span>
               </span>
               {hasAmtOverride&&(
                 <button type="button" onClick={()=>{onSave(entry.id,{_resetAmount:true},"this");}} style={{background:"transparent",border:"1px solid var(--warning-border)",borderRadius:"var(--radius-xs)",padding:"2px 8px",color:"var(--warning)",fontSize:"var(--fs-xs)",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>

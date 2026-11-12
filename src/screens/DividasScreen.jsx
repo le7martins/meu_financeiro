@@ -241,7 +241,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
         <ModalShell title={editId?"Editar Dívida":"Nova Dívida"} onClose={closeForm} handle>
           <Field label="Nome da dívida" required><input style={S.inp} placeholder="Ex: Cartão Nubank, Empréstimo..." value={dform.name} onChange={e=>setDform(p=>({...p,name:e.target.value}))}/></Field>
           <div style={{display:"flex",gap:10}}>
-            <Field label="Valor total (R$)" required htmlFor="d-valor" style={{flex:1}}>
+            <Field label="Valor total" required htmlFor="d-valor" style={{flex:1}}>
               <CurrencyInput
                 id="d-valor"
                 value={parseFloat(dform.totalAmount)||0}

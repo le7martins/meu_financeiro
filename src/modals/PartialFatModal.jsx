@@ -24,7 +24,7 @@ export default function PartialFatModal({ fat, card, onClose, onPay }) {
           <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginBottom:2}}>Total da fatura</div>
           <div style={{fontSize:"var(--fs-5xl)",fontWeight:800,color:card.color}}>{fmt(fat.total)}</div>
         </div>
-        <Field label="Valor que será pago (R$)">
+        <Field label="Valor que será pago">
           <input style={S.inp} type="number" inputMode="decimal" min="0" step="0.01" max={maxToPay}
             value={amount} onChange={e=>setAmount(e.target.value)}/>
         </Field>

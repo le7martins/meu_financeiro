@@ -286,12 +286,12 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:"var(--accent)",marginBottom:12}}>🎯 Metas financeiras</div>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             <div>
-              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Meta de renda mensal (R$)</div>
+              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Meta de renda mensal</div>
               <CurrencyInput
                 value={goals.monthly||0}
                 onChange={v=>onSaveGoals({...goals,monthly:v})}
                 placeholder="Ex: 5.000,00"
-                aria-label="Meta de renda mensal (R$)"
+                aria-label="Meta de renda mensal"
                 style={inpStyle}
               />
             </div>
@@ -332,22 +332,22 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
           )}
           <div style={{display:"flex",gap:10}}>
             <div style={{flex:1}}>
-              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Meta (R$)</div>
+              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Meta</div>
               <CurrencyInput
                 value={goals.reservaMeta||0}
                 onChange={v=>onSaveGoals({...goals,reservaMeta:v})}
                 placeholder="Ex: 15.000,00"
-                aria-label="Meta da reserva de emergência (R$)"
+                aria-label="Meta da reserva de emergência"
                 style={{...inpStyle,border:"1px solid var(--success-border)"}}
               />
             </div>
             <div style={{flex:1}}>
-              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Guardado hoje (R$)</div>
+              <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Guardado hoje</div>
               <CurrencyInput
                 value={goals.reservaAtual||0}
                 onChange={v=>onSaveGoals({...goals,reservaAtual:v})}
                 placeholder="0,00"
-                aria-label="Guardado hoje na reserva (R$)"
+                aria-label="Guardado hoje na reserva"
                 style={{...inpStyle,border:"1px solid var(--success-border)"}}
               />
             </div>
@@ -410,9 +410,9 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                       key={goal.id+goal.currentAmount}
                       value={goal.currentAmount}
                       onChange={v=>updateGoalAmount(goal.id,v)}
-                      placeholder="Guardado hoje (R$)"
+                      placeholder="Guardado hoje"
                       style={{...inpStyle,fontSize:"var(--fs-md)",padding:"6px 10px",border:`1px solid ${tint("var(--purple)",13)}`}}
-                      aria-label={`Valor guardado em ${goal.name} (R$)`}
+                      aria-label={`Valor guardado em ${goal.name}`}
                     />
                   )}
                 </div>
@@ -428,13 +428,13 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                   value={goalDraft.name} onChange={e=>setGoalDraft(p=>({...p,name:e.target.value}))}/>
                 <div style={{display:"flex",gap:8}}>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:4}}>Quero juntar (R$)</div>
-                    <CurrencyInput aria-label="Quero juntar (R$)" value={goalDraft.targetAmount} onChange={v=>setGoalDraft(p=>({...p,targetAmount:v}))}
+                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:4}}>Quero juntar</div>
+                    <CurrencyInput aria-label="Quero juntar" value={goalDraft.targetAmount} onChange={v=>setGoalDraft(p=>({...p,targetAmount:v}))}
                       placeholder="0,00" style={{...inpStyle,fontSize:"var(--fs-md)",padding:"7px 10px"}}/>
                   </div>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:4}}>Já tenho (R$)</div>
-                    <CurrencyInput aria-label="Já tenho (R$)" value={goalDraft.currentAmount} onChange={v=>setGoalDraft(p=>({...p,currentAmount:v}))}
+                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:4}}>Já tenho</div>
+                    <CurrencyInput aria-label="Já tenho" value={goalDraft.currentAmount} onChange={v=>setGoalDraft(p=>({...p,currentAmount:v}))}
                       placeholder="0,00" style={{...inpStyle,fontSize:"var(--fs-md)",padding:"7px 10px"}}/>
                   </div>
                 </div>
@@ -554,8 +554,8 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
                       <CurrencyInput
                         value={budget}
                         onChange={v=>onSaveBudgets({...budgets,[c.id]:v})}
-                        placeholder="R$ 0,00"
-                        aria-label={`Limite de ${c.name} (R$)`}
+                        placeholder="0,00"
+                        aria-label={`Limite de ${c.name}`}
                         style={budgetInpStyle}
                       />
                       {budget>0&&(

@@ -112,7 +112,7 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
         </Field>
 
         <div style={{display:"flex",gap:10}}>
-          <Field label="Valor (R$)" required error={amtErr?`⚠️ ${amtErr}`:null} style={{flex:1}}>
+          <Field label="Valor" required error={amtErr?`⚠️ ${amtErr}`:null} style={{flex:1}}>
             <input style={{...S.inp,borderColor:amtErr?"var(--danger)":"var(--border)"}} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
           </Field>
           <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>

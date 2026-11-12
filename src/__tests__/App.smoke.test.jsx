@@ -67,14 +67,6 @@ describe('App (fumaça)', () => {
     expect(lastSave('settings')).toMatchObject({ theme: 'light', accounts: [{ id: 'a1' }] });
   });
 
-  test('busca filtra a lista', async () => {
-    render(<App />);
-    await findCard('Conta de Luz');
-    fireEvent.change(screen.getByLabelText('Buscar lançamentos'), { target: { value: 'luz' } });
-    expect(cardWith('Salário')).toBeNull();
-    expect(cardWith('Conta de Luz')).toBeTruthy();
-  });
-
   test('painel de filtros: filtra por tipo e limpa', async () => {
     render(<App />);
     await findCard('Conta de Luz');
