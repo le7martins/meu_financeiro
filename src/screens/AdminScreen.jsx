@@ -17,14 +17,18 @@ export default function AdminScreen() {
   const [busy,     setBusy]     = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [notice,   setNotice]   = useState('');
+  const [rulesOld, setRulesOld]  = useState(false);
   const [current,  setCurrent]  = useState(null);
   useEffect(() => subscribeAnnouncement(a => { setCurrent(a); setNotice(n => n || a?.text || ''); }), []);
 
   const load = useCallback(async () => {
     try {
-      const [p, a] = await Promise.all([loadAllProfiles(), loadAllowedEmails()]);
-      setProfiles(p.sort((x, y) => new Date(y.lastLogin) - new Date(x.lastLogin)));
-      setAllowed(new Set(a));
+      const [p, a] = await Promise.allSettled([loadAllProfiles(), loadAllowedEmails()]);
+      if (p.status === 'rejected') throw p.reason;
+      setProfiles(p.value.sort((x, y) => new Date(y.lastLogin) - new Date(x.lastLogin)));
+      // Sem acesso à lista = regras do Firestore ainda não republicadas
+      setRulesOld(a.status === 'rejected');
+      setAllowed(new Set(a.status === 'fulfilled' ? a.value : []));
     } catch (e) { setError('Sem permissão ou erro: ' + e.message); }
     setLoading(false);
   }, []);
@@ -68,6 +72,11 @@ export default function AdminScreen() {
       </div>
 
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {rulesOld && (
+          <div role="alert" style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-lg)', padding: '12px 14px', fontSize: 'var(--fs-md)', color: 'var(--text-1)', lineHeight: 1.45 }}>
+            ⚠️ Não consegui ler a lista de convidados: as regras do Firestore publicadas estão desatualizadas. Publique o arquivo <strong>firestore.rules</strong> do repositório no console do Firebase. Até lá, os botões de liberar e as etiquetas "Liberado/Aguardando" não são confiáveis.
+          </div>
+        )}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', padding: '13px 14px' }}>
           <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-1)', marginBottom: 4 }}>Liberar acesso</div>
           <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-3)', marginBottom: 8, lineHeight: 1.4 }}>
