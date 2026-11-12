@@ -14,6 +14,21 @@ service cloud.firestore {
         && request.auth.token.firebase.sign_in_provider == 'google.com';
     }
 
+    // Lista de convidados: só e-mails em allowedEmails/{e-mail em minúsculas} usam o app.
+    // O admin gerencia a lista; cada usuário só consegue consultar o próprio e-mail.
+    function myEmail() {
+      return request.auth.token.get('email', '').lower();
+    }
+    function isAllowed() {
+      return isAdmin()
+        || (signedIn() && myEmail() != ''
+            && exists(/databases/$(database)/documents/allowedEmails/$(myEmail())));
+    }
+    match /allowedEmails/{email} {
+      allow get: if signedIn() && (isAdmin() || email == myEmail());
+      allow list, create, update, delete: if isAdmin();
+    }
+
     // Dados financeiros: somente o próprio usuário, só nos 6 documentos que o app usa,
     // com formato { v: ... } e limites de tamanho (o teto do Firestore é 1 MB por documento).
     function validDocId(docId) {
@@ -26,19 +41,21 @@ service cloud.firestore {
         && (!(d.v is map) || d.v.size() <= 2000);
     }
     match /users/{uid}/data/{docId} {
-      allow read, delete: if signedIn() && request.auth.uid == uid && validDocId(docId);
-      allow create, update: if signedIn() && request.auth.uid == uid && validDocId(docId) && validData();
+      allow read: if signedIn() && request.auth.uid == uid && validDocId(docId) && isAllowed();
+      allow delete: if signedIn() && request.auth.uid == uid && validDocId(docId); // exclusão de conta vale mesmo se revogado
+      allow create, update: if signedIn() && request.auth.uid == uid && validDocId(docId) && validData() && isAllowed();
     }
 
     // Perfil: cada um lê/grava só o seu, com campos fixos e e-mail igual ao do token
     // (impede forjar o e-mail do admin). Listar todos: só o admin.
     function validProfile(uid) {
       let p = request.resource.data;
-      return p.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'lastLogin', 'createdAt', 'provider', 'fcmToken', 'fcmUpdated'])
+      return p.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'lastLogin', 'createdAt', 'provider', 'emailVerified', 'fcmToken', 'fcmUpdated'])
         && (!('uid' in p) || p.uid == uid)
         && (!('email' in p) || p.email == '' || p.email == request.auth.token.get('email', ''))
         && (!('displayName' in p) || (p.displayName is string && p.displayName.size() <= 200))
         && (!('photoURL' in p) || (p.photoURL is string && p.photoURL.size() <= 2000))
+        && (!('emailVerified' in p) || p.emailVerified is bool)
         && (!('provider' in p) || (p.provider is string && p.provider.size() <= 50))
         && (!('fcmToken' in p) || p.fcmToken == null || (p.fcmToken is string && p.fcmToken.size() <= 4096));
     }

@@ -57,6 +57,7 @@ export function saveUserProfile(user) {
     lastLogin:   new Date().toISOString(),
     createdAt:   user.metadata?.creationTime || new Date().toISOString(),
     provider:    user.providerData?.[0]?.providerId || 'password',
+    emailVerified: !!user.emailVerified,
   };
   return setDoc(doc(db, 'userProfiles', user.uid), profile, { merge: true })
     .catch(e => console.warn('[Firestore] Falha ao salvar perfil:', e));
@@ -79,3 +80,16 @@ export async function wipeLocalData() {
   Object.keys(localStorage).filter(k => k.startsWith('mf2_')).forEach(k => localStorage.removeItem(k));
   try { await terminate(db); await clearIndexedDbPersistence(db); } catch (e) { console.warn('[wipe]', e); }
 }
+
+// ─── Lista de convidados (allowedEmails/{e-mail em minúsculas}) ───
+// Só e-mails da lista conseguem ler/gravar dados (regras do Firestore). O admin gerencia pelo painel.
+const allowDoc = (email) => doc(db, 'allowedEmails', String(email).trim().toLowerCase());
+export async function isEmailAllowed(email) {
+  return (await getDoc(allowDoc(email))).exists();
+}
+export async function loadAllowedEmails() {
+  const snap = await getDocs(collection(db, 'allowedEmails'));
+  return snap.docs.map(d => d.id);
+}
+export const allowEmail = (email) => setDoc(allowDoc(email), { addedAt: new Date().toISOString() });
+export const revokeEmail = (email) => deleteDoc(allowDoc(email));

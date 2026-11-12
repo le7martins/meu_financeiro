@@ -9,6 +9,7 @@ const NOW = getNow();
 const cloud = {};
 const saveData = vi.fn(() => Promise.resolve());
 
+const isEmailAllowed = vi.fn(() => Promise.resolve(true));
 vi.mock('../firebase', () => ({ auth: {}, db: {}, messaging: null, googleProvider: {} }));
 vi.mock('firebase/auth', () => ({ onAuthStateChanged: (_a, cb) => { cb(USER); return () => {}; }, signOut: vi.fn() }));
 vi.mock('../LoginScreen', () => ({ default: () => <div>login</div> }));
@@ -19,6 +20,8 @@ vi.mock('../db', () => ({
   saveData: (...a) => saveData(...a),
   subscribeData: () => () => {},
   saveUserProfile: vi.fn(),
+  wipeLocalData: vi.fn(),
+  isEmailAllowed: (...a) => isEmailAllowed(...a),
 }));
 
 const { default: App } = await import('../App.jsx');
@@ -31,6 +34,7 @@ beforeEach(() => {
   localStorage.clear();
   localStorage.setItem('mf2_u1_onboarding_done', 'true');
   saveData.mockClear();
+  isEmailAllowed.mockReset().mockResolvedValue(true);
   Object.assign(cloud, {
     entries: [
       { id: 'e1', description: 'Conta de Luz', amount: 150, date: todayISO(), type: 'despesa', status: 'a_pagar', category: 'outro', recurrence: 'none', statusByMonth: {}, overrides: {} },
@@ -43,6 +47,13 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('App (fumaça)', () => {
+  test('e-mail fora da lista de convidados vê a tela de aguardando liberação', async () => {
+    isEmailAllowed.mockResolvedValue(false);
+    render(<App />);
+    await screen.findByText('Aguardando liberação');
+    expect(document.querySelector('.eCard')).toBeNull();
+  });
+
   test('carrega dados da nuvem e mostra a aba Contas', async () => {
     render(<App />);
     expect(await findCard('Conta de Luz')).toBeTruthy();

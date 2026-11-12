@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebase';
-import { saveUserProfile, ADMIN_EMAIL, wipeLocalData } from './db';
+import { saveUserProfile, ADMIN_EMAIL, wipeLocalData, isEmailAllowed } from './db';
 import VerifyEmailScreen from './VerifyEmailScreen.jsx';
+import PendingAccessScreen from './PendingAccessScreen.jsx';
 import { onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
 import { fmt, fmtDate, mLabel, addM, eVal, loadLS, saveLS, daysInMonth } from './utils.js';
@@ -58,6 +59,8 @@ const VERIFY_REQUIRED_FROM = Date.parse('2026-11-12T00:00:00Z');
 function App(){
   const [fbUser, setFbUser] = useState(undefined);
   const [, setVerTick] = useState(0); // força re-render após user.reload()
+  const [access, setAccess] = useState('checking'); // 'checking' | 'ok' | 'denied'
+  const [accessTick, setAccessTick] = useState(0);
   useEffect(()=>{
     const unsub = onAuthStateChanged(auth, u=>{
       setFbUser(prev=>{
@@ -68,6 +71,15 @@ function App(){
     });
     return unsub;
   },[]);
+  // Só e-mails da lista de convidados usam o app (as regras do Firestore também exigem isso;
+  // aqui é só a mensagem amigável). Em erro de rede, deixa passar: quem decide são as regras.
+  useEffect(()=>{
+    if(!fbUser||fbUser._isDemo||!fbUser.email||fbUser.email===ADMIN_EMAIL){ setAccess('ok'); return; }
+    let off=false;
+    setAccess('checking');
+    isEmailAllowed(fbUser.email).then(ok=>{ if(!off) setAccess(ok?'ok':'denied'); }).catch(()=>{ if(!off) setAccess('ok'); });
+    return ()=>{ off=true; };
+  },[fbUser,accessTick]);
   if(fbUser===undefined) return(
     <div style={{position:'fixed',inset:0,background:'#080c12',display:'flex',alignItems:'center',justifyContent:'center'}}>
       <img src="/meu_financeiro/icon-192.png" alt="CashUp" style={{width:64,height:64,borderRadius:16,animation:'lp 1.4s ease-in-out infinite',objectFit:"cover"}}/>
@@ -94,6 +106,8 @@ function App(){
   const isNewAccount = Date.parse(fbUser.metadata?.creationTime) >= VERIFY_REQUIRED_FROM; // contas antigas ficam isentas
   const needsVerify = !fbUser._isDemo && isNewAccount && fbUser.providerData?.some(p=>p.providerId==='password') && !fbUser.emailVerified;
   if(needsVerify) return <VerifyEmailScreen user={fbUser} onChecked={()=>setVerTick(t=>t+1)} onLogout={handleLogout}/>;
+  if(access==='checking') return <div style={{position:'fixed',inset:0,background:'#080c12'}}/>;
+  if(access==='denied') return <PendingAccessScreen email={fbUser.email} onRetry={()=>setAccessTick(t=>t+1)} onLogout={handleLogout}/>;
   return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={handleLogout}/>;
 }
 
