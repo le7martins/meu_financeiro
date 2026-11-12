@@ -1,4 +1,4 @@
-import { buildFatura } from '../logic.js';
+import { buildFatura, faturaDueOffset } from '../logic.js';
 import { fmt, mShort, addM, todayISO } from '../utils.js';
 import { tint } from '../styles.js';
 
@@ -18,12 +18,12 @@ function statusOf(f, today) {
 export default function FaturasPlan({ cards, cardPurchases, cardFaturas, nowMonth, budget }) {
   const today = todayISO();
   const rows = cards.map(card => {
-    const f = buildFatura(card, cardPurchases, cardFaturas, addM(nowMonth, -1), today); // vence neste mês
+    const f = buildFatura(card, cardPurchases, cardFaturas, addM(nowMonth, -faturaDueOffset(card.closeDay, card.dueDay)), today); // vence neste mês
     return { card, f, remaining: f.paid ? 0 : Math.max(0, cents(f.total - (f.paidAmount || 0))) };
   }).filter(r => r.f.total > 0);
   const next = [1, 2, 3].map(i => {
-    const m = addM(nowMonth, i); // mês do vencimento; a fatura é a do mês anterior
-    return { m, total: cents(cards.reduce((s, c) => s + buildFatura(c, cardPurchases, cardFaturas, addM(m, -1), today).total, 0)) };
+    const m = addM(nowMonth, i); // mês do vencimento
+    return { m, total: cents(cards.reduce((s, c) => s + buildFatura(c, cardPurchases, cardFaturas, addM(m, -faturaDueOffset(c.closeDay, c.dueDay)), today).total, 0)) };
   });
   if (!rows.length && !next.some(n => n.total > 0)) return null;
 

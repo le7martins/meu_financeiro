@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Field, { ModalShell } from "../components/Field.jsx";
 import PartialFatModal from '../modals/PartialFatModal.jsx';
-import { getBillingMonth, buildFatura, getCardBillingMonths } from '../logic.js';
+import { getBillingMonth, buildFatura, getCardBillingMonths, faturaDueOffset } from '../logic.js';
 import { fmt, fmtDate, mLabel, mShort, addM, todayISO, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
 import S, { tint } from "../styles.js";
@@ -103,7 +103,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                 <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between"}}>
                   <div>
                     <div style={{fontSize:"var(--fs-2xl)",fontWeight:800,color:"var(--text-1)"}}>{card.name}</div>
-                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>Fecha dia {card.closeDay} · Vence dia {card.dueDay} do mês seguinte</div>
+                    <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>Fecha dia {card.closeDay} · Vence dia {card.dueDay}{faturaDueOffset(card.closeDay,card.dueDay)?" do mês seguinte":""}</div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
                     <button type="button" className="iconBtn" aria-label={`Nova compra no cartão ${card.name}`} title="Nova compra" onClick={()=>{setActiveCardId(card.id);setPurchForm(BLANK_PURCH);setShowPurchaseForm(true);}}

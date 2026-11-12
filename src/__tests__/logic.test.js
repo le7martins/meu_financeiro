@@ -18,8 +18,10 @@ describe('cartão: faturamento', () => {
   });
   test('datas de fechamento e vencimento', () => {
     expect(getFaturaCloseDate('2026-11', 3)).toBe('2026-11-03');
-    expect(getFaturaDueDate('2026-11', 10)).toBe('2026-12-10');
-    expect(getFaturaDueDate('2026-01', 30)).toBe('2026-02-28');
+    // vencimento depois do fechamento: mesmo mês; antes (ou igual): mês seguinte
+    expect(getFaturaDueDate('2026-11', 10, 3)).toBe('2026-11-10');
+    expect(getFaturaDueDate('2026-11', 5, 20)).toBe('2026-12-05');
+    expect(getFaturaDueDate('2026-01', 30, 30)).toBe('2026-02-28');
   });
   test('isFaturaOpen depende do hoje injetado', () => {
     expect(isFaturaOpen('2026-11', 3, '2026-11-02')).toBe(true);
@@ -49,7 +51,7 @@ describe('buildFatura', () => {
   });
   test('lê registro de pagamento', () => {
     const f = buildFatura(card, ps, { 'c1_2026-11': { paid: false, paidAmount: 40, partial: true } }, '2026-11', '2026-11-20');
-    expect(f).toMatchObject({ key: 'c1_2026-11', paid: false, paidAmount: 40, partial: true, dueDate: '2026-12-10' });
+    expect(f).toMatchObject({ key: 'c1_2026-11', paid: false, paidAmount: 40, partial: true, dueDate: '2026-11-10' });
   });
 });
 
@@ -119,22 +121,27 @@ describe('getMonthEntries: dívidas e faturas', () => {
     expect(jan).toMatchObject({ isDivida: true, statusForMonth: 'pago', displayAmount: 333.34 });
     expect(feb).toMatchObject({ statusForMonth: 'a_pagar', displayAmount: 333.33, date: '2026-02-28' });
   });
-  test('fatura conta no mês do vencimento, não no do fechamento', () => {
+  test('fatura conta no mês do vencimento (fecha 3, vence 10: mesmo mês)', () => {
     const ps = [purchase({ amount: 200 })];
-    // fatura de nov fecha 03/11 e vence 10/12: só aparece em dezembro, com a data de vencimento
-    expect(getMonthEntries([], [], '2026-11', [card], ps, {}, '2026-11-02')).toHaveLength(0);
-    const [f] = getMonthEntries([], [], '2026-12', [card], ps, {}, '2026-11-02');
-    expect(f).toMatchObject({ isFatura: true, isOpenFatura: true, date: '2026-12-10', closeDate: '2026-11-03', displayAmount: 200, description: 'Fatura Nubank — Nov 2026' });
+    const [f] = getMonthEntries([], [], '2026-11', [card], ps, {}, '2026-11-02');
+    expect(f).toMatchObject({ isFatura: true, isOpenFatura: true, date: '2026-11-10', closeDate: '2026-11-03', displayAmount: 200, description: 'Fatura Nubank — Nov 2026' });
+    expect(getMonthEntries([], [], '2026-12', [card], ps, {}, '2026-11-02')).toHaveLength(0);
+  });
+  test('fatura que vence antes do fechamento no calendário vence no mês seguinte', () => {
+    const late = { ...card, id: 'c2', closeDay: 20, dueDay: 5 };
+    const ps = [purchase({ cardId: 'c2', amount: 200 })];
+    expect(getMonthEntries([], [], '2026-11', [late], ps, {}, '2026-11-02')).toHaveLength(0);
+    const [f] = getMonthEntries([], [], '2026-12', [late], ps, {}, '2026-11-02');
+    expect(f).toMatchObject({ date: '2026-12-05', closeDate: '2026-11-20', description: 'Fatura Nubank — Nov 2026' });
   });
   test('fatura fechada com pagamento parcial mostra o restante', () => {
     const ps = [purchase({ amount: 200 })];
-    const [f] = getMonthEntries([], [], '2026-12', [card], ps, { 'c1_2026-11': { paid: false, paidAmount: 50, partial: true } }, '2026-11-05');
-    expect(f).toMatchObject({ isOpenFatura: false, date: '2026-12-10', amount: 200, displayAmount: 150, statusForMonth: 'a_pagar' });
-    expect(getMonthEntries([], [], '2026-11', [card], ps, {}, '2026-11-05')).toHaveLength(0);
+    const [f] = getMonthEntries([], [], '2026-11', [card], ps, { 'c1_2026-11': { paid: false, paidAmount: 50, partial: true } }, '2026-11-05');
+    expect(f).toMatchObject({ isOpenFatura: false, date: '2026-11-10', amount: 200, displayAmount: 150, statusForMonth: 'a_pagar' });
   });
   test('fatura paga aparece como paga no mês do vencimento', () => {
     const ps = [purchase({ amount: 200 })];
-    const [f] = getMonthEntries([], [], '2026-12', [card], ps, { 'c1_2026-11': { paid: true, paidAmount: 200 } }, '2026-12-11');
+    const [f] = getMonthEntries([], [], '2026-11', [card], ps, { 'c1_2026-11': { paid: true, paidAmount: 200 } }, '2026-11-11');
     expect(f).toMatchObject({ statusForMonth: 'pago', displayAmount: 200 });
   });
 });
@@ -166,11 +173,11 @@ describe('alertas de vencimento', () => {
     // mês anterior (outubro) pendente seria vencido, mas overdueAlert está desligado
     expect(a.overdue).toEqual([]);
   });
-  test('fatura fechada e não paga alerta pelo vencimento; aberta não alerta', () => {
-    const cardPurchases = [purchase({ purchaseDate: '2026-10-01' }), purchase({ purchaseDate: '2026-11-04' })];
+  test('fatura fechada e não paga alerta pelo vencimento', () => {
+    const cardPurchases = [purchase({ purchaseDate: '2026-11-01' }), purchase({ purchaseDate: '2026-11-04' })];
     const a = collectDueAlerts({ ...base, entries: [], cards: [{ ...card, dueDay: 7 }], cardPurchases }, { daysBefore: 3 }, today);
-    // fatura de out/2026 vence 07/11; fatura de dez (aberta) não aparece
-    expect(a.dueSoon.map(x => x.description)).toEqual(['Fatura Nubank — Out 2026']);
+    // fatura de nov (fechou 03/11) vence 07/11; a de dez (aberta) só vence em 07/12
+    expect(a.dueSoon.map(x => x.description)).toEqual(['Fatura Nubank — Nov 2026']);
   });
   test('formatDueAlerts gera títulos no singular/plural', () => {
     const msgs = formatDueAlerts({ overdue: [{ description: 'A', days: -2 }], dueToday: [{ description: 'B' }, { description: 'C' }], dueSoon: [], incToday: [], incSoon: [] });

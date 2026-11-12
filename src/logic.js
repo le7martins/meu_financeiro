@@ -9,7 +9,9 @@ export function getBillingMonth(purchaseDate,closeDay) {
   const next=new Date(y,m,1);
   return `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,"0")}`;
 }
-export function getFaturaDueDate(billingMonth,dueDay){ return dateInMonth(addM(billingMonth,1),dueDay); }
+// Vencimento depois do fechamento no calendário (ex.: fecha 3, vence 10) cai no mesmo mês; senão (fecha 20, vence 5), no mês seguinte.
+export const faturaDueOffset=(closeDay,dueDay)=>Number(dueDay)>Number(closeDay)?0:1;
+export function getFaturaDueDate(billingMonth,dueDay,closeDay){ return dateInMonth(addM(billingMonth,faturaDueOffset(closeDay,dueDay)),dueDay); }
 export function getFaturaCloseDate(billingMonth,closeDay){ return dateInMonth(billingMonth,closeDay); }
 export function isFaturaOpen(billingMonth,closeDay,today=todayISO()){ return today<getFaturaCloseDate(billingMonth,closeDay); }
 export function getPurchaseInstallmentsForBilling(purchase,targetBillingMonth,closeDay) {
@@ -30,7 +32,7 @@ export function buildFatura(card,purchases,cardFaturas,billingMonth,today=todayI
   const key=`${card.id}_${billingMonth}`;
   const payRecord=(cardFaturas||{})[key]||null;
   const closeDate=getFaturaCloseDate(billingMonth,card.closeDay);
-  const dueDate=getFaturaDueDate(billingMonth,card.dueDay);
+  const dueDate=getFaturaDueDate(billingMonth,card.dueDay,card.closeDay);
   const open=today<closeDate;
   const paid=payRecord?.paid||false;
   const paidAmount=payRecord?.paidAmount||0;
@@ -108,8 +110,8 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     }
   }
   for(const card of (cards||[])){
-    // A fatura conta no mês do VENCIMENTO (quando o dinheiro sai): a fatura de faturamento M vence em M+1.
-    const bm=addM(monthKey,-1);
+    // A fatura conta no mês do VENCIMENTO (quando o dinheiro sai); o mês de faturamento é o do vencimento menos o deslocamento do cartão.
+    const bm=addM(monthKey,-faturaDueOffset(card.closeDay,card.dueDay));
     if(!getCardBillingMonths(card,cardPurchases||[]).includes(bm)) continue;
     const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm,today);
     if(fat.total<=0) continue;
