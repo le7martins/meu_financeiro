@@ -1,7 +1,7 @@
 // Transformações puras dos dados do usuário (sem React/Firebase).
 // Cada função recebe o estado atual e devolve o novo — quem chama persiste.
 import { todayISO, newId, fmtDate, mLabel, eVal, addM, mDiff, dateInMonth, parseISODate, installmentAmount } from './utils.js';
-import { getMonthEntries, getCardBillingMonths, buildFatura, countOccurrencesInMonth } from './logic.js';
+import { getMonthEntries, getCardBillingMonths, buildFatura, countOccurrencesInMonth, debtStats } from './logic.js';
 
 // Alterna pago/a pagar de um lançamento (item vindo de getMonthEntries) no mês.
 export function toggleEntryStatus(entries, item, monthKey, today = todayISO()) {
@@ -230,29 +230,39 @@ export function validateBackup(data) {
   return { ok: true, counts };
 }
 
-// ─── Exportação CSV ──────────────────────────────────────────
-const q = (s) => `"${String(s ?? '').replace(/"/g, '""')}"`;
+// ─── Exportação CSV (padrão Excel pt-BR: separador ";", decimal com vírgula) ───
+// Texto que começaria com = + - @ vira fórmula no Excel: prefixa ' para neutralizar.
+const q = (s) => {
+  let t = String(s ?? '');
+  if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+  return `"${t.replace(/"/g, '""')}"`;
+};
+const money = (v) => Number(v).toFixed(2).replace('.', ',');
+export const CSV_SEP = ';';
 export const CSV_HEADER = ['Descrição', 'Tipo', 'Valor', 'Vencimento', 'Status', 'Categoria', 'Recorrência', 'Notas'];
 
 // fromMk+toMk: intervalo; só fromMk: um mês; nenhum: base completa (regras, não ocorrências).
 export function buildCsv({ entries, dividas, cards, cardPurchases, cardFaturas, categories }, fromMk, toMk) {
   const catName = (id) => (categories.find(c => c.id === id) || { name: id }).name;
-  const monthRow = (e) => [q(e.description), e.type, eVal(e).toFixed(2), fmtDate(e.date), e.statusForMonth || e.status, q(catName(e.category)), e.recurrence || 'none', q(e.notes)];
-  const month = (mk) => getMonthEntries(entries, dividas, mk, cards, cardPurchases, cardFaturas).map(monthRow);
+  const row = (e, value, status) => [q(e.description), e.type, money(value), fmtDate(e.date), status, q(catName(e.category)), e.recurrence || 'none', q(e.notes)];
+  const month = (mk) => getMonthEntries(entries, dividas, mk, cards, cardPurchases, cardFaturas).map(e => row(e, eVal(e), e.statusForMonth || e.status));
   let rows = [];
   if (fromMk && toMk) {
     for (let cur = fromMk; cur <= toMk; cur = addM(cur, 1)) rows.push(...month(cur));
   } else if (fromMk) {
     rows = month(fromMk);
   } else {
-    rows = entries.map(e => [q(e.description), e.type, e.amount.toFixed(2), fmtDate(e.date), e.status, q(catName(e.category)), e.recurrence || 'none', q(e.notes)]);
-    dividas.forEach(d => rows.push([q(`${d.name} (dívida)`), q('despesa'), installmentAmount(d.totalAmount, d.installments, 2).toFixed(2), q(d.startMonth), q('parcelado'), q(catName(d.category || 'divida')), q(`${d.installments}x`), q(d.notes)]));
+    rows = entries.map(e => row(e, e.amount, e.status));
+    dividas.forEach(d => {
+      const st = debtStats(d);
+      rows.push([q(`${d.name} (dívida)`), 'despesa', money(st.regular), fmtDate(dateInMonth(d.startMonth, d.dueDay || 10)), st.quitada ? 'pago' : 'a_pagar', q(catName(d.category || 'divida')), `${st.n}x`, q(d.notes)]);
+    });
     cards.forEach(card => getCardBillingMonths(card, cardPurchases).forEach(bm => {
       const fat = buildFatura(card, cardPurchases, cardFaturas, bm);
-      if (fat.total > 0) rows.push([q(`Fatura ${card.name} ${mLabel(bm)}`), q('despesa'), fat.total.toFixed(2), fmtDate(fat.dueDate), fat.paid ? 'pago' : 'a_pagar', q('cartao'), q('none'), q('')]);
+      if (fat.total > 0) rows.push([q(`Fatura ${card.name} ${mLabel(bm)}`), 'despesa', money(fat.total), fmtDate(fat.dueDate), fat.paid ? 'pago' : 'a_pagar', q(catName('cartao')), 'none', q('')]);
     }));
   }
-  return [CSV_HEADER.join(','), ...rows.map(r => r.join(','))].join('\n');
+  return [CSV_HEADER.join(CSV_SEP), ...rows.map(r => r.join(CSV_SEP))].join('\n');
 }
 
 export const csvFileName = (fromMk, toMk) =>

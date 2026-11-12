@@ -149,9 +149,23 @@ describe('novo lançamento', () => {
 
 describe('CSV', () => {
   const data = { entries: [base({ description: 'Conta "especial", luz', date: '2026-11-10' })], dividas: [], cards: [], cardPurchases: [], cardFaturas: {}, categories: [{ id: 'outro', name: 'Outros' }] };
-  test('escapa aspas e vírgulas da descrição', () => {
+  test('formato Excel pt-BR: ";" como separador e vírgula decimal; escapa aspas', () => {
     const csv = buildCsv(data, '2026-11');
-    expect(csv.split('\n')[1]).toBe('"Conta ""especial"", luz",despesa,100.00,10/11/2026,a_pagar,"Outros",none,""');
+    expect(csv.split('\n')[0]).toBe('Descrição;Tipo;Valor;Vencimento;Status;Categoria;Recorrência;Notas');
+    expect(csv.split('\n')[1]).toBe('"Conta ""especial"", luz";despesa;100,00;10/11/2026;a_pagar;"Outros";none;""');
+  });
+  test('descrição que parece fórmula é neutralizada', () => {
+    const d = { ...data, entries: [base({ description: '=HYPERLINK("x")', date: '2026-11-10' }), base({ id: 'e2', description: '-cmd', date: '2026-11-10' })] };
+    const lines = buildCsv(d, '2026-11').split('\n');
+    expect(lines[1].startsWith(`"'=HYPERLINK(""x"")";`)).toBe(true);
+    expect(lines[2].startsWith(`"'-cmd";`)).toBe(true);
+  });
+  test('exportar tudo: dívida com valor, data de vencimento e status reais; fatura pelo vencimento', () => {
+    const full = { ...data, entries: [], dividas: [{ id: 'd1', name: 'Carro', totalAmount: 1000, installments: 4, startMonth: '2026-10', dueDay: '15', paidMonths: ['2026-10', '2026-11', '2026-12', '2027-01'], category: 'outro' }],
+      cards: [{ id: 'c1', name: 'Nubank', closeDay: 3, dueDay: 10 }], cardPurchases: [{ id: 'p', cardId: 'c1', amount: 250.5, installments: 1, purchaseDate: '2026-10-01' }], cardFaturas: {} };
+    const lines = buildCsv(full, null).split('\n');
+    expect(lines[1]).toBe('"Carro (dívida)";despesa;250,00;15/10/2026;pago;"Outros";4x;""');
+    expect(lines[2]).toBe('"Fatura Nubank Out 2026";despesa;250,50;10/10/2026;a_pagar;"cartao";none;""');
   });
   test('intervalo percorre os meses', () => {
     const fixed = { ...data, entries: [base({ recurrence: 'fixed' })] };

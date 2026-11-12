@@ -24,7 +24,6 @@ const app = initializeApp(firebaseConfig);
 try {
   if (import.meta.env.DEV) {
     // Token de debug — nunca exposto em produção
-    // eslint-disable-next-line no-restricted-globals
     self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
   }
   const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;

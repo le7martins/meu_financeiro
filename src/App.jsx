@@ -6,7 +6,7 @@ import { onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
 import { fmt, fmtDate, mLabel, addM, eVal, loadLS, saveLS, daysInMonth } from './utils.js';
 import { BLANK } from './constants.js';
-import { getMonthEntries, accumulatedBalance } from './logic.js';
+import { getMonthEntries, accumulatedBalance, accountBalances } from './logic.js';
 import { requestNotifPermission, fireNotification, checkAndNotify } from './notifications.js';
 import {
   toggleEntryStatus, toggleDividaMonth, applyEntryEdit, deleteEntry, payFatura, revertFatura,
@@ -132,7 +132,7 @@ function MainApp({ fbUser, onLogout }){
   },[dbReady,today]);
 
   const stats = useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, today });
-  const { monthEntries, totRec, totDesp, totPend, saldo, accumSaldo, healthScore, budgetOverCount, overdueDue } = stats;
+  const { monthEntries, totRec, totDesp, totPend, saldo, healthScore, budgetOverCount, overdueDue } = stats;
 
   // Meta de economia atingida
   const prevGoalAlertRef = useRef(false);
@@ -168,17 +168,8 @@ function MainApp({ fbUser, onLogout }){
   // Acumulado até o mês ATUAL (a Análise projeta a partir de hoje, independentemente do mês aberto em Contas)
   const accumNow=useMemo(()=>accumulatedBalance({entries,dividas,cards,cardPurchases,cardFaturas},NOW,today)?.value??0,[entries,dividas,cards,cardPurchases,cardFaturas,NOW,today]);
 
-  // Saldo por conta: saldo_inicial + receitas pagas - despesas pagas (entradas não-recorrentes)
-  const accountBalances = useMemo(()=>{
-    if(!accounts.length) return {};
-    return Object.fromEntries(accounts.map(acc=>{
-      const linked=entries.filter(e=>e.accountId===acc.id&&e.recurrence==="none"&&e.status==="pago");
-      const bal=(acc.initialBalance||0)
-        +linked.filter(e=>e.type==="receita").reduce((s,e)=>s+e.amount,0)
-        -linked.filter(e=>e.type==="despesa").reduce((s,e)=>s+e.amount,0);
-      return [acc.id, bal];
-    }));
-  },[accounts,entries]);
+  // Saldo por conta (inclui lançamentos recorrentes pagos e saldo inicial negativo)
+  const accountBalancesMap = useMemo(()=>accounts.length?accountBalances(accounts,{entries},today):{},[accounts,entries,today]);
 
   // "Quanto posso gastar hoje" — (recebido - pago - a pagar) / dias restantes no mês
   const todayWidget = useMemo(()=>{
@@ -403,7 +394,7 @@ function MainApp({ fbUser, onLogout }){
         <HomeScreen
           data={{entries,dividas,cards,cardPurchases,cardFaturas,categories,budgets,accounts}}
           stats={stats} today={today} selMonth={selMonth} setSelMonth={setSelMonth}
-          ui={homeUi} accountBalances={accountBalances} onOpenForm={openForm}
+          ui={homeUi} accountBalances={accountBalancesMap} onOpenForm={openForm}
           onToggle={handleToggle} onClone={handleClone}
           onEdit={(entry)=>setEditTarget({entry,monthKey:selMonth})} onDelete={setDelTarget}/>
       )}
@@ -411,8 +402,8 @@ function MainApp({ fbUser, onLogout }){
       <Suspense fallback={<div style={{flex:1}}/>}>
         {activeTab==="graficos"&&<ChartScreen entries={entries} dividas={dividas} categories={categories} nowMonth={NOW} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} accumSaldo={accumNow} today={today} toast={toast}/>}
         {activeTab==="cartoes"&&<CartaoScreen cards={cards} setCards={save.cards} cardPurchases={cardPurchases} setCardPurchases={save.cardPurchases} cardFaturas={cardFaturas} setCardFaturas={save.cardFaturas} categories={categories} nowMonth={NOW} toast={toast} onRevertFatura={handleRevertFatura}/>}
-        {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={save.dividas} categories={categories} setCategories={save.categories} nowMonth={NOW} toast={toast}/>}
-        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={save.goals} budgets={budgets} onSaveBudgets={save.budgets} todayWidget={todayWidget} accounts={accounts} accountBalances={accountBalances}/>}
+        {activeTab==="dividas"&&<DividasScreen dividas={dividas} setDividas={save.dividas} categories={categories} nowMonth={NOW} toast={toast}/>}
+        {activeTab==="saude"&&<SaudeScreen entries={entries} dividas={dividas} cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} categories={categories} nowMonth={NOW} goals={goals} onSaveGoals={save.goals} budgets={budgets} onSaveBudgets={save.budgets} todayWidget={todayWidget} accounts={accounts} accountBalances={accountBalancesMap}/>}
         {activeTab==="perfil"&&<ProfileScreen entries={entries} dividas={dividas} selMonth={selMonth}
           onExportMonth={()=>handleExportCSV(selMonth)} onExportAll={()=>handleExportCSV(null)} onExportRange={(from,to)=>handleExportCSV(from,to)} onExportPDF={()=>handleExportPDF(selMonth)}
           onReset={handleReset} notifPerm={notifPerm} notifSettings={notifSettings} onNotifSettings={save.notifSettings}
@@ -420,7 +411,7 @@ function MainApp({ fbUser, onLogout }){
           onTestNotif={()=>checkAndNotify(entries,dividas,cards,cardPurchases,cardFaturas,notifSettings)}
           onBackup={handleBackup} onRestore={handleRestore} theme={theme} onTheme={save.theme} fbUser={fbUser} onLogout={onLogout}
           categories={categories} onImportEntries={handleImport} accounts={accounts} onSaveAccounts={save.accounts}/>}
-        {activeTab==="admin"&&<AdminScreen fbUser={fbUser}/>}
+        {activeTab==="admin"&&<AdminScreen/>}
       </Suspense>
 
       <HealthModal open={showHealth&&!!healthScore} healthScore={healthScore} selMonth={selMonth} onClose={()=>setShowHealth(false)}/>

@@ -73,3 +73,40 @@ describe('relatório', () => {
     expect(topWithOthers(list.slice(0, 3), 5)).toHaveLength(3);
   });
 });
+
+describe('computeHealth (regra única do score)', () => {
+  test('limiares e rótulos', async () => {
+    const { computeHealth } = await import('../logic.js');
+    expect(computeHealth({ rec: 0, dep: 0, fixos: 0, pend: 0 })).toBeNull();
+    expect(computeHealth({ rec: 1000, dep: 500, fixos: 200, pend: 0 })).toMatchObject({ score: 100, level: 'Saudável' });
+    // fixos 60% (-15), poupança 5% (-20), pendente > 30% (-10) => 55
+    expect(computeHealth({ rec: 1000, dep: 950, fixos: 600, pend: 400 })).toMatchObject({ score: 55, level: 'Crítico', fixedPct: 60 });
+    expect(computeHealth({ rec: 1000, dep: 800, fixos: 350, pend: 0 })).toMatchObject({ score: 95, level: 'Saudável' });
+  });
+  test('despesas semanais e parcelas entram nos fixos (vêm expandidas do mês)', async () => {
+    const { computeHealth, getMonthEntries } = await import('../logic.js');
+    const entries = [e({ recurrence: 'weekly', amount: 50, date: '2026-11-02' }), e({ type: 'receita', amount: 1000, category: 'salario' })];
+    const month = getMonthEntries(entries, [], '2026-11', [], [], {}, '2026-11-12');
+    const fixos = month.filter(x => x.type === 'despesa' && x.isRecurring).reduce((s, x) => s + (x.displayAmount ?? x.amount), 0);
+    expect(fixos).toBe(250); // 5 segundas-feiras em novembro
+    expect(computeHealth({ rec: 1000, dep: 250, fixos, pend: 250 }).fixedPct).toBe(25);
+  });
+});
+
+describe('accountBalances', () => {
+  test('inclui recorrentes pagos, ignora pendentes e aceita saldo inicial negativo', async () => {
+    const { accountBalances } = await import('../logic.js');
+    const accounts = [{ id: 'a1', initialBalance: -100 }, { id: 'a2', initialBalance: 50 }];
+    const entries = [
+      e({ accountId: 'a1', type: 'receita', amount: 500, date: '2026-10-05', status: 'pago', category: 'salario' }),
+      e({ accountId: 'a1', recurrence: 'fixed', amount: 30, date: '2026-09-10', statusByMonth: { '2026-09': 'pago', '2026-10': 'pago' } }), // 2 meses pagos, nov pendente
+      e({ accountId: 'a2', amount: 20, date: '2026-11-03', status: 'a_pagar' }),
+      e({ amount: 999, date: '2026-11-03', status: 'pago' }), // sem conta: ignorado
+    ];
+    expect(accountBalances(accounts, { entries }, '2026-11-12')).toEqual({ a1: -100 + 500 - 60, a2: 50 });
+  });
+  test('sem lançamentos vinculados devolve o saldo inicial', async () => {
+    const { accountBalances } = await import('../logic.js');
+    expect(accountBalances([{ id: 'a', initialBalance: 10 }], { entries: [] }, '2026-11-12')).toEqual({ a: 10 });
+  });
+});

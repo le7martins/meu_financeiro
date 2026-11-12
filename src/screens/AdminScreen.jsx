@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { loadAllProfiles, ADMIN_EMAIL } from '../db';
 
-export default function AdminScreen({ fbUser }) {
+export default function AdminScreen() {
   const [profiles, setProfiles] = useState([]);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');

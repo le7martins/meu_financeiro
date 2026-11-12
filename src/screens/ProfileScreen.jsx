@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import Toggle from '../components/Toggle.jsx';
 import { fmt, mLabel, newId } from '../utils.js';
+import CurrencyInput from '../components/CurrencyInput.jsx';
 import S, { tint } from "../styles.js";
 import { ModalShell } from "../components/Field.jsx";
 function ProfileSection({title,children}){return(<div role="group" aria-label={title}><div style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:6,paddingLeft:2}}>{title}</div><div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:13,overflow:"hidden"}}>{children}</div></div>);}
@@ -35,10 +36,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const blankAcc=()=>({name:'',type:'corrente',color:ACC_COLORS[0],initialBalance:0});
   const [accDraft,setAccDraft]=useState(blankAcc);
   const [editAccId,setEditAccId]=useState(null);
-  const [accDisplay,setAccDisplay]=useState('');
-  const handleAccAmt=(e)=>{const d=e.target.value.replace(/\D/g,'');if(!d){setAccDisplay('');setAccDraft(p=>({...p,initialBalance:0}));return;}const n=parseInt(d,10)/100;setAccDisplay(n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));setAccDraft(p=>({...p,initialBalance:n}));};
-  const openNewAcc=()=>{const d=blankAcc();setAccDraft(d);setAccDisplay('');setEditAccId(null);setShowAccForm(true);};
-  const openEditAcc=(acc)=>{setAccDraft({...acc});setAccDisplay(acc.initialBalance>0?acc.initialBalance.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'');setEditAccId(acc.id);setShowAccForm(true);};
+  const openNewAcc=()=>{const d=blankAcc();setAccDraft(d);setEditAccId(null);setShowAccForm(true);};
+  const openEditAcc=(acc)=>{setAccDraft({...acc});setEditAccId(acc.id);setShowAccForm(true);};
   const saveAcc=()=>{
     if(!accDraft.name.trim()) return;
     if(editAccId) onSaveAccounts(accounts.map(a=>a.id===editAccId?{...a,...accDraft}:a));
@@ -181,7 +180,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
               <div><div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)"}}>🔔 Alertas de vencimento e recebimento</div><div style={{fontSize:"var(--fs-sm)",color:permColor,marginTop:2}}>{permLabel}</div></div>
               {notifPerm==="granted"
                 ?<Toggle label="Alertas de vencimento e recebimento" checked={notifSettings.enabled} onChange={v=>onNotifSettings({...notifSettings,enabled:v})}/>
-                :notifPerm!=="unsupported"&&<button type="button" onClick={onRequestPerm} style={{padding:"6px 12px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-sm)",color:"var(--primary-text)",fontSize:"var(--fs-sm)",fontWeight:700,cursor:"pointer"}}>Permitir</button>}
+                :notifPerm!=="unsupported"&&<button type="button" onClick={onRequestPerm} style={{minHeight:44,padding:"0 14px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-sm)",color:"var(--primary-text)",fontSize:"var(--fs-sm)",fontWeight:700,cursor:"pointer"}}>Permitir</button>}
             </div>
             {notifPerm==="granted"&&notifSettings.enabled&&(<>
               <div style={{marginBottom:10}}>
@@ -189,7 +188,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                 <div style={{display:"flex",gap:6}}>
                   {[1,2,3,5,7].map(d=>(
                     <button key={d} onClick={()=>onNotifSettings({...notifSettings,daysBefore:d})}
-                      style={{flex:1,padding:"7px 0",borderRadius:"var(--radius-sm)",border:`1px solid ${notifSettings.daysBefore===d?"var(--accent)":"var(--border-subtle)"}`,background:notifSettings.daysBefore===d?"var(--accent-surface)":"transparent",color:notifSettings.daysBefore===d?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer"}}>{d}d</button>
+                      style={{flex:1,minHeight:44,padding:"0",borderRadius:"var(--radius-sm)",border:`1px solid ${notifSettings.daysBefore===d?"var(--accent)":"var(--border-subtle)"}`,background:notifSettings.daysBefore===d?"var(--accent-surface)":"transparent",color:notifSettings.daysBefore===d?"var(--accent)":"var(--text-3)",fontSize:"var(--fs-md)",fontWeight:700,cursor:"pointer"}}>{d}d</button>
                   ))}
                 </div>
               </div>
@@ -243,9 +242,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="acc-saldo" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Saldo atual</label>
-                  <input id="acc-saldo" type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={accDisplay} onChange={handleAccAmt}
-                    style={{width:"100%",boxSizing:"border-box",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",padding:"9px 11px",color:"var(--text-1)",fontSize:"var(--fs-base)",outline:"none",fontFamily:"inherit"}}/>
+                  <label htmlFor="acc-saldo" style={{display:"block",fontSize:"var(--fs-xs)",color:"var(--text-3)",marginBottom:5}}>Saldo inicial</label>
+                  <CurrencyInput id="acc-saldo" allowNegative value={accDraft.initialBalance||0} onChange={v=>setAccDraft(p=>({...p,initialBalance:v}))} style={{width:"100%",boxSizing:"border-box",background:"var(--input-bg)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",padding:"9px 11px",color:"var(--text-1)",fontSize:"var(--fs-base)",outline:"none",fontFamily:"inherit"}}/>
                 </div>
                 <div style={{display:"flex",gap:8,marginTop:2}}>
                   <button type="button" onClick={()=>{setShowAccForm(false);setEditAccId(null);}}

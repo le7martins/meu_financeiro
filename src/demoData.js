@@ -102,7 +102,6 @@ export function seedDemo(uid) {
   // ── Entries ───────────────────────────────────────────────────
   const SBM = (months) => Object.fromEntries(months.map(m=>[m,{status:'pago'}]));
   const paid6 = SBM(['2025-11','2025-12','2026-01','2026-02','2026-03','2026-04']);
-  const paid5 = SBM(['2025-11','2025-12','2026-01','2026-02','2026-03']);
 
   save('entries', [
     // ── Receitas ──

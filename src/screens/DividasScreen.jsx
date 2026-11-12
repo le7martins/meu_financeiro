@@ -1,28 +1,13 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Field, { ModalShell } from "../components/Field.jsx";
 import MonthPicker from '../components/MonthPicker.jsx';
 import { getNow, mLabel, mShort, addM, mDiff, fmt, newId, installmentAmount } from '../utils.js';
 import { debtStats } from '../logic.js';
 import S, { tint } from "../styles.js";
 import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
+import CurrencyInput from "../components/CurrencyInput.jsx";
 
-// ─── Masked currency input ────────────────────────────────────
-function CurrencyInput({ id, value, onChange, placeholder = "0,00", style = {} }) {
-  const toDisplay = (v) => v > 0 ? parseFloat(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-  const [display, setDisplay] = useState(() => toDisplay(parseFloat(value) || 0));
-  const handle = useCallback((e) => {
-    const digits = e.target.value.replace(/\D/g, '');
-    if (!digits) { setDisplay(''); onChange(''); return; }
-    const num = parseInt(digits, 10) / 100;
-    setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    onChange(String(num));
-  }, [onChange]);
-  return (
-    <input id={id} type="text" inputMode="numeric" autoComplete="off" placeholder={placeholder} value={display} onChange={handle} style={style}/>
-  );
-}
-
-export default function DividasScreen({dividas,setDividas,categories,setCategories,nowMonth,toast}){
+export default function DividasScreen({dividas,setDividas,categories,nowMonth,toast}){
   const [showForm,setShowForm]=useState(false);
   const [editId,setEditId]=useState(null);
   const [delId,setDelId]=useState(null);
@@ -290,7 +275,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
               <CurrencyInput
                 id="d-valor"
                 value={parseFloat(dform.totalAmount)||0}
-                onChange={v=>setDform(p=>({...p,totalAmount:v}))}
+                onChange={v=>setDform(p=>({...p,totalAmount:v>0?String(v):""}))}
                 placeholder="0,00"
                 style={S.inp}
               />

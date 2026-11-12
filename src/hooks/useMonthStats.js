@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { getMonthEntries, accumulatedBalance } from '../logic.js';
+import { getMonthEntries, accumulatedBalance, computeHealth } from '../logic.js';
 import { addM, daysUntil, dueDateFor, eVal } from '../utils.js';
 
 export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFaturas, budgets, selMonth, today }) {
@@ -21,21 +21,9 @@ export function useMonthStats({ entries, dividas, cards, cardPurchases, cardFatu
   );
 
   const healthScore = useMemo(() => {
-    if (totRec === 0) return null;
-    const fixedDesp  = entries.filter(e => e.recurrence !== 'none' && e.type === 'despesa')
-      .reduce((s, e) => s + (e.recurrence === 'installment' ? e.amount / e.installments : e.amount), 0);
-    const dividaDesp = dividas.reduce((s, d) => s + d.totalAmount / d.installments, 0);
-    const fixedPct   = Math.min(100, ((fixedDesp + dividaDesp) / totRec) * 100);
-    const savingPct  = Math.max(0, ((totRec - totDesp) / totRec) * 100);
-    let score = 100;
-    if (fixedPct > 70) score -= 30; else if (fixedPct > 50) score -= 15; else if (fixedPct > 30) score -= 5;
-    if (savingPct < 10) score -= 20; else if (savingPct < 20) score -= 10;
-    if (totPend > totRec * 0.3) score -= 10;
-    score = Math.max(0, Math.min(100, score));
-    const level = score >= 80 ? 'Saudável' : score >= 60 ? 'Atenção' : 'Crítico';
-    const color = score >= 80 ? '#4ade80' : score >= 60 ? '#facc15' : '#f87171';
-    return { score, level, color, fixedPct, savingPct };
-  }, [entries, dividas, totRec, totDesp, totPend]);
+    const fixos = monthEntries.filter(e => e.type === 'despesa' && e.isRecurring).reduce((s, e) => s + eVal(e), 0);
+    return computeHealth({ rec: totRec, dep: totDesp, fixos, pend: totPend });
+  }, [monthEntries, totRec, totDesp, totPend]);
 
   const budgetOverCount = useMemo(() => {
     if (!Object.keys(budgets).length) return 0;

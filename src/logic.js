@@ -39,6 +39,42 @@ export function buildFatura(card,purchases,cardFaturas,billingMonth,today=todayI
   const partial=payRecord?.partial||false;
   return {card,billingMonth,items,total,closeDate,dueDate,open,paid,paidAmount,partial,key};
 }
+// Score de saúde financeira (0–100) — única regra, usada no cabeçalho, no modal e na tela Saúde.
+// fixos = despesas recorrentes do mês (fixas, parcelas, dívidas, semanais...) já expandidas por getMonthEntries.
+export function computeHealth({rec,dep,fixos,pend}){
+  if(!(rec>0)) return null;
+  const fixedPct=Math.min(100,(fixos/rec)*100);
+  const savingPct=Math.max(0,((rec-dep)/rec)*100);
+  let score=100;
+  if(fixedPct>70) score-=30; else if(fixedPct>50) score-=15; else if(fixedPct>30) score-=5;
+  if(savingPct<10) score-=20; else if(savingPct<20) score-=10;
+  if(pend>rec*0.3) score-=10;
+  score=Math.max(0,Math.min(100,score));
+  const level=score>=80?"Saudável":score>=60?"Atenção":"Crítico";
+  const color=score>=80?"#4ade80":score>=60?"#facc15":"#f87171";
+  return {score,level,color,fixedPct,savingPct};
+}
+// Saldo de cada conta: saldo inicial + tudo que foi pago/recebido e está vinculado à conta
+// (avulsos, fixos, parcelas...), mês a mês até hoje. Faturas de cartão não são vinculadas a contas.
+export function accountBalances(accounts,{entries},today=todayISO()){
+  const bal=Object.fromEntries(accounts.map(a=>[a.id,Number(a.initialBalance)||0]));
+  const ids=new Set(accounts.map(a=>a.id));
+  const linked=entries.filter(e=>e.accountId&&ids.has(e.accountId));
+  if(!linked.length) return bal;
+  const now=today.substring(0,7);
+  const first=linked.reduce((m,e)=>e.date.substring(0,7)<m?e.date.substring(0,7):m,now);
+  const last=linked.reduce((m,e)=>e.date.substring(0,7)>m?e.date.substring(0,7):m,now);
+  const start=first<addM(now,-120)?addM(now,-120):first;
+  for(let cur=start;cur<=last;cur=addM(cur,1)){
+    for(const e of getMonthEntries(linked,[],cur,[],[],{},today)){
+      if(e.statusForMonth!=="pago") continue;
+      const v=e.displayAmount??e.amount;
+      bal[e.accountId]+=e.type==="receita"?v:-v;
+    }
+  }
+  for(const id of Object.keys(bal)) bal[id]=Math.round(bal[id]*100)/100;
+  return bal;
+}
 // Saldo acumulado dos meses ANTERIORES a `month` (até 36 meses). null = não há lançamentos anteriores.
 export function accumulatedBalance({entries,dividas,cards,cardPurchases,cardFaturas},month,today=todayISO()){
   const allDates=[...entries.map(e=>e.date.substring(0,7)),...dividas.map(d=>d.startMonth)];

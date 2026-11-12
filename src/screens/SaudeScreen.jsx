@@ -1,35 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import HealthBar from '../components/HealthBar.jsx';
 import FaturasPlan from '../components/FaturasPlan.jsx';
 import Collapsible from '../components/Collapsible.jsx';
-import { getMonthEntries } from '../logic.js';
+import CurrencyInput from '../components/CurrencyInput.jsx';
+import { getMonthEntries, computeHealth } from '../logic.js';
 import { tint } from '../styles.js';
 import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort, newId } from '../utils.js';
-
-// ─── Masked currency input ───────────────────────────────────
-function CurrencyInput({ value, onChange, placeholder = "0,00", style = {}, ...rest }) {
-  const [display, setDisplay] = useState(() =>
-    value > 0 ? value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ''
-  );
-  const handle = useCallback((e) => {
-    const digits = e.target.value.replace(/\D/g, '');
-    if (!digits) { setDisplay(''); onChange(0); return; }
-    const num = parseInt(digits, 10) / 100;
-    setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    onChange(num);
-  }, [onChange]);
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      placeholder={placeholder}
-      value={display}
-      onChange={handle}
-      style={style}
-      {...rest}
-    />
-  );
-}
 
 // ─── Mini sparkline SVG ──────────────────────────────────────
 function Sparkline({ data, label = "Tendência", color = "var(--success)", width = 60, height = 22 }) {
@@ -49,6 +25,7 @@ function Sparkline({ data, label = "Tendência", color = "var(--success)", width
     </svg>
   );
 }
+
 
 export default function SaudeScreen({ entries, dividas, cards, cardPurchases, cardFaturas, categories, nowMonth, goals, onSaveGoals, budgets, onSaveBudgets, todayWidget, accounts=[], accountBalances={} }) {
   const [showAllBudget, setShowAllBudget] = useState(false);
@@ -88,17 +65,11 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
     return { month: mShort(m), saldo: r2-d2, rec:r2, dep:d2 };
   });
 
-  // Mesma lógica do healthScore em App.jsx (limiares unificados: 80/60)
-  let score = 100;
-  if (fixosPct > 70) score -= 30;
-  else if (fixosPct > 50) score -= 15;
-  else if (fixosPct > 30) score -= 5;
-  if (economiaPct < 10) score -= 20;
-  else if (economiaPct < 20) score -= 10;
-  if (pendente > 0 && rec > 0 && (pendente/rec) > 0.3) score -= 10;
-  score = Math.max(0, Math.min(100, score));
+  // Mesma regra do cabeçalho e do modal (computeHealth em logic.js)
+  const health = computeHealth({ rec, dep, fixos, pend: pendente }) || { score: 0, level: "Sem renda no mês" };
+  const score = health.score;
   const scoreColor = score>=80?"var(--success)":score>=60?"var(--warning)":"var(--danger)";
-  const scoreLabel = score>=80?"Saudável":score>=60?"Atenção":"Crítico";
+  const scoreLabel = health.level;
 
   // All categories with spending this month
   const catMap = {};
