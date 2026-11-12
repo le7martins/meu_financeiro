@@ -1,21 +1,15 @@
 import { useState } from 'react';
 import S, { tint } from '../styles.js';
 import EntryActionsSheet from './EntryActionsSheet.jsx';
-import { fmt, fmtDate, mDiff, dueBadge, dueDateFor, eVal, originalMonthAmount } from '../utils.js';
-
-// Cores semânticas do badge de vencimento (dueBadge em utils.js ainda devolve hex).
-const BADGE_TOKEN = { "#f87171": "danger", "#fb923c": "orange", "#facc15": "warning" };
+import { fmt, fmtDate, mDiff, dueLine, eVal, originalMonthAmount } from '../utils.js';
 
 // Card de um lançamento do mês. Deslizar para o lado alterna pago/a pagar.
 export default function EntryCard({ entry, selMonth, catColor, catName, budgets, catTotals, onToggle, onClone, onEdit, onDelete }) {
     const [menuOpen,setMenuOpen]=useState(false);
-    const badge=dueBadge(entry,selMonth);
+    const due=dueLine(entry,selMonth);
     const paidDt=entry.isRecurring?entry.paidDateByMonth?.[selMonth]:entry.paidDate;
     const borderColor=entry.type==="receita"?"var(--success-border)":entry.isDivida?"var(--danger-border)":entry.isFatura?tint(entry.cardColor,33):"var(--border)";
     const amtColor=entry.type==="receita"?"var(--success)":entry.isDivida?"var(--danger)":entry.isFatura?entry.cardColor:"var(--text-1)";
-    const bt=badge&&BADGE_TOKEN[badge.color];
-    const badgeColor=bt?`var(--${bt})`:badge?.color;
-    const badgeBg=bt?`var(--${bt}-soft)`:badge?.bg;
     const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
     const origAmt=originalMonthAmount(entry);
     const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
@@ -53,7 +47,6 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
             <div style={S.cardMeta}>
               {!entry.isFatura&&<span style={{...S.tag,color:catColor(entry.category),borderColor:tint(catColor(entry.category),27),background:tint(catColor(entry.category),9)}}>{catName(entry.category)}</span>}
               {entry.recurrence!=="none"&&<span style={{...S.tag,color:entry.isDivida?"var(--danger)":"var(--accent)",borderColor:entry.isDivida?"var(--danger-border)":"var(--accent-border)",background:entry.isDivida?"var(--danger-soft)":"var(--accent-surface)"}}>{entry.recurLabel}</span>}
-              <span style={{fontSize:"var(--fs-xs)",color:"var(--text-4)"}}>{fmtDate(dueDateFor(entry,selMonth))}</span>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4,flexWrap:"wrap"}}>
               <span style={{fontSize:"var(--fs-lg)",fontWeight:700,color:amtColor,letterSpacing:"-0.3px"}}>
@@ -78,10 +71,9 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
                 </div>
               );
             })()}
-            {badge&&<div style={{display:"inline-block",marginTop:4,fontSize:"var(--fs-2xs)",fontWeight:700,padding:"2px 7px",borderRadius:4,background:badgeBg,color:badgeColor}}>{badge.text}</div>}
+            {due&&<div style={{marginTop:4,fontSize:"var(--fs-xs)",fontWeight:due.token?700:500,color:due.token?`var(--${due.token})`:entry.isOpenFatura?entry.cardColor:"var(--text-4)"}}>{due.text}</div>}
             {entry.notes&&<div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:3,fontStyle:"italic",display:"flex",alignItems:"flex-start",gap:4}}><svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:3,flexShrink:0}}><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span>{entry.notes}</span></div>}
             {(entry.tags||[]).length>0&&<div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>{(entry.tags||[]).map(t=><span key={t} style={{fontSize:"var(--fs-2xs)",padding:"1px 6px",borderRadius:4,background:"var(--accent-soft)",border:`1px solid ${tint("var(--accent)",13)}`,color:"var(--accent)",fontWeight:600}}>#{t}</span>)}</div>}
-            {entry.isOpenFatura&&<div style={{fontSize:"var(--fs-xs)",color:entry.cardColor,marginTop:3,opacity:0.8,display:"flex",alignItems:"center",gap:4}}><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{marginRight:3,flexShrink:0}}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg><span>Fecha em {fmtDate(entry.closeDate)}</span></div>}
             {paidDt&&!entry.isDivida&&!entry.isFatura&&<div style={{fontSize:"var(--fs-xs)",color:"var(--success)",marginTop:2}}>✓ Pago em {fmtDate(paidDt)}</div>}
           </div>
         </div>

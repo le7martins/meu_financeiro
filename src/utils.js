@@ -23,16 +23,20 @@ export const daysUntil = (ds, today = todayISO()) => { if(!ds)return null; retur
 // Vencimento de um item de getMonthEntries no mês `mk`.
 export const dueDateFor = (entry, mk) =>
   entry.recurrence!=="none"&&!entry.isDivida&&!entry.isFatura ? dateInMonth(mk, entry.date.split("-")[2]) : entry.date;
-export const dueBadge  = (entry,mk,today = todayISO()) => {
-  if(entry.statusForMonth!=="a_pagar") return null;
-  if(entry.isOpenFatura) return null;
-  const days = daysUntil(dueDateFor(entry,mk), today);
+// Linha única de vencimento do card: texto com data e contagem + token de cor (null = neutro).
+const plural = (n,w) => `${n} ${w}${n===1?"":"s"}`;
+const shortDate = (ds,today) => { const [y,m,d]=ds.split("-"); return `${d}/${m}${y===today.slice(0,4)?"":"/"+y.slice(2)}`; };
+export const dueLine = (entry,mk,today = todayISO()) => {
+  const ds = dueDateFor(entry,mk);
+  const days = daysUntil(ds,today);
   if(days===null) return null;
-  if(days<0)   return {text:`Vencido há ${Math.abs(days)}d`,color:"#f87171",bg:"rgba(248,113,113,.13)"};
-  if(days===0) return {text:"Vence hoje!",color:"#fb923c",bg:"rgba(251,146,60,.18)"};
-  if(days<=3)  return {text:`Vence em ${days}d`,color:"#fb923c",bg:"rgba(251,146,60,.12)"};
-  if(days<=7)  return {text:`Vence em ${days}d`,color:"#facc15",bg:"rgba(250,204,21,.1)"};
-  return null;
+  const date = shortDate(ds,today);
+  const income = entry.type==="receita";
+  if(entry.isOpenFatura) return {text:`Fecha em ${date}`,token:null};
+  if(entry.statusForMonth==="pago") return {text:`${income?"Recebimento":"Vencimento"} ${date}`,token:null};
+  if(days<0) return {text:`${income?"Recebimento":"Venceu em"} ${date} · há ${plural(-days,"dia")}`,token:"danger"};
+  const when = days===0?"hoje":days===1?"amanhã":`em ${plural(days,"dia")}`;
+  return {text:`${income?"Recebe":"Vence"} ${when} · ${date}`,token:days<=3?"orange":days<=7?"warning":null};
 };
 // Valor do mês sem override: parcela, soma das ocorrências (semanal/quinzenal) ou o próprio valor.
 export const originalMonthAmount = (e) =>
