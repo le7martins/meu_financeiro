@@ -51,6 +51,9 @@ function download(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+// Confirmação de e-mail só é exigida de contas criadas a partir desta data.
+const VERIFY_REQUIRED_FROM = Date.parse('2026-11-12T00:00:00Z');
+
 // ─── App (auth gate) ─────────────────────────────────────────
 function App(){
   const [fbUser, setFbUser] = useState(undefined);
@@ -88,7 +91,8 @@ function App(){
     })();
   };
   // Conta e-mail/senha precisa confirmar o e-mail (Google já vem verificado).
-  const needsVerify = !fbUser._isDemo && fbUser.providerData?.some(p=>p.providerId==='password') && !fbUser.emailVerified;
+  const isNewAccount = Date.parse(fbUser.metadata?.creationTime) >= VERIFY_REQUIRED_FROM; // contas antigas ficam isentas
+  const needsVerify = !fbUser._isDemo && isNewAccount && fbUser.providerData?.some(p=>p.providerId==='password') && !fbUser.emailVerified;
   if(needsVerify) return <VerifyEmailScreen user={fbUser} onChecked={()=>setVerTick(t=>t+1)} onLogout={handleLogout}/>;
   return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={handleLogout}/>;
 }
