@@ -8,10 +8,14 @@ const btnSecondary={flex:1,padding:"11px",background:"var(--surface-2)",border:"
 export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
   const alreadyPaid=entry.statusForMonth==="pago";
   const [payType,setPayType]=useState("total");
-  const [partialAmt,setPartialAmt]=useState(String(entry.amount));
+  const remaining=Math.round((entry.displayAmount??entry.amount)*100)/100; // o que ainda falta pagar
+  const alreadyPaid2=Math.round((entry.amount-remaining)*100)/100;
+  const [partialAmt,setPartialAmt]=useState(String(remaining));
   const isPartial=payType==="partial";
   const {dialogProps,titleId}=useDialog(onClose);
   const partialN=parseFloat(partialAmt);
+  const partialOk=partialN>0&&partialN<=remaining+0.004;
+  const confirmOk=!isPartial||partialOk;
   const head=(title)=>(
     <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>{title}</div><div style={{fontSize:"var(--fs-sm)",color:entry.cardColor,marginTop:2}}>💳 {entry.cardName}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
   );
@@ -38,8 +42,9 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
         <div style={S.modalHandle}/>
         {head("Pagar Fatura")}
         <div style={{background:"var(--surface-sunken)",border:"1px solid var(--border)",borderRadius:11,padding:"12px 14px",marginBottom:16,textAlign:"center"}}>
-          <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginBottom:4}}>Total da fatura</div>
-          <div style={{fontSize:"var(--fs-6xl)",fontWeight:800,color:entry.cardColor}}>{fmt(entry.amount)}</div>
+          <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginBottom:4}}>{alreadyPaid2>0?"Falta pagar":"Total da fatura"}</div>
+          <div style={{fontSize:"var(--fs-6xl)",fontWeight:800,color:entry.cardColor}}>{fmt(remaining)}</div>
+          {alreadyPaid2>0&&<div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:4}}>Total {fmt(entry.amount)} · já pago {fmt(alreadyPaid2)}</div>}
         </div>
         <div role="group" aria-label="Tipo de pagamento" style={{display:"flex",gap:8,marginBottom:16}}>
           {[["total","✓ Pagar total"],["partial","Pagar parcial"]].map(([t,l])=>(
@@ -50,18 +55,19 @@ export default function FaturaPayModal({entry,onPay,onRevert,onClose}){
         {isPartial&&(
           <div style={{marginBottom:16}}>
             <label htmlFor="fatura-valor" style={S.lbl}>Valor pago</label>
-            <input id="fatura-valor" style={S.inp} type="number" inputMode="decimal" min="0" max={entry.amount} step="0.01" value={partialAmt} onChange={e=>setPartialAmt(e.target.value)} aria-describedby={partialAmt&&partialN<entry.amount?"fatura-aviso":undefined}/>
-            {partialAmt&&partialN<entry.amount&&(
+            <input id="fatura-valor" style={S.inp} type="number" inputMode="decimal" min="0" max={remaining} step="0.01" value={partialAmt} onChange={e=>setPartialAmt(e.target.value)} aria-describedby={partialAmt&&partialN<remaining?"fatura-aviso":undefined}/>
+            {partialAmt&&partialOk&&partialN<remaining&&(
               <div id="fatura-aviso" role="status" style={{marginTop:8,fontSize:"var(--fs-sm)",color:"var(--warning)",background:"var(--warning-soft)",border:"1px solid var(--warning-border)",borderRadius:"var(--radius-sm)",padding:"7px 10px"}}>
-                ⚠️ Saldo restante de {fmt(entry.amount-partialN)} ficará em aberto
+                ⚠️ Saldo restante de {fmt(remaining-partialN)} ficará em aberto
               </div>
             )}
           </div>
         )}
+        {isPartial&&!partialOk&&<div role="alert" style={{marginTop:-6,marginBottom:12,fontSize:"var(--fs-sm)",color:"var(--danger)"}}>{partialN>remaining?`O valor passa do que falta pagar (${fmt(remaining)})`:"Informe um valor maior que zero"}</div>}
         <div style={{display:"flex",gap:8}}>
           <button type="button" onClick={onClose} style={btnSecondary}>Cancelar</button>
-          <button type="button" onClick={()=>onPay(entry,isPartial?partialN||entry.amount:entry.amount,isPartial&&partialN<entry.amount)}
-            style={{flex:1,padding:"11px",background:tint(entry.cardColor,13),border:`1px solid ${tint(entry.cardColor,27)}`,borderRadius:"var(--radius-md)",color:entry.cardColor,fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>
+          <button type="button" disabled={!confirmOk} onClick={()=>confirmOk&&onPay(entry,isPartial?partialN:remaining,isPartial&&partialN<remaining-0.004)}
+            style={{flex:1,padding:"11px",background:tint(entry.cardColor,13),border:`1px solid ${tint(entry.cardColor,27)}`,borderRadius:"var(--radius-md)",color:entry.cardColor,fontSize:"var(--fs-base)",fontWeight:700,cursor:confirmOk?"pointer":"not-allowed",opacity:confirmOk?1:0.45}}>
             {isPartial?"Registrar pagamento":"✓ Marcar como paga"}
           </button>
         </div>

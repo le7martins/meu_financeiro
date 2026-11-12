@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import Field, { ModalShell } from "../components/Field.jsx";
 import MonthPicker from '../components/MonthPicker.jsx';
-import { getNow, mLabel, mShort, addM, fmt, newId } from '../utils.js';
+import { getNow, mLabel, mShort, addM, mDiff, fmt, newId, installmentAmount } from '../utils.js';
+import { debtStats } from '../logic.js';
 import S, { tint } from "../styles.js";
 import ActionsSheet, { MoreButton, ICONS } from "../components/ActionsSheet.jsx";
 
@@ -35,39 +36,69 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
   const catName =(id)=>(categories.find(c=>c.id===id)||{name:id}).name;
   const NOW=getNow();
 
+  const nInst=parseInt(dform.installments);
+  const dueDayN=parseInt(dform.dueDay);
+  const canSave=!!dform.name.trim()&&parseFloat(dform.totalAmount)>0&&Number.isInteger(nInst)&&nInst>=1&&nInst<=360&&dueDayN>=1&&dueDayN<=28;
+
   const handleSave=()=>{
-    if(!dform.name.trim()||!dform.totalAmount) return;
-    if(editId) setDividas(dividas.map(d=>d.id!==editId?d:{...d,...dform,totalAmount:parseFloat(dform.totalAmount),installments:parseInt(dform.installments)}));
-    else setDividas([...dividas,{...dform,id:newId(),totalAmount:parseFloat(dform.totalAmount),installments:parseInt(dform.installments),paidMonths:[]}]);
+    if(!canSave) return;
+    const total=parseFloat(dform.totalAmount);
+    const base={...dform,name:dform.name.trim(),totalAmount:total,installments:nInst,dueDay:String(dueDayN)};
+    if(editId){
+      let dropped=0;
+      setDividas(dividas.map(d=>{
+        if(d.id!==editId) return d;
+        // parcelas pagas fora do novo período (início/nº de parcelas) deixam de valer
+        const paidMonths=(d.paidMonths||[]).filter(m=>{const k=mDiff(base.startMonth,m);return k>=0&&k<nInst;});
+        dropped=(d.paidMonths||[]).length-paidMonths.length;
+        return {...d,...base,paidMonths};
+      }));
+      toast(dropped>0?`✓ Dívida atualizada · ${dropped} parcela${dropped>1?"s":""} paga${dropped>1?"s":""} ficou fora do novo período`:"✓ Dívida atualizada",dropped>0?"info":"success");
+    } else {
+      setDividas([...dividas,{...base,id:newId(),paidMonths:[]}]);
+      toast("✓ Dívida cadastrada");
+    }
     setDform(BLANK_D);setShowForm(false);setEditId(null);
-    toast(editId?"✓ Dívida atualizada":"✓ Dívida cadastrada");
   };
+
+  const celebrateTimer=useRef(null);
+  useEffect(()=>()=>clearTimeout(celebrateTimer.current),[]);
+  const setPaidMonths=(id,paidMonths)=>setDividas(dividas.map(dv=>dv.id!==id?dv:{...dv,paidMonths}));
 
   const toggleMonth=(d,m)=>{
     const pm=d.paidMonths||[];
     const wasPaid=pm.includes(m);
     const newPm=wasPaid?pm.filter(x=>x!==m):[...pm,m];
-    const justQuited=!wasPaid&&newPm.length>=d.installments;
-    setDividas(dividas.map(dv=>dv.id!==d.id?dv:{...dv,paidMonths:newPm}));
+    setPaidMonths(d.id,newPm);
+    const justQuited=!wasPaid&&debtStats({...d,paidMonths:newPm}).quitada;
     if(justQuited){
       setCelebrate(d.id);
-      setTimeout(()=>setCelebrate(null),3000);
-      toast("🎉 Dívida quitada! Parabéns!","celebrate");
+      clearTimeout(celebrateTimer.current);
+      celebrateTimer.current=setTimeout(()=>setCelebrate(null),4000);
+      toast("🎉 Dívida quitada! Parabéns!","celebrate","Desfazer",()=>{setCelebrate(null);setPaidMonths(d.id,pm);});
     } else {
       toast(wasPaid?"Parcela marcada como pendente":"✓ Parcela marcada como paga");
     }
   };
 
-  const active  =dividas.filter(d=>(d.paidMonths?.length||0)<d.installments);
-  const quitadas=dividas.filter(d=>(d.paidMonths?.length||0)>=d.installments);
+  // Reabre uma dívida quitada desmarcando a última parcela paga
+  const reopen=(d)=>{
+    const last=[...(d.paidMonths||[])].sort().pop();
+    setPaidMonths(d.id,(d.paidMonths||[]).filter(m=>m!==last));
+    toast(`↩ Dívida reaberta (${mLabel(last)} voltou a pendente)`,"info");
+  };
 
-  // totais
-  const totalEmAberto = active.reduce((s,d)=>s+d.totalAmount-(d.paidMonths?.length||0)*(d.totalAmount/d.installments),0);
-  const totalMensal   = active.reduce((s,d)=>s+(d.totalAmount/d.installments),0);
+  const stats=(d)=>debtStats(d);
+  // A dívida recém-quitada continua no card ativo enquanto a celebração aparece
+  const active  =dividas.filter(d=>!stats(d).quitada||celebrate===d.id);
+  const quitadas=dividas.filter(d=>stats(d).quitada&&celebrate!==d.id);
+
+  // totais (valores reais das parcelas, só do período)
+  const totalEmAberto = active.reduce((s,d)=>s+stats(d).remaining,0);
+  const totalMensal   = active.reduce((s,d)=>s+stats(d).regular,0);
 
   const openNew=()=>{setDform(BLANK_D);setEditId(null);setShowForm(true);};
   const closeForm=()=>{setShowForm(false);setEditId(null);};
-  const canSave=!!dform.name&&!!dform.totalAmount;
   const openEdit=(d)=>{setDform({name:d.name,totalAmount:String(d.totalAmount),installments:d.installments,startMonth:d.startMonth,dueDay:d.dueDay||"10",category:d.category||"divida",notes:d.notes||""});setEditId(d.id);setShowForm(true);};
 
   return(
@@ -114,13 +145,12 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
 
         {/* Active debts */}
         {active.map(d=>{
-          const instVal=parseFloat((d.totalAmount/d.installments).toFixed(2));
-          const paid=d.paidMonths?.length||0;
-          const pct=Math.round((paid/d.installments)*100);
-          const remaining=Math.max(0,d.totalAmount-(paid*instVal));
+          const st=stats(d);
+          const {paid,pct,remaining}=st;
+          const instVal=st.regular;
           const endMonth=addM(d.startMonth,d.installments-1);
           const currentDiff=(()=>{const [ay,am]=d.startMonth.split("-").map(Number),[by,bm]=NOW.split("-").map(Number);return(by-ay)*12+(bm-am);})();
-          const isCurrent=currentDiff>=0&&currentDiff<d.installments;
+          const isCurrent=currentDiff>=0&&currentDiff<st.n;
           const isPaidThisMonth=d.paidMonths?.includes(NOW);
           const isCelebrating=celebrate===d.id;
           const cc=catColor(d.category);
@@ -163,7 +193,7 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                   <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid var(--border-subtle)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
                     <div style={{minWidth:0}}>
                       <div style={{fontSize:"var(--fs-md)",fontWeight:600,color:"var(--text-2)"}}>Parcela de {mLabel(NOW)}</div>
-                      <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{currentDiff+1}/{d.installments} · {fmt(instVal)}</div>
+                      <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>{currentDiff+1}/{d.installments} · {fmt(installmentAmount(d.totalAmount,st.n,currentDiff+1))}</div>
                     </div>
                     {isPaidThisMonth?(
                       <button type="button" onClick={()=>toggleMonth(d,NOW)} className="statusToggleBtn"
@@ -218,8 +248,9 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
               <div key={d.id} style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:"12px 14px",opacity:0.6,display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
                 <div style={{flex:1}}>
                   <div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-2)"}}>{d.name}</div>
-                  <div style={{fontSize:"var(--fs-xs)",color:"var(--success)",marginTop:2}}>✓ Quitada · {d.installments}x de {fmt(parseFloat((d.totalAmount/d.installments).toFixed(2)))} · Total {fmt(d.totalAmount)}</div>
+                  <div style={{fontSize:"var(--fs-sm)",color:"var(--success)",marginTop:2}}>✓ Quitada · {d.installments}x de {fmt(stats(d).regular)} · Total {fmt(d.totalAmount)}</div>
                 </div>
+                <button type="button" onClick={()=>reopen(d)} aria-label={`Reabrir dívida ${d.name}`} style={{minHeight:44,padding:"0 12px",borderRadius:"var(--radius-md)",border:"1px solid var(--border)",background:"transparent",color:"var(--text-2)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Reabrir</button>
                 <button type="button" className="iconBtn" title="Excluir dívida" aria-label={`Excluir dívida ${d.name}`} onClick={()=>setDelId(d.id)} style={{...S.iconBtn,background:"var(--danger-soft)",color:"var(--danger)"}}>✕</button>
               </div>
             ))}

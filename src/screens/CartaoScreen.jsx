@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import Field, { ModalShell } from "../components/Field.jsx";
 import PartialFatModal from '../modals/PartialFatModal.jsx';
-import { getBillingMonth, buildFatura, getCardBillingMonths, faturaDueOffset } from '../logic.js';
+import { buildFatura, getCardBillingMonths, faturaDueOffset, cardUsedLimit } from '../logic.js';
+import { payFatura } from '../entryActions.js';
 import { fmt, fmtDate, mLabel, mShort, addM, todayISO, newId } from '../utils.js';
 import { CARD_COLORS } from '../constants.js';
 import S, { tint } from "../styles.js";
@@ -23,6 +24,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const [purchMenu,setPurchMenu]=useState(null);
   const [delPurchId,setDelPurchId]=useState(null);
   const [editPurch,setEditPurch]=useState(null);
+  const [pendingCard,setPendingCard]=useState(null); // edição de fechamento/vencimento aguardando confirmação
   const [selectedBM,setSelectedBM]=useState({});
   const [cardForm,setCardForm]=useState({name:"",limit:"",closeDay:"20",dueDay:"5",color:CARD_COLORS[0]});
   const [purchForm,setPurchForm]=useState({description:"",amount:"",installments:1,purchaseDate:todayISO(),category:"outro",notes:""});
@@ -32,9 +34,9 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
   const openEditCard=(card)=>{setEditCardId(card.id);setCardForm({name:card.name,limit:String(card.limit||""),closeDay:String(card.closeDay),dueDay:String(card.dueDay),color:card.color});setShowCardForm(true);};
   const closeCardForm=()=>{setShowCardForm(false);setCardForm(BLANK_CARD);setEditCardId(null);};
 
-  const handleSaveCard=()=>{
-    if(!cardForm.name.trim()) return;
-    const data={...cardForm,limit:parseFloat(cardForm.limit)||0,closeDay:parseInt(cardForm.closeDay)||20,dueDay:parseInt(cardForm.dueDay)||5};
+  const clampDay=(v,def)=>Math.min(28,Math.max(1,parseInt(v)||def));
+  const cardFormOk=!!cardForm.name.trim()&&parseFloat(cardForm.limit||0)>=0;
+  const applyCard=(data)=>{
     if(editCardId){
       setCards(cards.map(c=>c.id!==editCardId?c:{...c,...data}));
       toast("✓ Cartão atualizado");
@@ -44,9 +46,19 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
     }
     closeCardForm();
   };
+  const handleSaveCard=()=>{
+    if(!cardFormOk) return;
+    const data={...cardForm,name:cardForm.name.trim(),limit:Math.max(0,parseFloat(cardForm.limit)||0),closeDay:clampDay(cardForm.closeDay,20),dueDay:clampDay(cardForm.dueDay,5)};
+    const old=editCardId?cards.find(c=>c.id===editCardId):null;
+    const daysChanged=old&&(old.closeDay!==data.closeDay||old.dueDay!==data.dueDay);
+    const hasHistory=old&&(cardPurchases.some(p=>p.cardId===old.id)||Object.keys(cardFaturas).some(k=>k.startsWith(old.id+"_")));
+    if(daysChanged&&hasHistory){setPendingCard(data);return;} // reagrupa compras entre faturas: pede confirmação
+    applyCard(data);
+  };
+  const purchOk=(f)=>!!f.description?.trim()&&parseFloat(f.amount)>0&&Number.isInteger(Number(f.installments))&&Number(f.installments)>=1&&Number(f.installments)<=48&&!!f.purchaseDate;
   const handleSavePurchase=()=>{
-    if(!purchForm.description.trim()||!purchForm.amount||!activeCardId) return;
-    const p={id:newId(),cardId:activeCardId,...purchForm,amount:parseFloat(purchForm.amount),installments:parseInt(purchForm.installments)||1};
+    if(!purchOk(purchForm)||!activeCardId) return;
+    const p={id:newId(),cardId:activeCardId,description:purchForm.description.trim(),amount:parseFloat(purchForm.amount),installments:parseInt(purchForm.installments),purchaseDate:purchForm.purchaseDate,category:purchForm.category,notes:purchForm.notes||""};
     setCardPurchases([p,...cardPurchases]);setPurchForm(BLANK_PURCH);setShowPurchaseForm(false);
     toast("✓ Compra lançada");
   };
@@ -57,17 +69,22 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
     setCardFaturas(nf);setDelCardId(null);toast("Cartão removido","info");
   };
   const handleDeletePurch=(id)=>{setCardPurchases(cardPurchases.filter(p=>p.id!==id));setDelPurchId(null);toast("Compra removida","info");};
+  // O modal abre com os dados da compra ORIGINAL (valor total e parcelas), nunca com os da parcela exibida.
+  const openEditPurch=(id)=>{
+    const p=cardPurchases.find(x=>x.id===id);
+    if(p) setEditPurch({id:p.id,cardId:p.cardId,description:p.description,amount:String(p.amount),installments:String(p.installments||1),purchaseDate:p.purchaseDate,notes:p.notes||""});
+  };
   const handleEditPurch=()=>{
-    if(!editPurch||!editPurch.description.trim()||!editPurch.amount) return;
-    setCardPurchases(cardPurchases.map(p=>p.id!==editPurch.id?p:{...p,...editPurch,amount:parseFloat(editPurch.amount),installments:parseInt(editPurch.installments)||1}));
+    if(!editPurch||!purchOk(editPurch)) return;
+    setCardPurchases(cardPurchases.map(p=>p.id!==editPurch.id?p:{...p,description:editPurch.description.trim(),amount:parseFloat(editPurch.amount),installments:parseInt(editPurch.installments),purchaseDate:editPurch.purchaseDate,notes:editPurch.notes||""}));
     setEditPurch(null);toast("✓ Compra atualizada");
   };
   const handlePayFat=(fat,amount)=>{
-    const totalPaid=parseFloat(((fat.paidAmount||0)+amount).toFixed(2));
-    const full=totalPaid>=fat.total;
-    setCardFaturas({...cardFaturas,[fat.key]:{paid:full,paidAmount:totalPaid,paidDate:todayISO(),partial:!full}});
+    const r=payFatura(cardFaturas,{faturaKey:fat.key,amount:fat.total},amount,true,todayISO());
+    if(r.noop) return;
+    setCardFaturas(r.cardFaturas);
     setPartialFatTarget(null);
-    toast(full?"✓ Fatura paga":"Pagamento parcial registrado");
+    toast(r.fullyPaid?"✓ Fatura paga":"Pagamento parcial registrado");
   };
 
   return(
@@ -86,12 +103,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
           const stripMonths=[...new Set([...allBillings,...futureMths])].sort();
           const selBM=selectedBM[card.id]||nowMonth;
           const selFat=buildFatura(card,cardPurchases,cardFaturas,selBM);
-          const usedLimit=cardPurchases.filter(p=>p.cardId===card.id).reduce((s,p)=>{
-            const base=getBillingMonth(p.purchaseDate,card.closeDay);
-            const inst=parseInt(p.installments)||1;
-            for(let i=0;i<inst;i++){const bm=addM(base,i);if(bm>=nowMonth){const fat=cardFaturas[`${card.id}_${bm}`];if(!fat?.paid)s+=parseFloat((p.amount/inst).toFixed(2));}}
-            return s;
-          },0);
+          const usedLimit=cardUsedLimit(card,cardPurchases,cardFaturas);
           const limitPct=card.limit>0?Math.min(100,(usedLimit/card.limit)*100):0;
           const limitColor=limitPct>80?"var(--danger)":limitPct>60?"var(--warning)":card.color;
 
@@ -182,7 +194,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                         <div style={{fontSize:"var(--fs-md)",color:"var(--text-2)",fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{item.description}</div>
                         <div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",marginTop:1,display:"flex",gap:8}}>
                           {item.total>1&&<span style={{color:card.color,fontWeight:600}}>{item.installmentNum}/{item.total}x</span>}
-                          {item.total>1&&<span>Total {fmt(item.amount*item.total)}</span>}
+                          {item.total>1&&<span>Total {fmt(cardPurchases.find(x=>x.id===item.id)?.amount??item.amount*item.total)}</span>}
                         </div>
                       </div>
                       <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:card.color,flexShrink:0}}>{fmt(item.amount)}</div>
@@ -197,10 +209,10 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
                     {selFat.partial?`Pagar restante — ${fmt(parseFloat((selFat.total-selFat.paidAmount).toFixed(2)))}`:`Pagar fatura — ${fmt(selFat.total)}`}
                   </button>
                 )}
-                {selFat.paid&&(
+                {(selFat.paid||selFat.partial)&&(
                   <button type="button" onClick={()=>onRevertFatura(selFat.key)}
                     style={{marginTop:10,width:"100%",padding:"8px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:9,color:"var(--danger)",fontSize:"var(--fs-sm)",fontWeight:600,cursor:"pointer"}}>
-                    ↩ Estornar pagamento
+                    ↩ Estornar {selFat.partial?"pagamentos":"pagamento"}
                   </button>
                 )}
               </div>
@@ -218,7 +230,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
         ]}/>;
       })()}
       {purchMenu&&<ActionsSheet title={purchMenu.description} subtitle="Ações da compra" onClose={()=>setPurchMenu(null)} actions={[
-        {key:"edit",label:"Editar compra",hint:"Valor, parcelas, data e categoria",token:"accent",bg:"accent-surface",icon:ICONS.edit,onSelect:()=>setEditPurch({...purchMenu,amount:String(parseFloat((purchMenu.amount*(purchMenu.total||1)).toFixed(2))),installments:String(purchMenu.total||1)})},
+        {key:"edit",label:"Editar compra",hint:"Valor, parcelas, data e categoria",token:"accent",bg:"accent-surface",icon:ICONS.edit,onSelect:()=>openEditPurch(purchMenu.id)},
         {key:"delete",label:"Excluir compra",hint:"Remove a compra desta fatura",token:"danger",bg:"danger-soft",icon:ICONS.delete,onSelect:()=>setDelPurchId(purchMenu.id)},
       ]}/>}
 
@@ -226,11 +238,24 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
         <ModalShell title="Excluir cartão" onClose={()=>setDelCardId(null)} compact>
           <div style={dangerNote}>
             <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:2}}>{cards.find(c=>c.id===delCardId)?.name}</div>
-            <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)"}}>Remove o cartão e todas as compras e faturas associadas.</div>
+            <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)"}}>{(()=>{const n=cardPurchases.filter(p=>p.cardId===delCardId).length;return `Remove o cartão, ${n} compra${n!==1?"s":""} e os pagamentos de fatura associados.`;})()}</div>
           </div>
           <div style={{display:"flex",gap:8}}>
             <button type="button" onClick={()=>setDelCardId(null)} style={btnCancel}>Cancelar</button>
             <button type="button" onClick={()=>handleDeleteCard(delCardId)} style={btnDanger}>Excluir</button>
+          </div>
+        </ModalShell>
+      )}
+
+      {pendingCard&&(
+        <ModalShell title="Alterar fechamento/vencimento?" onClose={()=>setPendingCard(null)} compact>
+          <div style={dangerNote}>
+            <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:4}}>As compras serão reagrupadas nas faturas</div>
+            <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)",lineHeight:1.5}}>Mudar o dia de fechamento ou de vencimento muda em qual fatura (e em qual mês) cada compra cai. Pagamentos já registrados podem deixar de bater com os novos valores.</div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" onClick={()=>setPendingCard(null)} style={btnCancel}>Cancelar</button>
+            <button type="button" onClick={()=>{const d=pendingCard;setPendingCard(null);applyCard(d);}} style={btnDanger}>Alterar mesmo assim</button>
           </div>
         </ModalShell>
       )}
@@ -252,8 +277,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
             </div>
           </Field>
           <button type="button" onClick={handleSaveCard} className="submitBtn"
-            style={{...S.submitBtn,...tintBtn(cardForm.color),opacity:!cardForm.name?0.35:1}}
-            disabled={!cardForm.name}>{editCardId?"Salvar alterações":"Adicionar Cartão"}</button>
+            style={{...S.submitBtn,...tintBtn(cardForm.color),opacity:!cardFormOk?0.35:1}}
+            disabled={!cardFormOk}>{editCardId?"Salvar alterações":"Adicionar Cartão"}</button>
         </ModalShell>
       )}
 
@@ -287,8 +312,8 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
           </div>
           <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:48}} placeholder="Alguma anotação..." value={purchForm.notes} onChange={e=>setPurchForm(p=>({...p,notes:e.target.value}))}/></Field>
           <button type="button" onClick={handleSavePurchase} className="submitBtn"
-            style={{...S.submitBtn,...tintBtn(activeCard.color),opacity:(!purchForm.description||!purchForm.amount)?0.35:1}}
-            disabled={!purchForm.description||!purchForm.amount}>Adicionar Compra</button>
+            style={{...S.submitBtn,...tintBtn(activeCard.color),opacity:!purchOk(purchForm)?0.35:1}}
+            disabled={!purchOk(purchForm)}>Adicionar Compra</button>
         </ModalShell>
       )}
 
@@ -323,7 +348,7 @@ export default function CartaoScreen({cards,setCards,cardPurchases,setCardPurcha
           </div>
           <Field label="Data da compra"><input style={S.inp} type="date" value={editPurch.purchaseDate} onChange={e=>setEditPurch(p=>({...p,purchaseDate:e.target.value}))}/></Field>
           <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:48}} value={editPurch.notes||""} onChange={e=>setEditPurch(p=>({...p,notes:e.target.value}))}/></Field>
-          <button type="button" onClick={handleEditPurch} className="submitBtn" style={{...S.submitBtn,...tintBtn(ec2)}}>Salvar alterações</button>
+          <button type="button" onClick={handleEditPurch} disabled={!purchOk(editPurch)} className="submitBtn" style={{...S.submitBtn,...tintBtn(ec2),opacity:purchOk(editPurch)?1:0.35}}>Salvar alterações</button>
         </ModalShell>
       );})()}
     </div>

@@ -34,7 +34,8 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
   const addCat=()=>{if(!newName.trim())return;const id=newName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_")+"_"+Date.now();onUpdateCats([...categories,{id,name:newName.trim(),color:newColor,type:entry.type}]);setCategory(id);setNewName("");setAddingCat(false);};
   const removeCat=(catId)=>{if(usedIds.has(catId))return;onUpdateCats(categories.filter(c=>c.id!==catId));if(category===catId){const r=filteredCats.filter(c=>c.id!==catId);if(r.length>0)setCategory(r[0].id);}};
   const resolvedStatus=status??entry.statusForMonth??entry.status??"a_pagar";
-  const save=(scope)=>onSave(entry.id,{description:desc,amount:parseFloat(amount)||eVal(entry),category,status:resolvedStatus,notes,tags},scope);
+  const valid=!!desc.trim()&&parseFloat(amount)>0;
+  const save=(scope)=>{if(!valid)return;onSave(entry.id,{description:desc.trim(),amount:parseFloat(amount),category,status:resolvedStatus,notes,tags},scope);};
   const ac=isDespesa?"orange":"success";
   const {dialogProps,titleId}=useDialog(onClose);
   return(
@@ -42,7 +43,7 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
       <div {...dialogProps} style={{...S.modal,outline:"none"}} className="modal-in">
         <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"var(--accent)",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
-        <Field label="Descrição"><input style={S.inp} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
+        <Field label="Descrição" required error={!desc.trim()?"⚠️ Informe a descrição":null}><input style={{...S.inp,borderColor:!desc.trim()?"var(--danger)":"var(--border)"}} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
         <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor"} htmlFor="e-valor">
           <input id="e-valor" style={S.inp} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>
           {entry.isRecurring&&!entry.isDivida&&(
@@ -70,12 +71,12 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
           <div role="group" aria-labelledby="e-aplicar" style={{marginTop:4}}>
             <div id="e-aplicar" style={{fontSize:"var(--fs-2xs)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>Aplicar em</div>
             <div style={{display:"flex",gap:8}}>
-              <button type="button" onClick={()=>save("this")} style={{...S.scopeBtn,flex:1,borderColor:"var(--accent-border)",color:"var(--accent)",background:"var(--accent-surface)"}}><span aria-hidden="true" style={{fontSize:"var(--fs-2xl)"}}>📅</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Só este mês</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{mLabel(monthKey)}</div></div></button>
-              <button type="button" onClick={()=>save("future")} style={{...S.scopeBtn,flex:1,borderColor:`var(--${ac}-border)`,color:`var(--${ac})`,background:`var(--${ac}-soft)`}}><span aria-hidden="true" style={{fontSize:"var(--fs-2xl)"}}>📆</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Este e próximos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>a partir de {mLabel(monthKey)}</div></div></button>
+              <button type="button" onClick={()=>save("this")} disabled={!valid} style={{...S.scopeBtn,opacity:valid?1:0.45,flex:1,borderColor:"var(--accent-border)",color:"var(--accent)",background:"var(--accent-surface)"}}><span aria-hidden="true" style={{fontSize:"var(--fs-2xl)"}}>📅</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Só este mês</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{mLabel(monthKey)}</div></div></button>
+              <button type="button" onClick={()=>save("future")} disabled={!valid} style={{...S.scopeBtn,opacity:valid?1:0.45,flex:1,borderColor:`var(--${ac}-border)`,color:`var(--${ac})`,background:`var(--${ac}-soft)`}}><span aria-hidden="true" style={{fontSize:"var(--fs-2xl)"}}>📆</span><div><div style={{fontWeight:700,fontSize:"var(--fs-md)"}}>Este e próximos</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>a partir de {mLabel(monthKey)}</div></div></button>
             </div>
           </div>
         ):(
-          <button type="button" onClick={()=>save("this")} className="submitBtn" style={{...S.submitBtn,marginTop:4}}>Salvar alterações</button>
+          <button type="button" onClick={()=>save("this")} disabled={!valid} className="submitBtn" style={{...S.submitBtn,marginTop:4,opacity:valid?1:0.45}}>Salvar alterações</button>
         )}
       </div>
     </div>

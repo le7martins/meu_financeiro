@@ -3,6 +3,7 @@ import CatSelector from '../components/CatSelector.jsx';
 import Field, { useDialog } from "../components/Field.jsx";
 import MonthPicker from '../components/MonthPicker.jsx';
 import { fmt } from '../utils.js';
+import { formErrors } from '../entryActions.js';
 import S, { tint } from "../styles.js";
 
 export default function FormModal({form,setForm,lockedType,categories,entries,onUpdateCats,onAdd,onClose,cards=[],accounts=[]}){
@@ -44,8 +45,11 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
   };
 
   const descErr=touched.description&&!form.description?.trim()?"Descrição obrigatória":null;
-  const amtErr=touched.amount&&(!form.amount||parseFloat(form.amount)<=0)?"Informe um valor válido":null;
-  const isValid=form.description?.trim()&&form.amount&&parseFloat(form.amount)>0;
+  const errs=formErrors({...form,description:form.description||""});
+  const amtErr=touched.amount&&errs.amount?errs.amount:null;
+  const isValid=Object.keys(errs).length===0;
+  const firstErr=touched.submit?Object.values(errs)[0]:null;
+  const cardMode=type==="despesa"&&!!form.payWith&&form.payWith!=="saldo"; // compra no cartão: só único ou parcelado
   const [tagInput,setTagInput]=useState("");
   const addTag=(raw)=>{const t=raw.trim().toLowerCase().replace(/\s+/g,"_");if(!t||(form.tags||[]).includes(t))return;set("tags",[...(form.tags||[]),t]);setTagInput("");};
   const [newName,setNewName]=useState("");
@@ -115,11 +119,11 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           <Field label="Valor" required error={amtErr?`⚠️ ${amtErr}`:null} style={{flex:1}}>
             <input style={{...S.inp,borderColor:amtErr?"var(--danger)":"var(--border)"}} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange} onBlur={()=>setTouched(p=>({...p,amount:true}))}/>
           </Field>
-          <Field label="Vencimento" style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
+          <Field label={cardMode?"Data da compra":"Vencimento"} style={{flex:1}}><input style={S.inp} type="date" value={form.date} onChange={e=>set("date",e.target.value)}/></Field>
         </div>
 
         <Field label="Recorrência">
-          <div role="group" aria-label="Recorrência" style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo 🔄"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado 📋"]].map(([r,l])=>(<button type="button" key={r} aria-pressed={form.recurrence===r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
+          <div role="group" aria-label="Recorrência" style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[["none","Único"],["fixed","Fixo 🔄"],["weekly","Semanal"],["biweekly","Quinzenal"],["quarterly","Trimestral"],["annual","Anual"],["installment","Parcelado 📋"]].filter(([r])=>!cardMode||r==="none"||r==="installment").map(([r,l])=>(<button type="button" key={r} aria-pressed={form.recurrence===r} onClick={()=>set("recurrence",r)} style={{...S.chipBtn,...(form.recurrence===r?S.chipActive:{})}}>{l}</button>))}</div>
           {form.recurrence==="installment"&&(
             <div style={{marginTop:10}}>
               <label htmlFor="f-parcelas" style={{...S.lbl,marginBottom:5}}>Nº de parcelas</label>
@@ -169,11 +173,12 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           <input style={S.inp} placeholder="Ex: viagem, fixo, mercado... (Enter para adicionar)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
         </Field>
 
-        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div role="group" aria-label="Pagar com" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button type="button" aria-pressed={form.payWith==="saldo"} onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>💰 Saldo</button>{cards.map(c=>(<button type="button" key={c.id} aria-pressed={form.payWith===c.id} onClick={()=>set("payWith",c.id)} style={{...S.chipBtn,...(form.payWith===c.id?{background:tint(c.color,20),border:`1px solid ${tint(c.color,53)}`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-sunken)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão</div>}</Field>}
+        {type==="despesa"&&cards.length>0&&<Field label="Pagar com"><div role="group" aria-label="Pagar com" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button type="button" aria-pressed={form.payWith==="saldo"} onClick={()=>set("payWith","saldo")} style={{...S.chipBtn,...(form.payWith==="saldo"?S.chipActive:{})}}>💰 Saldo</button>{cards.map(c=>(<button type="button" key={c.id} aria-pressed={form.payWith===c.id} onClick={()=>{set("payWith",c.id);if(!["none","installment"].includes(form.recurrence))set("recurrence","none");}} style={{...S.chipBtn,...(form.payWith===c.id?{background:tint(c.color,20),border:`1px solid ${tint(c.color,53)}`,color:c.color}:{})}}>{c.name}</button>))}</div>{form.payWith&&form.payWith!=="saldo"&&<div style={{marginTop:6,fontSize:"var(--fs-sm)",color:"var(--text-3)",background:"var(--surface-sunken)",borderRadius:7,padding:"6px 10px",border:"1px solid var(--border)"}}>💳 Lançado diretamente na fatura do cartão{form.recurrence==="installment"?` em ${form.installments||"?"} parcelas`:""}</div>}</Field>}
 
         {(type!=="despesa"||!cards.length||form.payWith==="saldo")&&<Field label="Status"><div role="group" aria-label="Status" style={{display:"flex",gap:8}}>{statusOpts.map(([s,l,c])=>(<button type="button" key={s} aria-pressed={form.status===s} onClick={()=>set("status",s)} style={{...S.typeBtn,...(form.status===s?{background:`var(--${c}-soft)`,border:`1px solid var(--${c}-border)`,color:`var(--${c})`}:{})}}>{l}</button>))}</div></Field>}
 
-        <button type="button" aria-disabled={!isValid} onClick={()=>{setTouched({description:true,amount:true});if(isValid)onAdd();}} className="submitBtn"
+        {firstErr&&<div role="alert" style={{marginBottom:10,fontSize:"var(--fs-md)",color:"var(--danger)",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-sm)",padding:"8px 10px"}}>⚠️ {firstErr}</div>}
+        <button type="button" aria-disabled={!isValid} onClick={()=>{setTouched({description:true,amount:true,submit:true});if(isValid)onAdd();}} className="submitBtn"
           style={{...S.submitBtn,opacity:isValid?1:0.45,cursor:isValid?"pointer":"not-allowed",background:type==="receita"?"var(--btn-success-bg)":"var(--primary-bg)",borderColor:type==="receita"?"var(--btn-success-border)":"var(--primary-border)",color:type==="receita"?"var(--btn-success-text)":"var(--orange)"}}>
           Adicionar {type==="receita"?"Receita":"Despesa"}
         </button>

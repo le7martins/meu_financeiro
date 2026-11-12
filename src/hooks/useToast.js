@@ -8,7 +8,7 @@ export function useToast() {
   const dismiss = useCallback((id) => setToasts(p => p.filter(t => t.id !== id)), []);
   const toast = useCallback((msg, type = "success", actionLabel = null, onAction = null) => {
     const id = ++seq.current;
-    setToasts(p => [...p, { id, msg, type, actionLabel, onAction }]);
+    setToasts(p => [...p, { id, msg, type, actionLabel, onAction }].slice(-3)); // no máximo 3 na tela
     setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), actionLabel ? 5000 : 3000);
   }, []);
   return { toasts, toast, dismiss };

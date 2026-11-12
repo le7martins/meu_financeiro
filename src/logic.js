@@ -39,6 +39,26 @@ export function buildFatura(card,purchases,cardFaturas,billingMonth,today=todayI
   const partial=payRecord?.partial||false;
   return {card,billingMonth,items,total,closeDate,dueDate,open,paid,paidAmount,partial,key};
 }
+// Dívida: parcelas pagas DENTRO do período (meses órfãos não contam), restante em R$ e parcela regular.
+export function debtStats(d){
+  const n=Math.max(1,parseInt(d.installments)||1);
+  const paidSet=new Set((d.paidMonths||[]).filter(m=>{const k=mDiff(d.startMonth,m);return k>=0&&k<n;}));
+  let paidValue=0;
+  for(let i=0;i<n;i++) if(paidSet.has(addM(d.startMonth,i))) paidValue+=installmentAmount(d.totalAmount,n,i+1);
+  const paid=paidSet.size;
+  return {n,paid,pct:Math.round(paid/n*100),quitada:paid>=n,
+    remaining:Math.max(0,Math.round((d.totalAmount-paidValue)*100)/100),
+    regular:installmentAmount(d.totalAmount,n,n>1?2:1)};
+}
+// Limite comprometido de um cartão: tudo que ainda falta pagar nas faturas (vencidas, atuais e futuras).
+export function cardUsedLimit(card,purchases,cardFaturas,today=todayISO()){
+  let used=0;
+  for(const bm of getCardBillingMonths(card,purchases)){
+    const f=buildFatura(card,purchases,cardFaturas,bm,today);
+    if(!f.paid) used+=Math.max(0,f.total-(f.paidAmount||0));
+  }
+  return Math.round(used*100)/100;
+}
 export function getCardBillingMonths(card,purchases) {
   const months=new Set();
   for(const p of (purchases||[])){

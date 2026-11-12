@@ -10,7 +10,7 @@ import { getMonthEntries } from './logic.js';
 import { requestNotifPermission, fireNotification, checkAndNotify } from './notifications.js';
 import {
   toggleEntryStatus, toggleDividaMonth, applyEntryEdit, deleteEntry, payFatura, revertFatura,
-  isFormValid, findDuplicate, entryFromForm, cardPurchaseFromForm, buildCsv, csvFileName,
+  isFormValid, findDuplicate, entryFromForm, cardPurchaseFromForm, buildCsv, csvFileName, buildBackup, validateBackup,
 } from './entryActions.js';
 import { useUserData } from './hooks/useUserData.js';
 import { useMonthStats } from './hooks/useMonthStats.js';
@@ -137,7 +137,7 @@ function MainApp({ fbUser, onLogout }){
   // Meta de economia atingida
   const prevGoalAlertRef = useRef(false);
   useEffect(()=>{
-    if(!dbReady||!goals.savingsPct||goals.savingsPct<=0||totRec<=0) return;
+    if(!dbReady||selMonth!==NOW||!goals.savingsPct||goals.savingsPct<=0||totRec<=0) return;
     const economiaPct = (Math.max(0,saldo)/totRec)*100;
     const metaAtingida = economiaPct >= goals.savingsPct;
     if(metaAtingida && !prevGoalAlertRef.current){
@@ -155,7 +155,7 @@ function MainApp({ fbUser, onLogout }){
   // Meta de renda atingida
   const prevIncomeAlertRef = useRef(false);
   useEffect(()=>{
-    if(!dbReady||!goals.monthly||goals.monthly<=0||totRec<=0) return;
+    if(!dbReady||selMonth!==NOW||!goals.monthly||goals.monthly<=0||totRec<=0) return;
     const metaAtingida = totRec >= goals.monthly;
     if(metaAtingida && !prevIncomeAlertRef.current){
       prevIncomeAlertRef.current = true;
@@ -187,10 +187,7 @@ function MainApp({ fbUser, onLogout }){
 
   // ─── Keyboard shortcuts ───────────────────────────────────────
   useEffect(()=>{
-    const focusSearch=()=>{ const el=document.querySelector('input[placeholder*="Buscar"]'); if(el){el.focus();el.select();} };
     const onKey=(e)=>{
-      // Ctrl+F / Cmd+F → foca busca (intercepta o padrão do browser)
-      if((e.ctrlKey||e.metaKey)&&e.key==='f'&&activeTab==='lancamentos'){e.preventDefault();focusSearch();return;}
       if((e.ctrlKey||e.metaKey)&&e.key==='g'){e.preventDefault();setShowGlobalSearch(p=>!p);return;}
       if(e.key==='Escape'){setShowGlobalSearch(false);}
       if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
@@ -200,31 +197,40 @@ function MainApp({ fbUser, onLogout }){
         if(e.key==='ArrowLeft'){setSelMonth(p=>addM(p,-1));}
         else if(e.key==='ArrowRight'){setSelMonth(p=>addM(p,1));}
         else if(e.key==='n'||e.key==='N'){e.preventDefault();openForm('despesa');}
-        else if(e.key==='/'){e.preventDefault();focusSearch();}
+        else if(e.key==='/'){e.preventDefault();setShowGlobalSearch(true);}
       }
     };
     window.addEventListener('keydown',onKey);
     return ()=>window.removeEventListener('keydown',onKey);
   },[activeTab,showForm,editTarget,delTarget,fatPayTarget,openForm]);
 
-  // ─── Alerta de orçamento estourado (uma vez por mês/categoria) ─
+  // ─── Alerta de orçamento estourado (uma vez por mês/categoria, só no mês atual) ─
   const alertedBudgets=useRef(new Set());
-  useEffect(()=>{alertedBudgets.current=new Set();},[selMonth]);
   useEffect(()=>{
-    if(!dbReady||!Object.keys(budgets).length) return;
+    if(!dbReady||selMonth!==NOW||!Object.keys(budgets).length) return;
+    const fresh=[];
     Object.entries(budgets).forEach(([catId,limit])=>{
       if(!limit||limit<=0) return;
       const key=`${selMonth}_${catId}`;
       if(alertedBudgets.current.has(key)) return;
       const total=monthEntries.filter(e=>e.type==='despesa'&&e.category===catId).reduce((s,e)=>s+eVal(e),0);
       if(total<=limit) return;
-      alertedBudgets.current.add(key);
       const cat=categories.find(c=>c.id===catId);
-      if(!cat) return;
-      toast(`⚠️ Orçamento de "${cat.name}" estourado (${fmt(total)} / ${fmt(limit)})`,'error');
-      if(notifAllowed(notifSettings)) fireNotification(`⚠️ Orçamento estourado: ${cat.name}`,`Você gastou ${fmt(total)} de um limite de ${fmt(limit)} este mês.`,`budget-${catId}`);
+      alertedBudgets.current.add(key);
+      if(cat) fresh.push({cat,total,limit});
     });
-  },[dbReady,selMonth,monthEntries,budgets,categories,toast,notifSettings]);
+    if(!fresh.length) return;
+    // Vários estouros de uma vez viram um único aviso
+    if(fresh.length===1){
+      const {cat,total,limit}=fresh[0];
+      toast(`⚠️ Orçamento de "${cat.name}" estourado (${fmt(total)} / ${fmt(limit)})`,'error');
+      if(notifAllowed(notifSettings)) fireNotification(`⚠️ Orçamento estourado: ${cat.name}`,`Você gastou ${fmt(total)} de um limite de ${fmt(limit)} este mês.`,`budget-${cat.id}`);
+    } else {
+      const names=fresh.map(f=>f.cat.name).join(", ");
+      toast(`⚠️ ${fresh.length} orçamentos estourados: ${names}`,'error');
+      if(notifAllowed(notifSettings)) fireNotification(`⚠️ ${fresh.length} orçamentos estourados`,names,'budget-multi');
+    }
+  },[dbReady,selMonth,NOW,monthEntries,budgets,categories,toast,notifSettings]);
 
   // ─── Ações ────────────────────────────────────────────────────
   const handleToggle=useCallback((entry)=>{
@@ -279,6 +285,7 @@ function MainApp({ fbUser, onLogout }){
 
   const handlePayFatura=useCallback((entry,amount,partial)=>{
     const r=payFatura(cardFaturas,entry,amount,partial,today);
+    if(r.noop){setFatPayTarget(null);return;}
     save.cardFaturas(r.cardFaturas);
     setFatPayTarget(null);
     toast(r.fullyPaid?"✓ Fatura paga":"Pagamento parcial registrado");
@@ -289,31 +296,40 @@ function MainApp({ fbUser, onLogout }){
   },[cardFaturas,save,toast]);
 
   const handleBackup=useCallback(()=>{
-    const data={version:1,exportedAt:new Date().toISOString(),entries,dividas,cards,cardPurchases,cardFaturas,categories};
+    const data=buildBackup({entries,dividas,cards,cardPurchases,cardFaturas,categories,accounts,goals,budgets,notifSettings});
     download(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),`meu-financeiro-backup-${today}.json`);
     toast("💾 Backup salvo");
-  },[entries,dividas,cards,cardPurchases,cardFaturas,categories,today,toast]);
+  },[entries,dividas,cards,cardPurchases,cardFaturas,categories,accounts,goals,budgets,notifSettings,today,toast]);
 
   const handleRestore=useCallback((e)=>{
     const file=e.target.files?.[0];
     if(!file) return;
     const reader=new FileReader();
     reader.onload=async(ev)=>{
+      let data;
+      try{ data=JSON.parse(ev.target.result); }
+      catch{ toast("Arquivo JSON inválido ou corrompido","error"); return; }
+      // Valida tudo ANTES de tocar nos dados atuais
+      const v=validateBackup(data);
+      if(!v.ok){ toast(v.error,"error"); return; }
+      const c=v.counts;
+      const parts=[`${c.entries} lançamento${c.entries!==1?"s":""}`,c.dividas!=null&&`${c.dividas} dívida${c.dividas!==1?"s":""}`,c.cards!=null&&`${c.cards} cartõ${c.cards!==1?"es":"o"}`,c.accounts!=null&&`${c.accounts} conta${c.accounts!==1?"s":""}`].filter(Boolean).join(" · ");
+      const ok=await showConfirm({title:"Restaurar backup?",message:"Todos os dados atuais serão substituídos pelos dados do backup.",detail:`Backup de ${data.exportedAt?new Date(data.exportedAt).toLocaleDateString("pt-BR"):"data desconhecida"} · ${parts}`,confirmLabel:"Restaurar",danger:true});
+      if(!ok) return;
       try{
-        const data=JSON.parse(ev.target.result);
-        if(!data.version||!Array.isArray(data.entries)){toast("Arquivo inválido ou corrompido","error");return;}
-        const ok=await showConfirm({title:"Restaurar backup?",message:"Todos os dados atuais serão substituídos pelos dados do backup.",detail:`Backup de ${data.exportedAt?new Date(data.exportedAt).toLocaleDateString("pt-BR"):"data desconhecida"} · ${data.entries?.length||0} lançamentos`,confirmLabel:"Restaurar",danger:true});
-        if(!ok) return;
-        if(data.entries)       save.entries(data.entries);
+        save.entries(data.entries);
         if(data.dividas)       save.dividas(data.dividas);
         if(data.cards)         save.cards(data.cards);
         if(data.cardPurchases) save.cardPurchases(data.cardPurchases);
         if(data.cardFaturas)   save.cardFaturas(data.cardFaturas);
         if(data.categories)    save.categories(data.categories);
+        if(data.accounts)      save.accounts(data.accounts);
+        if(data.goals)         save.goals(data.goals);
+        if(data.budgets)       save.budgets(data.budgets);
+        if(data.notifSettings) save.notifSettings(data.notifSettings);
         toast("✅ Backup restaurado!");
       } catch(err){
-        if(err instanceof SyntaxError) toast("Arquivo JSON inválido ou corrompido","error");
-        else toast("Erro ao restaurar backup","error");
+        toast("Erro ao restaurar backup","error");
         console.error("[Restore]",err);
       }
     };

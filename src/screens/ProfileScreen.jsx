@@ -45,7 +45,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
     else onSaveAccounts([...accounts,{id:newId(),...accDraft}]);
     setShowAccForm(false);setEditAccId(null);
   };
-  const deleteAcc=(id)=>onSaveAccounts(accounts.filter(a=>a.id!==id));
+  const [delAccId,setDelAccId]=useState(null);
+  const deleteAcc=(id)=>{onSaveAccounts(accounts.filter(a=>a.id!==id));setDelAccId(null);};
   const [confirmLogout,setConfirmLogout]=useState(false);
   const [showImport,setShowImport]=useState(false);
   const [importHeaders,setImportHeaders]=useState([]);
@@ -214,8 +215,8 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
                 <div style={{fontSize:"var(--fs-base)",fontWeight:600,color:"var(--text-1)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{acc.name}</div>
                 <div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:1}}>{ACC_TYPES.find(t=>t.id===acc.type)?.label||acc.type} · saldo inicial {fmt(acc.initialBalance||0)}</div>
               </div>
-              <button type="button" aria-label={`Editar conta ${acc.name}`} title="Editar conta" onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text-3)",cursor:"pointer",padding:"4px",fontSize:"var(--fs-lg)"}}>✏️</button>
-              <button type="button" aria-label={`Excluir conta ${acc.name}`} title="Excluir conta" onClick={()=>deleteAcc(acc.id)} style={{background:"transparent",border:"none",color:"var(--danger)",cursor:"pointer",padding:"4px",fontSize:"var(--fs-lg)"}}>✕</button>
+              <button type="button" aria-label={`Editar conta ${acc.name}`} title="Editar conta" onClick={()=>openEditAcc(acc)} style={{background:"transparent",border:"none",color:"var(--text-3)",cursor:"pointer",minWidth:44,minHeight:44,fontSize:"var(--fs-lg)"}}>✏️</button>
+              <button type="button" aria-label={`Excluir conta ${acc.name}`} title="Excluir conta" onClick={()=>setDelAccId(acc.id)} style={{background:"transparent",border:"none",color:"var(--danger)",cursor:"pointer",minWidth:44,minHeight:44,fontSize:"var(--fs-lg)"}}>✕</button>
             </div>
           ))}
           {showAccForm?(
@@ -305,7 +306,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ProfileSection>
 
         <ProfileSection title="Dados">
-          <ProfileItem icon="🗑️" label="Zerar todos os dados" sub="Remove todos os lançamentos e dívidas" onClick={()=>setConfirmReset(true)} danger last/>
+          <ProfileItem icon="🗑️" label="Zerar todos os dados" sub="Remove lançamentos, dívidas, cartões e faturas" onClick={()=>setConfirmReset(true)} danger last/>
         </ProfileSection>
 
         <ProfileSection title="Aparência">
@@ -348,13 +349,32 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         </ModalShell>
       )}
 
+      {delAccId&&(()=>{
+        const acc=accounts.find(a=>a.id===delAccId);
+        if(!acc) return null;
+        const n=entries.filter(e=>e.accountId===acc.id).length;
+        return(
+          <ModalShell title="Excluir conta" onClose={()=>setDelAccId(null)} compact>
+            <div style={{background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:11,padding:"12px 14px",marginBottom:18}}>
+              <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:2}}>{acc.name}</div>
+              <div style={{fontSize:"var(--fs-sm)",color:"var(--danger)"}}>{n>0?`${n} lançamento${n!==1?"s":""} vinculado${n!==1?"s":""} ficará${n!==1?"ão":""} sem conta.`:"Esta conta não tem lançamentos vinculados."}</div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button type="button" onClick={()=>setDelAccId(null)} style={{flex:1,minHeight:44,background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"}}>Cancelar</button>
+              <button type="button" onClick={()=>deleteAcc(acc.id)} style={{flex:1,minHeight:44,background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>Excluir</button>
+            </div>
+          </ModalShell>
+        );
+      })()}
+
       {confirmReset&&(
         <ModalShell title="Zerar dados" onClose={()=>setConfirmReset(false)} compact>
           <div style={{background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:11,padding:"14px",marginBottom:20,textAlign:"center"}}>
             <div aria-hidden="true" style={{fontSize:"var(--fs-6xl)",marginBottom:8}}>⚠️</div>
             <div style={{fontSize:"var(--fs-base)",fontWeight:700,color:"var(--text-1)",marginBottom:6}}>Tem certeza?</div>
-            <div style={{fontSize:"var(--fs-md)",color:"var(--danger)",lineHeight:1.5}}>Isso removerá {entries.length} lançamento{entries.length!==1?"s":""} e {(dividas||[]).length} dívida{(dividas||[]).length!==1?"s":""} permanentemente.</div>
+            <div style={{fontSize:"var(--fs-md)",color:"var(--danger)",lineHeight:1.5}}>Isso removerá {entries.length} lançamento{entries.length!==1?"s":""}, {(dividas||[]).length} dívida{(dividas||[]).length!==1?"s":""}, todos os cartões, compras e faturas, permanentemente. Categorias, contas, metas e orçamentos são mantidos.</div>
           </div>
+          <button type="button" onClick={onBackup} style={{width:"100%",minHeight:44,marginBottom:12,background:"var(--accent-surface)",border:"1px solid var(--accent-border)",borderRadius:"var(--radius-md)",color:"var(--accent)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>💾 Baixar backup antes</button>
           <div style={{display:"flex",gap:8}}>
             <button type="button" onClick={()=>setConfirmReset(false)} style={{flex:1,padding:"12px",background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-3)",fontSize:"var(--fs-base)",fontWeight:600,cursor:"pointer"}}>Cancelar</button>
             <button type="button" onClick={()=>{onReset();setConfirmReset(false);}} style={{flex:1,padding:"12px",background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer"}}>Sim, zerar tudo</button>
