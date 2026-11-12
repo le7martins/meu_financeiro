@@ -119,16 +119,23 @@ describe('getMonthEntries: dívidas e faturas', () => {
     expect(jan).toMatchObject({ isDivida: true, statusForMonth: 'pago', displayAmount: 333.34 });
     expect(feb).toMatchObject({ statusForMonth: 'a_pagar', displayAmount: 333.33, date: '2026-02-28' });
   });
-  test('fatura aparece no mês de faturamento; aberta usa data de fechamento', () => {
+  test('fatura conta no mês do vencimento, não no do fechamento', () => {
     const ps = [purchase({ amount: 200 })];
-    const [f] = getMonthEntries([], [], '2026-11', [card], ps, {}, '2026-11-02');
-    expect(f).toMatchObject({ isFatura: true, isOpenFatura: true, date: '2026-11-03', displayAmount: 200 });
-    expect(getMonthEntries([], [], '2026-12', [card], ps, {}, '2026-11-02')).toHaveLength(0);
+    // fatura de nov fecha 03/11 e vence 10/12: só aparece em dezembro, com a data de vencimento
+    expect(getMonthEntries([], [], '2026-11', [card], ps, {}, '2026-11-02')).toHaveLength(0);
+    const [f] = getMonthEntries([], [], '2026-12', [card], ps, {}, '2026-11-02');
+    expect(f).toMatchObject({ isFatura: true, isOpenFatura: true, date: '2026-12-10', closeDate: '2026-11-03', displayAmount: 200, description: 'Fatura Nubank — Nov 2026' });
   });
   test('fatura fechada com pagamento parcial mostra o restante', () => {
     const ps = [purchase({ amount: 200 })];
-    const [f] = getMonthEntries([], [], '2026-11', [card], ps, { 'c1_2026-11': { paid: false, paidAmount: 50, partial: true } }, '2026-11-05');
+    const [f] = getMonthEntries([], [], '2026-12', [card], ps, { 'c1_2026-11': { paid: false, paidAmount: 50, partial: true } }, '2026-11-05');
     expect(f).toMatchObject({ isOpenFatura: false, date: '2026-12-10', amount: 200, displayAmount: 150, statusForMonth: 'a_pagar' });
+    expect(getMonthEntries([], [], '2026-11', [card], ps, {}, '2026-11-05')).toHaveLength(0);
+  });
+  test('fatura paga aparece como paga no mês do vencimento', () => {
+    const ps = [purchase({ amount: 200 })];
+    const [f] = getMonthEntries([], [], '2026-12', [card], ps, { 'c1_2026-11': { paid: true, paidAmount: 200 } }, '2026-12-11');
+    expect(f).toMatchObject({ statusForMonth: 'pago', displayAmount: 200 });
   });
 });
 

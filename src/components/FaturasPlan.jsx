@@ -14,16 +14,16 @@ function statusOf(f, today) {
   return { text: `Vence ${dm(f.dueDate)}`, token: "orange" };
 }
 
-// Planejamento: faturas do mês por cartão, projeção dos próximos meses e uso do envelope "Cartão".
+// Planejamento: faturas que vencem no mês (saída de dinheiro) por cartão, projeção dos próximos meses e uso do envelope "Cartão".
 export default function FaturasPlan({ cards, cardPurchases, cardFaturas, nowMonth, budget }) {
   const today = todayISO();
   const rows = cards.map(card => {
-    const f = buildFatura(card, cardPurchases, cardFaturas, nowMonth, today);
+    const f = buildFatura(card, cardPurchases, cardFaturas, addM(nowMonth, -1), today); // vence neste mês
     return { card, f, remaining: f.paid ? 0 : Math.max(0, cents(f.total - (f.paidAmount || 0))) };
   }).filter(r => r.f.total > 0);
   const next = [1, 2, 3].map(i => {
-    const m = addM(nowMonth, i);
-    return { m, total: cents(cards.reduce((s, c) => s + buildFatura(c, cardPurchases, cardFaturas, m, today).total, 0)) };
+    const m = addM(nowMonth, i); // mês do vencimento; a fatura é a do mês anterior
+    return { m, total: cents(cards.reduce((s, c) => s + buildFatura(c, cardPurchases, cardFaturas, addM(m, -1), today).total, 0)) };
   });
   if (!rows.length && !next.some(n => n.total > 0)) return null;
 
@@ -38,7 +38,7 @@ export default function FaturasPlan({ cards, cardPurchases, cardFaturas, nowMont
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
-        <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)" }}>Faturas do mês</div>
+        <div style={{ fontSize: "var(--fs-md)", fontWeight: 700, color: "var(--text-1)" }}>Faturas que vencem no mês</div>
         {rows.length > 0 && <div style={{ fontSize: "var(--fs-md)", fontWeight: 800, color: "var(--text-1)" }}>{fmt(total)}</div>}
       </div>
 

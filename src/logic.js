@@ -108,21 +108,21 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
     }
   }
   for(const card of (cards||[])){
-    // Fatura sempre aparece no mês de faturamento (billing month)
-    if(!getCardBillingMonths(card,cardPurchases||[]).includes(monthKey)) continue;
-    const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},monthKey,today);
+    // A fatura conta no mês do VENCIMENTO (quando o dinheiro sai): a fatura de faturamento M vence em M+1.
+    const bm=addM(monthKey,-1);
+    if(!getCardBillingMonths(card,cardPurchases||[]).includes(bm)) continue;
+    const fat=buildFatura(card,cardPurchases||[],cardFaturas||{},bm,today);
     if(fat.total<=0) continue;
-    const common={id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(monthKey)}`,amount:fat.total,
+    const common={id:`fatura_${fat.key}`,description:`Fatura ${card.name} — ${mLabel(bm)}`,amount:fat.total,
       type:"despesa",category:"cartao",recurrence:"none",isRecurring:false,isFatura:true,
-      faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,cardColor:card.color,cardName:card.name};
+      faturaKey:fat.key,cardId:card.id,closeDate:fat.closeDate,dueDate:fat.dueDate,cardColor:card.color,cardName:card.name,date:fat.dueDate};
     if(fat.open){
-      // Aberta: mostra com data de fechamento (valor ainda em aberto)
-      res.push({...common,displayAmount:fat.total,date:fat.closeDate,status:"a_pagar",statusForMonth:"a_pagar",isOpenFatura:true});
+      // Aberta: ainda recebe compras; entra no mês do vencimento com o total acumulado até agora
+      res.push({...common,displayAmount:fat.total,status:"a_pagar",statusForMonth:"a_pagar",isOpenFatura:true});
     } else {
-      // Fechada: mostra com data de vencimento real
       const remainingAmount=fat.partial?Math.round((fat.total-fat.paidAmount)*100)/100:fat.total;
       const status=fat.paid?"pago":"a_pagar";
-      res.push({...common,displayAmount:remainingAmount,date:fat.dueDate,status,statusForMonth:status,isOpenFatura:false,
+      res.push({...common,displayAmount:remainingAmount,status,statusForMonth:status,isOpenFatura:false,
         paidAmount:fat.paidAmount,partial:fat.partial});
     }
   }

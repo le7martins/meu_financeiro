@@ -58,7 +58,7 @@ describe('datas', () => {
     expect(dueLine(inc, '2026-11', '2026-11-09')).toEqual({ text: 'Receber em 05/11 · há 4 dias', token: 'danger' });
     expect(dueLine({ ...inc, statusForMonth: 'pago' }, '2026-11', '2026-11-09')).toEqual({ text: 'Receber em 05/11', token: null });
     expect(dueLine({ ...base, statusForMonth: 'pago' }, '2026-11', '2026-11-09')).toEqual({ text: 'Vencimento 05/11', token: null });
-    expect(dueLine({ ...base, isFatura: true, isOpenFatura: true }, '2026-11', '2026-11-01')).toEqual({ text: 'Fecha em 05/11', token: null });
+    expect(dueLine({ ...base, isFatura: true, isOpenFatura: true, closeDate: '2026-10-20' }, '2026-11', '2026-10-01')).toEqual({ text: 'Fecha 20/10 · vence 05/11', token: null });
     expect(dueLine({ ...base, date: '2027-01-10' }, '2027-01', '2026-12-30').text).toBe('Vence em 11 dias · 10/01/27');
   });
 });

@@ -35,7 +35,7 @@ export const dueLine = (entry,mk,today = todayISO()) => {
   if(days===null) return null;
   const date = shortDate(ds,today);
   const income = entry.type==="receita";
-  if(entry.isOpenFatura) return {text:`Fecha em ${date}`,token:null};
+  if(entry.isOpenFatura) return {text:`Fecha ${shortDate(entry.closeDate||ds,today)} · vence ${date}`,token:null};
   if(income){
     if(entry.statusForMonth==="pago") return {text:`Receber em ${date}`,token:null};
     const when = days<0?`há ${plural(-days,"dia")}`:days===0?"hoje":days===1?"amanhã":`em ${plural(days,"dia")}`;

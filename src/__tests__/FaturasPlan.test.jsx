@@ -6,17 +6,18 @@ import FaturasPlan from '../components/FaturasPlan.jsx';
 const card = { id: 'c1', name: 'Nubank', color: '#8b5cf6', closeDay: 3, dueDay: 10, limit: 5000 };
 // R$ 300 em 3x no dia 01/11 (antes do fechamento dia 3): parcelas de 100 em nov, dez e jan.
 const purchases = [{ id: 'p1', cardId: 'c1', description: 'Notebook', amount: 300, installments: 3, purchaseDate: '2026-11-01', category: 'outro' }];
-const base = { cards: [card], cardPurchases: purchases, cardFaturas: {}, nowMonth: '2026-11' };
+// A fatura de nov (fecha 03/11) vence em dezembro: é a "fatura do mês" de dezembro.
+const base = { cards: [card], cardPurchases: purchases, cardFaturas: {}, nowMonth: '2026-12' };
 
 describe('FaturasPlan', () => {
   test('mostra a fatura do mês por cartão e a projeção dos próximos meses', () => {
     render(<FaturasPlan {...base}/>);
-    expect(screen.getByText('Faturas do mês')).toBeTruthy();
+    expect(screen.getByText('Faturas que vencem no mês')).toBeTruthy();
     expect(screen.getByText('Nubank')).toBeTruthy();
     expect(screen.getAllByText('100,00').length).toBeGreaterThanOrEqual(3); // total, linha do cartão, uma das projeções
     expect(screen.getByText('100,00 a pagar')).toBeTruthy();
-    for (const m of ['Dez', 'Jan', 'Fev']) expect(screen.getByText(m)).toBeTruthy();
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0); // fevereiro sem parcela
+    for (const m of ['Jan', 'Fev', 'Mar']) expect(screen.getByText(m)).toBeTruthy();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0); // março sem parcela
   });
 
   test('pagamento parcial abate do que falta pagar', () => {
