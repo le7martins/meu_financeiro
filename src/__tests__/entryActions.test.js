@@ -105,3 +105,18 @@ describe('CSV', () => {
     expect(csvFileName(null)).toBe('financeiro_completo.csv');
   });
 });
+
+describe('editar semanal/quinzenal não multiplica o valor base', () => {
+  test('salvar sem mudar o valor mantém a base (quinzenal)', () => {
+    const entries = [base({ recurrence: 'biweekly', amount: 100, date: '2026-11-02' })];
+    const item = itemFor(entries, '2026-11');
+    const next = applyEntryEdit(entries, 'e1', { description: 'Academia', amount: item.displayAmount }, 'future', '2026-11');
+    expect(next[0].amount).toBe(100);
+    expect(itemFor(next, '2026-11').displayAmount).toBe(item.displayAmount);
+  });
+  test('alterar o total do mês recalcula o valor por ocorrência (semanal, 5x)', () => {
+    const entries = [base({ recurrence: 'weekly', amount: 50, date: '2026-11-02' })];
+    const next = applyEntryEdit(entries, 'e1', { amount: 300 }, 'future', '2026-11');
+    expect(next[0].amount).toBe(60);
+  });
+});

@@ -96,8 +96,9 @@ describe('recorrência', () => {
   });
   test('semanal multiplica pelas ocorrências reais', () => {
     const e = entry({ recurrence: 'weekly', amount: 50, date: '2026-11-02' });
-    expect(month([e], '2026-11')[0].amount).toBe(250);
-    expect(month([e], '2026-12')[0].amount).toBe(200);
+    expect(month([e], '2026-11')[0].displayAmount).toBe(250);
+    expect(month([e], '2026-12')[0].displayAmount).toBe(200);
+    expect(month([e], '2026-11')[0].amount).toBe(50);
   });
   test('override do mês altera valor; statusByMonth vence o status do override', () => {
     const e = entry({ recurrence: 'fixed', overrides: { '2026-10': { amount: 80, status: 'a_pagar', description: 'Y' } }, statusByMonth: { '2026-10': 'pago' } });

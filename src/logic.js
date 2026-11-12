@@ -76,7 +76,7 @@ export function getMonthEntries(entries,dividas,monthKey,cards,cardPurchases,car
       if(inRange){
         const weekly=e.recurrence==="weekly";
         const n=countOccurrencesInMonth(e.date,monthKey,weekly?7:14);
-        if(n>0) item={...e,amount:Math.round(e.amount*n*100)/100,statusForMonth:st(),isRecurring:true,recurLabel:`${weekly?"Semanal":"Quinzenal"} 📆 (${n}x)`};
+        if(n>0) item={...e,displayAmount:Math.round(e.amount*n*100)/100,occurrences:n,statusForMonth:st(),isRecurring:true,recurLabel:`${weekly?"Semanal":"Quinzenal"} 📆 (${n}x)`};
       }
     }
     else if(e.recurrence==="quarterly"){ const diff=mDiff(base,monthKey);if(diff>=0&&diff%3===0&&inRange) item={...e,statusForMonth:st(),isRecurring:true,recurLabel:"Trim."}; }

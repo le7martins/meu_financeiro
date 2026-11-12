@@ -1,5 +1,5 @@
 import S, { tint } from '../styles.js';
-import { fmt, fmtDate, mDiff, dueBadge, dueDateFor, eVal } from '../utils.js';
+import { fmt, fmtDate, mDiff, dueBadge, dueDateFor, eVal, originalMonthAmount } from '../utils.js';
 
 // Cores semânticas do badge de vencimento (dueBadge em utils.js ainda devolve hex).
 const BADGE_TOKEN = { "#f87171": "danger", "#fb923c": "orange", "#facc15": "warning" };
@@ -14,7 +14,7 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
     const badgeColor=bt?`var(--${bt})`:badge?.color;
     const badgeBg=bt?`var(--${bt}-soft)`:badge?.bg;
     const openStyle=entry.isOpenFatura?{opacity:0.75,borderStyle:"dashed"}:{};
-    const origAmt=entry.recurrence==="installment"?entry.amount/entry.installments:entry.amount;
+    const origAmt=originalMonthAmount(entry);
     const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
     const canSwipe=!entry.isOpenFatura;
     const onTouchStart=(ev)=>{ ev.currentTarget._tx=ev.touches[0].clientX; ev.currentTarget._ty=ev.touches[0].clientY; };

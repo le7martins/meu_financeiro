@@ -34,7 +34,12 @@ export const dueBadge  = (entry,mk,today = todayISO()) => {
   if(days<=7)  return {text:`Vence em ${days}d`,color:"#facc15",bg:"rgba(250,204,21,.1)"};
   return null;
 };
-export const eVal = (e) => e.displayAmount??e.amount;
+// Valor do mês sem override: parcela, soma das ocorrências (semanal/quinzenal) ou o próprio valor.
+export const originalMonthAmount = (e) =>
+  e.recurrence==="installment" ? e.amount/e.installments
+  : (e.recurrence==="weekly"||e.recurrence==="biweekly") ? Math.round(e.amount*(e.occurrences||1)*100)/100
+  : e.amount;
+export const eVal =(e) => e.displayAmount??e.amount;
 
 // ─── Dinheiro ────────────────────────────────────────────────
 // Valor da parcela i (1-based) de n, em centavos exatos: a soma das parcelas

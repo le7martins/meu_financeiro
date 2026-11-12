@@ -1,7 +1,7 @@
 // Transformações puras dos dados do usuário (sem React/Firebase).
 // Cada função recebe o estado atual e devolve o novo — quem chama persiste.
 import { todayISO, newId, fmtDate, mLabel, eVal, addM, installmentAmount } from './utils.js';
-import { getMonthEntries, getCardBillingMonths, buildFatura } from './logic.js';
+import { getMonthEntries, getCardBillingMonths, buildFatura, countOccurrencesInMonth } from './logic.js';
 
 // Alterna pago/a pagar de um lançamento (item vindo de getMonthEntries) no mês.
 export function toggleEntryStatus(entries, item, monthKey, today = todayISO()) {
@@ -51,10 +51,16 @@ export function applyEntryEdit(entries, entryId, changes, scope, monthKey) {
       return { ...e, overrides };
     }
     if (e.recurrence === 'none' || scope === 'future') {
-      // No parcelado o usuário edita o valor da parcela; a base guarda o total
-      const amount = (e.recurrence === 'installment' && changes.amount !== undefined)
-        ? Math.round(changes.amount * e.installments * 100) / 100
-        : (changes.amount ?? e.amount);
+      // Parcelado: o usuário edita a parcela e a base guarda o total.
+      // Semanal/quinzenal: o usuário edita o total do mês e a base guarda o valor por ocorrência.
+      let amount = changes.amount ?? e.amount;
+      if (changes.amount !== undefined) {
+        if (e.recurrence === 'installment') amount = Math.round(changes.amount * e.installments * 100) / 100;
+        else if (e.recurrence === 'weekly' || e.recurrence === 'biweekly') {
+          const n = countOccurrencesInMonth(e.date, monthKey, e.recurrence === 'weekly' ? 7 : 14) || 1;
+          amount = Math.round(changes.amount / n * 100) / 100;
+        }
+      }
       return { ...e, ...changes, amount };
     }
     return { ...e, overrides: { ...e.overrides, [monthKey]: changes } };

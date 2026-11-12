@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import CatSelector from '../components/CatSelector.jsx';
 import Field, { useDialog } from "../components/Field.jsx";
-import { eVal, mLabel } from '../utils.js';
+import { eVal, mLabel, originalMonthAmount } from '../utils.js';
 import S from "../styles.js";
 
 export default function EditModal({entry,monthKey,categories,entries,onUpdateCats,onSave,onClose}){
   const [desc,setDesc]=useState(entry.description);
   const initAmt=eVal(entry);
-  const origAmt=entry.recurrence==="installment"?(entry.amount/entry.installments):entry.amount;
+  const origAmt=originalMonthAmount(entry);
   const hasAmtOverride=entry.isRecurring&&!entry.isDivida&&!entry.isFatura&&entry.displayAmount!==undefined&&Math.abs(entry.displayAmount-origAmt)>0.01;
   const [amount,setAmount]=useState(String(initAmt));
   const [displayAmt,setDisplayAmt]=useState(initAmt?initAmt.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'');
