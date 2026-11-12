@@ -98,6 +98,7 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           <div style={{position:"relative"}}>
             <input
               id="f-desc"
+              maxLength={200}
               ref={descRef}
               style={{...S.inp,borderColor:descErr?"var(--danger)":"var(--border)"}}
               placeholder={type==="receita"?"Ex: Salário, freelance...":"Ex: Conta de luz, aluguel..."}
@@ -202,7 +203,7 @@ export default function FormModal({form,setForm,lockedType,categories,entries,on
           </div>
         </Field>}
 
-        <Field label="Observação (opcional)"><textarea style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
+        <Field label="Observação (opcional)"><textarea maxLength={500} style={{...S.inp,resize:"none",height:52,lineHeight:1.5}} placeholder="Alguma anotação..." value={form.notes} onChange={e=>set("notes",e.target.value)}/></Field>
 
         <Field label="Tags (opcional)">
           {(form.tags||[]).length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>{(form.tags||[]).map(t=><button type="button" key={t} aria-label={`Remover tag ${t}`} onClick={()=>set("tags",(form.tags||[]).filter(x=>x!==t))} style={{fontSize:"var(--fs-xs)",padding:"2px 7px",borderRadius:5,background:"var(--accent-soft)",border:"1px solid var(--accent-border)",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>#{t} ✕</button>)}</div>}

@@ -6,6 +6,9 @@ on:
     - cron: '0 11 * * *'
   workflow_dispatch: # permite disparar manualmente pelo GitHub
 
+permissions:
+  contents: read
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -23,6 +26,7 @@ jobs:
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
+          umask 077 # a chave fica legível só pelo runner
           # Tenta base64 decode primeiro (formato recomendado)
           if echo "$SA_JSON" | base64 -d 2>/dev/null | python3 -c "import sys,json; json.load(sys.stdin)" 2>/dev/null; then
             echo "$SA_JSON" | base64 -d > /tmp/sa.json
@@ -57,3 +61,7 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
           TZ: America/Sao_Paulo
         run: node scripts/notify.mjs
+
+      - name: Apagar chave do runner
+        if: always()
+        run: rm -f /tmp/sa.json /tmp/sa_raw.json

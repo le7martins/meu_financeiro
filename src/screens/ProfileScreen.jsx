@@ -67,9 +67,10 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const isEmailProvider=fbUser?.providerData?.some(p=>p.providerId==="password");
 
   const parseBRDate=(s)=>{if(!s)return null;s=s.trim();if(/^\d{2}\/\d{2}\/\d{4}$/.test(s)){const[d,m,y]=s.split('/');return`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;}if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;return null;};
-  const parseBRNum=(s)=>{if(!s)return null;s=String(s).replace(/[R$\s%]/g,'').trim();if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');else if(s.includes(','))s=s.replace(',','.');const n=parseFloat(s);return isNaN(n)?null:n;};
+  const parseBRNum=(s)=>{if(!s)return null;s=String(s).replace(/[R$\s%]/g,'').trim();if(s.includes(',')&&s.includes('.'))s=s.replace(/\./g,'').replace(',','.');else if(s.includes(','))s=s.replace(',','.');const n=parseFloat(s);return Number.isFinite(n)&&Math.abs(n)<1e12?n:null;};
   const handleCSVFile=(e)=>{
     const file=e.target.files?.[0];if(!file)return;
+    if(file.size>1024*1024){alert('Arquivo muito grande (máximo 1 MB).');e.target.value='';return;}
     const reader=new FileReader();
     reader.onload=(ev)=>{
       const text=ev.target.result;
@@ -114,7 +115,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       const parsedAmt=parseBRNum(row[amtCol]);
       if(!parsedDate||parsedAmt===null||parsedAmt===0)return null;
       const type=importMap.type||(parsedAmt<0?'despesa':'receita');
-      return{id:`${now}_${i}`,description:row[descCol]||'Importado',amount:Math.abs(parsedAmt),date:parsedDate,type,status:'pago',category:guessCategory(row[catCol],type),recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
+      return{id:`${now}_${i}`,description:(row[descCol]||'Importado').slice(0,200),amount:Math.abs(parsedAmt),date:parsedDate,type,status:'pago',category:guessCategory(row[catCol],type),recurrence:'none',notes:'',statusByMonth:{},overrides:{},tags:[]};
     }).filter(Boolean);
     if(candidates.length===0)return;
     const unique=candidates.filter(ne=>!isDuplicate(ne));
@@ -134,7 +135,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
     setNameLoading(false);
   };
   const handleSavePass=async()=>{
-    if(newPass.length<6){setPassErr("Mínimo 6 caracteres");return;}
+    if(newPass.length<8){setPassErr("Mínimo 8 caracteres");return;}
     setPassLoading(true);setPassErr('');
     try{
       const cred=EmailAuthProvider.credential(fbUser.email,curPass);
@@ -142,7 +143,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
       await updatePassword(fbUser,newPass);
       setEditPass(false);setCurPass('');setNewPass('');
     }catch(e){
-      setPassErr(e.code==='auth/wrong-password'?'Senha atual incorreta':'Erro ao alterar senha');
+      setPassErr(['auth/wrong-password','auth/invalid-credential'].includes(e.code)?'Senha atual incorreta':e.code==='auth/requires-recent-login'?'Faça login novamente para alterar a senha':'Erro ao alterar senha');
     }
     setPassLoading(false);
   };
@@ -336,7 +337,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ModalShell title="Alterar senha" onClose={()=>setEditPass(false)} compact>
           <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
             <div><label htmlFor="pw-atual" style={S.lbl}>Senha atual</label><input id="pw-atual" style={S.inp} type="password" autoComplete="current-password" placeholder="••••••••" value={curPass} onChange={e=>setCurPass(e.target.value)}/></div>
-            <div><label htmlFor="pw-nova" style={S.lbl}>Nova senha</label><input id="pw-nova" style={{...S.inp,borderColor:passErr?"var(--danger)":"var(--border)"}} type="password" autoComplete="new-password" placeholder="Mínimo 6 caracteres" value={newPass} onChange={e=>setNewPass(e.target.value)} aria-invalid={passErr?true:undefined} aria-describedby={passErr?"pw-err":undefined}/></div>
+            <div><label htmlFor="pw-nova" style={S.lbl}>Nova senha</label><input id="pw-nova" style={{...S.inp,borderColor:passErr?"var(--danger)":"var(--border)"}} type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={newPass} onChange={e=>setNewPass(e.target.value)} aria-invalid={passErr?true:undefined} aria-describedby={passErr?"pw-err":undefined}/></div>
             {passErr&&<div id="pw-err" role="alert" style={{fontSize:"var(--fs-md)",color:"var(--danger)"}}>⚠️ {passErr}</div>}
           </div>
           <div style={{display:"flex",gap:8}}>

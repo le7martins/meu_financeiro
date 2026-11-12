@@ -1,7 +1,13 @@
 // ─── PDF Report Generator (sem dependências externas) ────────────────────────
 // Gera um HTML estilizado e abre a janela de impressão do browser (Save as PDF)
 
-export function generateMonthPDF({ entries, monthKey, categories, mLabel, fmt, fmtDate, eVal, getMonthEntries, dividas, cards, cardPurchases, cardFaturas }) {
+// Todo texto vindo do usuário (descrição, categoria...) passa por esc(); cores por safeColor().
+export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const safeColor = (c) => /^#[0-9a-f]{3,8}$/i.test(String(c)) ? c : '#9E9E9E';
+
+// Monta o HTML do relatório. O script de impressão é o único permitido (nonce) pela CSP da própria página,
+// então mesmo um texto malicioso que escapasse do esc() não executaria.
+export function buildMonthReportHtml({ entries, monthKey, categories, mLabel, fmt, fmtDate, eVal, getMonthEntries, dividas, cards, cardPurchases, cardFaturas }, nonce = 'x') {
   const me = getMonthEntries(entries, dividas, monthKey, cards, cardPurchases, cardFaturas);
   const getCatName = (id) => (categories.find(c => c.id === id) || { name: id }).name;
   const getCatColor = (id) => (categories.find(c => c.id === id) || { color: '#9E9E9E' }).color;
@@ -29,19 +35,19 @@ export function generateMonthPDF({ entries, monthKey, categories, mLabel, fmt, f
     return `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:12px;color:#374151;font-weight:600;">${c.name}</span>
+          <span style="font-size:12px;color:#374151;font-weight:600;">${esc(c.name)}</span>
           <span style="font-size:12px;color:#6b7280;">${fmt(c.value)}</span>
         </div>
         <div style="height:6px;background:#f3f4f6;border-radius:3px;overflow:hidden;">
-          <div style="width:${pct}%;height:100%;background:${c.color};border-radius:3px;"></div>
+          <div style="width:${pct}%;height:100%;background:${safeColor(c.color)};border-radius:3px;"></div>
         </div>
       </div>`;
   }).join('');
 
   const renderRows = (list) => list.map(e => `
     <tr>
-      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#111827;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.description}</td>
-      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280;">${getCatName(e.category)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;color:#111827;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.description)}</td>
+      <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280;">${esc(getCatName(e.category))}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:11px;color:#6b7280;">${fmtDate(e.date)}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;font-size:12px;font-weight:700;color:${e.type === 'receita' ? '#16a34a' : '#dc2626'};text-align:right;">${e.type === 'receita' ? '+' : ''}${fmt(eVal(e))}</td>
       <td style="padding:7px 8px;border-bottom:1px solid #f3f4f6;text-align:center;">
@@ -56,6 +62,7 @@ export function generateMonthPDF({ entries, monthKey, categories, mLabel, fmt, f
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'nonce-${nonce}'; img-src data:">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CashUp — Relatório ${mLabel(monthKey)}</title>
 <style>
@@ -179,19 +186,28 @@ ${despesas.length > 0 ? `
   <span>Relatório de ${mLabel(monthKey)}</span>
 </div>
 
-<button class="print-btn no-print" onclick="window.print()">🖨️ Salvar como PDF</button>
+<button id="print-btn" class="print-btn no-print">🖨️ Salvar como PDF</button>
 
-<script>
+<script nonce="${nonce}">
+  document.getElementById('print-btn').addEventListener('click', () => window.print());
   // Auto-abre o diálogo de impressão após 400ms (tempo para o CSS carregar)
   setTimeout(() => window.print(), 400);
 </script>
 </body>
 </html>`;
 
+  return html;
+}
+
+export function generateMonthPDF(params) {
+  const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('');
+  const html = buildMonthReportHtml(params, nonce);
+  const monthKey = params.monthKey;
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  const win = window.open(url, '_blank');
-  if (!win) {
+  const win = window.open(url, '_blank'); // com 'noopener' o retorno seria sempre null
+  if (win) win.opener = null;
+  else {
     // Fallback: download direto
     Object.assign(document.createElement('a'), { href: url, download: `cashup_${monthKey}.html` }).click();
   }

@@ -65,13 +65,13 @@ export default function LoginScreen({ onLogin }) {
       'auth/user-not-found':         'Conta não encontrada.',
       'auth/wrong-password':         'Senha incorreta.',
       'auth/email-already-in-use':   'Este e-mail já está cadastrado.',
-      'auth/weak-password':          'Senha muito fraca (mín. 6 caracteres).',
+      'auth/weak-password':          'Senha muito fraca (mín. 8 caracteres).',
       'auth/too-many-requests':      'Muitas tentativas. Tente mais tarde.',
       'auth/popup-closed-by-user':   '',
       'auth/cancelled-popup-request':'',
       'auth/invalid-credential':     'E-mail ou senha incorretos.',
     };
-    return map[e.code] || e.message || 'Erro desconhecido.';
+    return map[e.code] ?? 'Não foi possível concluir. Tente novamente.';
   };
 
   async function handleGoogle() {
@@ -107,6 +107,7 @@ export default function LoginScreen({ onLogin }) {
 
     try {
       if (tab === 'create') {
+        if (pw.length < 8) { setError('A senha precisa ter pelo menos 8 caracteres.'); setBusy(false); return; }
         if (pw !== pw2) { setError('As senhas não coincidem.'); setBusy(false); return; }
         const r = await createUserWithEmailAndPassword(auth, email, pw);
         if (name.trim()) await updateProfile(r.user, { displayName: name.trim() });

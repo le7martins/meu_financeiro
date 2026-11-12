@@ -200,15 +200,19 @@ export function buildBackup(data, now = new Date()) {
 }
 
 const isISODate = (s) => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
-const isNum = (v) => v !== '' && v !== null && Number.isFinite(Number(v));
+const isNum = (v) => v !== '' && v !== null && Number.isFinite(Number(v)) && Math.abs(Number(v)) < 1e12;
+const MAX_LIST = 20000;
+const okStr = (v, max) => typeof v === 'string' && v.length <= max;
+const okId = (v) => (typeof v === 'string' && v.length > 0 && v.length <= 100) || (typeof v === 'number' && Number.isFinite(v));
+const okColor = (v) => v === undefined || /^#[0-9a-f]{3,8}$/i.test(String(v));
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const CHECKS = {
-  entries:       ['lançamento', (x) => x.id != null && typeof x.description === 'string' && ['receita', 'despesa'].includes(x.type) && isISODate(x.date) && isNum(x.amount)],
-  dividas:       ['dívida', (x) => x.id != null && typeof x.name === 'string' && isNum(x.totalAmount) && Number.isInteger(Number(x.installments)) && Number(x.installments) >= 1],
-  cards:         ['cartão', (x) => x.id != null && typeof x.name === 'string' && Number(x.closeDay) >= 1 && Number(x.closeDay) <= 31 && Number(x.dueDay) >= 1 && Number(x.dueDay) <= 31],
-  cardPurchases: ['compra no cartão', (x) => x.id != null && x.cardId != null && isNum(x.amount) && isISODate(x.purchaseDate)],
-  categories:    ['categoria', (x) => x.id != null && typeof x.name === 'string'],
-  accounts:      ['conta', (x) => x.id != null && typeof x.name === 'string'],
+  entries:       ['lançamento', (x) => okId(x.id) && okStr(x.description, 200) && ['receita', 'despesa'].includes(x.type) && isISODate(x.date) && isNum(x.amount)],
+  dividas:       ['dívida', (x) => okId(x.id) && okStr(x.name, 100) && isNum(x.totalAmount) && Number.isInteger(Number(x.installments)) && Number(x.installments) >= 1],
+  cards:         ['cartão', (x) => okId(x.id) && okStr(x.name, 100) && okColor(x.color) && Number(x.closeDay) >= 1 && Number(x.closeDay) <= 31 && Number(x.dueDay) >= 1 && Number(x.dueDay) <= 31],
+  cardPurchases: ['compra no cartão', (x) => okId(x.id) && okId(x.cardId) && isNum(x.amount) && isISODate(x.purchaseDate)],
+  categories:    ['categoria', (x) => okId(x.id) && okStr(x.name, 100) && okColor(x.color)],
+  accounts:      ['conta', (x) => okId(x.id) && okStr(x.name, 100)],
 };
 
 // Valida o arquivo ANTES de tocar nos dados. Devolve { ok, error } ou { ok, counts }.
@@ -220,6 +224,7 @@ export function validateBackup(data) {
     const list = data[key];
     if (list === undefined) continue;
     if (!Array.isArray(list)) return { ok: false, error: `Backup corrompido: "${key}" deveria ser uma lista` };
+    if (list.length > MAX_LIST) return { ok: false, error: `Backup corrompido: "${key}" tem itens demais` };
     const i = list.findIndex(x => !isObj(x) || !check(x));
     if (i >= 0) return { ok: false, error: `Backup corrompido: ${label} ${i + 1} está incompleto` };
     counts[key] = list.length;

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from './firebase';
+import { terminate, clearIndexedDbPersistence } from 'firebase/firestore';
+import { auth, db } from './firebase';
 import { saveUserProfile, ADMIN_EMAIL } from './db';
 import { onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
@@ -77,9 +78,14 @@ function App(){
       setFbUser(null);
       return;
     }
-    signOut(auth);
-    // Clear per-user localStorage cache so next user starts fresh
+    // Limpa o cache local do usuário e o cache offline do Firestore (IndexedDB), para que
+    // o próximo usuário deste aparelho não tenha acesso aos dados do anterior.
     Object.keys(localStorage).filter(k=>k.startsWith("mf2_")).forEach(k=>localStorage.removeItem(k));
+    (async()=>{
+      try{ await signOut(auth); }catch(e){ console.warn('[logout]',e); }
+      try{ await terminate(db); await clearIndexedDbPersistence(db); }catch(e){ console.warn('[logout] cache',e); }
+      location.reload();
+    })();
   };
   return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={handleLogout}/>;
 }

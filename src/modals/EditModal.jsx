@@ -46,7 +46,7 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
       <div {...dialogProps} style={{...S.modal,outline:"none"}} className="modal-in">
         <div style={S.modalHandle}/>
         <div style={S.mHeader}><div><div id={titleId} style={S.mTitle}>Editar Lançamento</div><div style={{fontSize:"var(--fs-xs)",color:"var(--text-3)",marginTop:2}}>{isDespesa?"🔴 Despesa":"🟢 Receita"} · {mLabel(monthKey)}{entry.isRecurring&&<span style={{color:"var(--accent)",marginLeft:5}}>{entry.recurLabel}</span>}</div></div><button type="button" aria-label="Fechar" style={S.xBtn} onClick={onClose}>✕</button></div>
-        <Field label="Descrição" required error={!desc.trim()?"⚠️ Informe a descrição":null}><input style={{...S.inp,borderColor:!desc.trim()?"var(--danger)":"var(--border)"}} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
+        <Field label="Descrição" required error={!desc.trim()?"⚠️ Informe a descrição":null}><input maxLength={200} style={{...S.inp,borderColor:!desc.trim()?"var(--danger)":"var(--border)"}} value={desc} onChange={e=>setDesc(e.target.value)}/></Field>
         <Field label={entry.recurrence==="installment"?"Valor da parcela":"Valor"} htmlFor="e-valor">
           <input id="e-valor" style={S.inp} type="text" inputMode="numeric" autoComplete="off" placeholder="0,00" value={displayAmt} onChange={handleAmtChange}/>
           {entry.isRecurring&&!entry.isDivida&&(
@@ -69,7 +69,7 @@ export default function EditModal({entry,monthKey,categories,entries,onUpdateCat
           {showMore?"Menos detalhes":"Mais detalhes (observação, tags)"}
         </button>
         {showMore&&(<>
-        <Field label="Observação"><textarea style={{...S.inp,resize:"none",height:52}} placeholder="Alguma anotação..." value={notes} onChange={e=>setNotes(e.target.value)}/></Field>
+        <Field label="Observação"><textarea maxLength={500} style={{...S.inp,resize:"none",height:52}} placeholder="Alguma anotação..." value={notes} onChange={e=>setNotes(e.target.value)}/></Field>
         <Field label="Tags (opcional)">
           {tags.length>0&&<div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:7}}>{tags.map(t=><button type="button" key={t} aria-label={`Remover tag ${t}`} onClick={()=>setTags(p=>p.filter(x=>x!==t))} style={{fontSize:"var(--fs-xs)",padding:"2px 7px",borderRadius:5,background:"var(--accent-soft)",border:"1px solid var(--accent-border)",color:"var(--accent)",cursor:"pointer",fontFamily:"inherit"}}>#{t} ✕</button>)}</div>}
           <input style={S.inp} placeholder="Adicionar tag (Enter ou vírgula)" value={tagInput} onChange={e=>setTagInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addTag(tagInput);}else if(e.key===","||e.key===" "){e.preventDefault();addTag(tagInput);}}}/>
