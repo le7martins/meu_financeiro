@@ -10,7 +10,6 @@ export const CSS=`
   select option { background: var(--surface); }
   ::placeholder { color: var(--text-placeholder); }
   .statusToggleBtn:hover { filter: brightness(1.2); transform: scale(1.03); transition: all .15s; }
-  .sumAddBtn:hover { filter: brightness(1.3); transform: scale(1.1); transition: all .15s; }
   .arrowBtn:hover { border-color: var(--accent-border) !important; color: var(--accent) !important; }
   .hbtn:hover { opacity: 0.82; }
   .add-btn:hover { filter: brightness(1.15); }
@@ -29,7 +28,6 @@ export const CSS=`
   @media (min-width: 720px) {
     .appRoot { max-width: 720px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); min-height: 100vh; }
     .appBottomNav { max-width: 720px !important; }
-    .sumGrid { grid-template-columns: repeat(4, 1fr) !important; }
   }
 
   /* ── Responsive: desktop (≥1024px) ── sidebar layout ── */
@@ -114,7 +112,6 @@ export const CSS=`
       transform: none !important;
     }
     /* Wider grids & more spacing */
-    .sumGrid { grid-template-columns: repeat(4, 1fr) !important; gap: 14px !important; }
     .heroCard { padding: 28px 28px !important; }
   }
 
@@ -385,16 +382,6 @@ export const CSS=`
   .light-mode .eCard { background: #ffffff !important; border-color: #e5e7eb !important; box-shadow: 0 1px 3px rgba(0,0,0,.06) !important; }
   .light-mode .eCard:hover { border-color: #d1d5db !important; box-shadow: 0 2px 8px rgba(0,0,0,.09) !important; }
 
-  /* ── GradCard (Receitas / Despesas / Pago / A Pagar) ──
-     Replace tinted/washed backgrounds with white + colored left border */
-  .light-mode .gradCard {
-    background: #ffffff !important;
-    border-width: 1px !important;
-    border-style: solid !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,.07) !important;
-  }
-  .light-mode .gradCardValue { color: #111827 !important; }
-  .light-mode .gradCardLabel { opacity: 1 !important; font-weight: 700 !important; }
 
 
   /* Sidebar add buttons in light mode */
@@ -574,6 +561,6 @@ export const CSS=`
       scroll-behavior: auto !important;
     }
     .toast-in, .modal-in, .celebrate-glow, .onboard-step { animation: none !important; }
-    .statusToggleBtn:hover, .sumAddBtn:hover, .iconBtn:hover { transform: none !important; }
+    .statusToggleBtn:hover, .iconBtn:hover { transform: none !important; }
   }
 `;

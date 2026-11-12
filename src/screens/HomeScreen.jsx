@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import S, { tint } from '../styles.js';
 import { fmt, fmtDate, MNAMES, addM, eVal } from '../utils.js';
 import { getMonthEntries } from '../logic.js';
-import GradCard from '../components/GradCard.jsx';
 import EntryCard from '../components/EntryCard.jsx';
 import FiltersSheet from '../components/FiltersSheet.jsx';
 
@@ -133,14 +132,9 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
         </div>
 
         {/* Hero saldo */}
-        <div style={{padding:"10px 14px 6px"}}>
-          <div style={S.heroCard} className="heroCard">
-            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-              <div aria-hidden="true" style={{width:36,height:36,borderRadius:"var(--radius-md)",background:"var(--success-soft)",color:"var(--success)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-              </div>
-              <span className="heroSubtext" style={{fontSize:"var(--fs-lg)",color:"var(--hero-text-2)",fontWeight:500}}>Saldo do mês</span>
-            </div>
+        <div style={{padding:"8px 14px 6px"}}>
+          <div style={{...S.heroCard,padding:"12px 16px"}} className="heroCard">
+            <div className="heroSubtext" style={{fontSize:"var(--fs-md)",color:"var(--hero-text-2)",fontWeight:500,marginBottom:4}}>Saldo do mês</div>
             <div style={{display:"flex",alignItems:"flex-end",justifyContent:"space-between",gap:10}}>
               <div style={{fontSize:"var(--fs-6xl)",fontWeight:800,letterSpacing:"-0.5px",lineHeight:1,background:saldo>=0?"linear-gradient(135deg,var(--success),var(--emerald))":"linear-gradient(135deg,var(--danger),var(--danger-strong))",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>{fmt(saldo)}</div>
               {/* Mini-sparkline 6 meses */}
@@ -157,38 +151,34 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
                 );
               })()}
             </div>
-            {/* Comparação mês anterior */}
-            {prevSaldo !== 0 && (()=>{
-              const pctChange = prevSaldo!==0?((saldoDiff/Math.abs(prevSaldo))*100):0;
-              const isUp = saldoDiff>=0;
-              const tk = isUp?"success":"danger";
-              return(
-                <div className="heroCardFooter" style={{marginTop:8,paddingTop:8,borderTop:"1px solid var(--hero-divider)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span className="heroMuted" style={{fontSize:"var(--fs-xs)",color:"var(--hero-text-3)"}}>vs mês anterior</span>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontSize:"var(--fs-xs)",padding:"2px 6px",borderRadius:5,fontWeight:700,
-                      background:`var(--${tk}-soft)`,
-                      color:`var(--${tk})`,
-                      border:`1px solid var(--${tk}-border)`}}>
-                      {isUp?"▲":"▼"} {Math.abs(pctChange).toFixed(0)}%
-                    </span>
-                    <span style={{fontSize:"var(--fs-sm)",fontWeight:600,color:`var(--${tk})`}}>
-                      {isUp?"+":"-"} {fmt(Math.abs(saldoDiff))}
-                    </span>
+            {/* Rodapé em duas colunas: comparação com o mês anterior | saldo acumulado */}
+            {(prevSaldo!==0||accumSaldo!==null)&&(
+              <div className="heroCardFooter" style={{marginTop:8,paddingTop:8,borderTop:"1px solid var(--hero-divider)",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"6px 12px",flexWrap:"wrap"}}>
+                {prevSaldo!==0&&(()=>{
+                  const pctChange=(saldoDiff/Math.abs(prevSaldo))*100;
+                  const isUp=saldoDiff>=0;
+                  const tk=isUp?"success":"danger";
+                  return(
+                    <div>
+                      <div className="heroMuted" style={{fontSize:"var(--fs-sm)",color:"var(--hero-text-3)",marginBottom:2}}>vs mês anterior</div>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{fontSize:"var(--fs-sm)",padding:"1px 6px",borderRadius:5,fontWeight:700,background:`var(--${tk}-soft)`,color:`var(--${tk})`,border:`1px solid var(--${tk}-border)`}}>{isUp?"▲":"▼"} {Math.abs(pctChange).toFixed(0)}%</span>
+                        <span style={{fontSize:"var(--fs-sm)",fontWeight:600,color:`var(--${tk})`}}>{isUp?"+":"-"} {fmt(Math.abs(saldoDiff))}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {accumSaldo!==null&&(
+                  <div style={{textAlign:"right",marginLeft:"auto"}}>
+                    <div className="heroMuted" style={{fontSize:"var(--fs-sm)",color:"var(--hero-text-3)",marginBottom:2}}>
+                      Saldo acumulado{accumSaldoCapped&&<span title="Calculado apenas nos últimos 36 meses (limite do histórico)" style={{marginLeft:4,color:"var(--warning)"}}>⚠ 36m</span>}
+                    </div>
+                    <div style={{fontSize:"var(--fs-md)",fontWeight:700,color:(saldo+accumSaldo)>=0?"var(--success)":"var(--danger)"}}>{fmt(saldo+accumSaldo)}</div>
                   </div>
-                </div>
-              );
-            })()}
-            {accumSaldo!==null&&<div className="heroCardFooter" style={{marginTop:6,paddingTop:6,borderTop:"1px solid var(--hero-divider)"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <span className="heroMuted" style={{fontSize:"var(--fs-xs)",color:"var(--hero-text-3)",display:"flex",alignItems:"center",gap:4}}>
-                  Saldo acumulado
-                  {accumSaldoCapped&&<span title="Calculado apenas nos últimos 36 meses (limite do histórico)" style={{cursor:"help",color:"var(--warning)",fontSize:"var(--fs-2xs)"}}>⚠️ 36m</span>}
-                </span>
-                <span style={{fontSize:"var(--fs-md)",fontWeight:700,color:(saldo+accumSaldo)>=0?"var(--success)":"var(--danger)"}}>{fmt(saldo+accumSaldo)}</span>
+                )}
               </div>
-              {accumSaldoCapped&&<div style={{fontSize:"var(--fs-2xs)",color:"var(--hero-text-3)",marginTop:3}}>Histórico limitado a 36 meses</div>}
-            </div>}
+            )}
+            {accumSaldo!==null&&accumSaldoCapped&&<div style={{fontSize:"var(--fs-sm)",color:"var(--hero-text-3)",marginTop:4}}>Histórico limitado a 36 meses</div>}
           </div>
         </div>
 
@@ -207,36 +197,31 @@ export default function HomeScreen({ data, stats, today, selMonth, setSelMonth, 
           </div>
         )}
 
-        {/* 4 grad cards */}
-        <div className="sumGrid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,padding:"0 14px 8px"}}>
-          <GradCard label="Receitas" value={fmt(totRec)} color="var(--success)" bg="var(--success-soft)" empty={totRec===0}
-            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>}/>
-          <GradCard label="Despesas" value={fmt(totDesp)} color="var(--orange)" bg="var(--orange-soft)" empty={totDesp===0}
-            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>}/>
-          <GradCard label="Pago" value={fmt(totPago)} color="var(--accent)" bg="var(--accent-soft)" empty={totPago===0}
-            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="9 12 12 15 16 9"/></svg>}/>
-          <GradCard label="A pagar" value={fmt(totPend)} color="var(--warning)" bg="var(--warning-soft)" empty={totPend===0}
-            icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}/>
-        </div>
-        {/* Payment progress bar */}
-        {totDesp>0&&(
-          <div style={{padding:"0 14px 8px"}}>
-            <div style={{background:"var(--surface)",border:"1px solid var(--border-subtle)",borderRadius:"var(--radius-md)",padding:"7px 12px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                <span style={{fontSize:"var(--fs-sm)",color:"var(--text-3)",textTransform:"uppercase",letterSpacing:"0.06em"}}>Progresso pagamentos</span>
-                <span style={{fontSize:"var(--fs-xs)",fontWeight:700,color:totPago>=totDesp?"var(--success)":totPend>0?"var(--warning)":"var(--accent)"}}>
-                  {totDesp>0?((totPago/totDesp)*100).toFixed(0):0}% pago
-                </span>
-              </div>
-              <div role="progressbar" aria-label="Progresso de pagamentos" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((totPago/totDesp)*100)}
-                style={{height:6,background:"var(--track)",borderRadius:3,overflow:"hidden",display:"flex"}}>
-                <div style={{height:"100%",width:`${totDesp>0?(totPago/totDesp)*100:0}%`,background:`linear-gradient(90deg,${tint("var(--accent)",53)},var(--accent))`,borderRadius:"3px 0 0 3px",transition:"width .5s"}}/>
-                <div style={{height:"100%",width:`${totDesp>0?(totPend/totDesp)*100:0}%`,background:`linear-gradient(90deg,${tint("var(--warning)",40)},${tint("var(--warning)",20)})`,transition:"width .5s"}}/>
-              </div>
+        {/* Resumo do mês: um card só (2×2) com a barra de progresso embaixo */}
+        <div style={{padding:"0 14px 8px"}}>
+          <div style={{background:"var(--surface)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:"10px 12px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:"8px 18px"}}>
+              {[["Receitas",totRec,"success"],["Despesas",totDesp,"orange"],["Pago",totPago,"accent"],["A pagar",totPend,"warning"]].map(([label,val,tk])=>(
+                <div key={label} style={{display:"flex",flexWrap:"wrap",alignItems:"baseline",justifyContent:"space-between",columnGap:6,minWidth:0}}>
+                  <span style={{display:"flex",alignItems:"center",gap:5,fontSize:"var(--fs-sm)",fontWeight:700,color:`var(--${tk})`,textTransform:"uppercase",letterSpacing:"0.05em",flexShrink:0}}>
+                    <span aria-hidden="true" style={{width:6,height:6,borderRadius:"var(--radius-full)",background:`var(--${tk})`}}/>{label}
+                  </span>
+                  <span style={{fontSize:"var(--fs-base)",fontWeight:800,color:val===0?"var(--text-4)":"var(--text-1)",letterSpacing:"-0.2px",whiteSpace:"nowrap",marginLeft:"auto"}}>{val===0?"—":fmt(val)}</span>
+                </div>
+              ))}
             </div>
+            {totDesp>0&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:9}}>
+                <div role="progressbar" aria-label="Progresso de pagamentos" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((totPago/totDesp)*100)}
+                  style={{flex:1,height:4,background:"var(--track)",borderRadius:2,overflow:"hidden",display:"flex"}}>
+                  <div style={{height:"100%",width:`${(totPago/totDesp)*100}%`,background:`linear-gradient(90deg,${tint("var(--accent)",53)},var(--accent))`,transition:"width .5s"}}/>
+                  <div style={{height:"100%",width:`${(totPend/totDesp)*100}%`,background:`linear-gradient(90deg,${tint("var(--warning)",40)},${tint("var(--warning)",20)})`,transition:"width .5s"}}/>
+                </div>
+                <span style={{fontSize:"var(--fs-sm)",fontWeight:700,flexShrink:0,color:totPago>=totDesp?"var(--success)":totPend>0?"var(--warning)":"var(--accent)"}}>{((totPago/totDesp)*100).toFixed(0)}% pago</span>
+              </div>
+            )}
           </div>
-        )}
-
+        </div>
 
         {/* ── Vencidas / próximos: uma linha; toque abre a lista ── */}
         {(overdueDue.length>0||upcomingDue.length>0)&&(
