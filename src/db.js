@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, onSnapshot, terminate, clearIndexedDbPersistence } from 'firebase/firestore';
 import { db } from './firebase';
 
 export const ADMIN_EMAIL = 'gomesmartins2302@gmail.com';
@@ -65,4 +65,17 @@ export function saveUserProfile(user) {
 export async function loadAllProfiles() {
   const snap = await getDocs(collection(db, 'userProfiles'));
   return snap.docs.map(d => d.data());
+}
+
+// ─── Exclusão de conta (LGPD) ────────────────────────────────
+// Apaga todos os documentos do usuário. Chamar ANTES de excluir o login (depois as regras negariam).
+export async function deleteAllUserData(uid) {
+  await Promise.all(DATA_TYPES.map(t => deleteDoc(dataDoc(uid, t))));
+  await deleteDoc(doc(db, 'userProfiles', uid));
+}
+
+// Remove cache local (localStorage + IndexedDB do Firestore) deste aparelho.
+export async function wipeLocalData() {
+  Object.keys(localStorage).filter(k => k.startsWith('mf2_')).forEach(k => localStorage.removeItem(k));
+  try { await terminate(db); await clearIndexedDbPersistence(db); } catch (e) { console.warn('[wipe]', e); }
 }

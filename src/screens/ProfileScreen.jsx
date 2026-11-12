@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential, reauthenticateWithPopup, deleteUser } from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
+import { deleteAllUserData, wipeLocalData } from '../db';
 import Toggle from '../components/Toggle.jsx';
 import { fmt, mLabel, newId } from '../utils.js';
 import CurrencyInput from '../components/CurrencyInput.jsx';
@@ -60,6 +62,11 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
   const [newPass,setNewPass]=useState('');
   const [passLoading,setPassLoading]=useState(false);
   const [passErr,setPassErr]=useState('');
+  const [delOpen,setDelOpen]=useState(false);
+  const [delPass,setDelPass]=useState('');
+  const [delText,setDelText]=useState('');
+  const [delErr,setDelErr]=useState('');
+  const [delBusy,setDelBusy]=useState(false);
   const permColor=notifPerm==="granted"?"var(--success)":notifPerm==="denied"?"var(--danger)":"var(--warning)";
   const permLabel=notifPerm==="granted"?"Ativadas":notifPerm==="denied"?"Bloqueadas pelo browser":notifPerm==="unsupported"?"Não suportado":"Não permitidas";
   const displayName=fbUser?.displayName||fbUser?.email?.split("@")[0]||"Usuário";
@@ -134,6 +141,29 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
     }catch(e){/* ignore */}
     setNameLoading(false);
   };
+  // Exclusão definitiva (LGPD): reautentica, apaga os dados na nuvem, depois o login e o cache local.
+  const handleDeleteAccount=async()=>{
+    const user=auth.currentUser;
+    if(!user||delText.trim().toUpperCase()!=='EXCLUIR')return;
+    setDelBusy(true);setDelErr('');
+    try{
+      if(isEmailProvider) await reauthenticateWithCredential(user,EmailAuthProvider.credential(user.email,delPass));
+      else await reauthenticateWithPopup(user,googleProvider);
+    }catch(e){
+      setDelErr(['auth/wrong-password','auth/invalid-credential'].includes(e.code)?'Senha incorreta':['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code)?'Confirmação cancelada':'Não foi possível confirmar sua identidade');
+      setDelBusy(false);return;
+    }
+    try{
+      await deleteAllUserData(user.uid);
+      await deleteUser(user);
+    }catch(e){
+      console.warn('[delete account]',e);
+      setDelErr('Não foi possível concluir a exclusão. Tente novamente; se persistir, saia e entre de novo.');
+      setDelBusy(false);return;
+    }
+    await wipeLocalData();
+    location.reload();
+  };
   const handleSavePass=async()=>{
     if(newPass.length<8){setPassErr("Mínimo 8 caracteres");return;}
     setPassLoading(true);setPassErr('');
@@ -164,6 +194,7 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
         <ProfileSection title="Conta">
           <ProfileItem icon="✏️" label="Alterar nome" sub={displayName} onClick={()=>{setNewName(displayName);setEditName(true);}}/>
           {isEmailProvider&&<ProfileItem icon="🔑" label="Alterar senha" sub="Trocar senha da conta" onClick={()=>{setEditPass(true);setCurPass('');setNewPass('');setPassErr('');}}/>}
+          {!fbUser?._isDemo&&<ProfileItem icon="🗑️" label="Excluir minha conta" sub="Apaga todos os seus dados, de forma definitiva" onClick={()=>{setDelOpen(true);setDelPass('');setDelText('');setDelErr('');}} danger/>}
           {!confirmLogout
             ? <ProfileItem icon="🚪" label="Sair da conta" sub={`Conectado como ${displayName}`} last onClick={()=>setConfirmLogout(true)} danger/>
             : <div style={{padding:"13px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
@@ -329,6 +360,22 @@ export default function ProfileScreen({entries,dividas,selMonth,onExportMonth,on
             <button type="button" onClick={handleSaveName} disabled={nameLoading||!newName.trim()} style={{flex:1,padding:"11px",background:"var(--primary-bg)",border:"1px solid var(--primary-border)",borderRadius:"var(--radius-md)",color:"var(--primary-text)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer",opacity:nameLoading||!newName.trim()?0.5:1}}>
               {nameLoading?"Salvando...":"Salvar"}
             </button>
+          </div>
+        </ModalShell>
+      )}
+
+      {delOpen&&(
+        <ModalShell title="Excluir conta" onClose={()=>!delBusy&&setDelOpen(false)} compact>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+            <div style={{fontSize:"var(--fs-md)",color:"var(--text-2)",lineHeight:1.5}}>Isso apaga <strong>definitivamente</strong> seus lançamentos, dívidas, cartões e configurações, e remove seu login. Não dá para desfazer. Faça um backup antes, se quiser guardar uma cópia.</div>
+            {isEmailProvider&&<div><label htmlFor="del-pw" style={S.lbl}>Senha atual</label><input id="del-pw" style={S.inp} type="password" autoComplete="current-password" placeholder="••••••••" value={delPass} onChange={e=>setDelPass(e.target.value)}/></div>}
+            <div><label htmlFor="del-txt" style={S.lbl}>Digite EXCLUIR para confirmar</label><input id="del-txt" style={S.inp} autoComplete="off" value={delText} onChange={e=>setDelText(e.target.value)}/></div>
+            {!isEmailProvider&&<div style={{fontSize:"var(--fs-sm)",color:"var(--text-3)"}}>Vamos pedir para você entrar com o Google novamente.</div>}
+            {delErr&&<div role="alert" style={{fontSize:"var(--fs-md)",color:"var(--danger)"}}>⚠️ {delErr}</div>}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button type="button" disabled={delBusy} onClick={()=>setDelOpen(false)} style={{flex:1,minHeight:44,background:"var(--surface-2)",border:"1px solid var(--border-strong)",borderRadius:"var(--radius-md)",color:"var(--text-2)",fontSize:"var(--fs-base)",cursor:"pointer"}}>Cancelar</button>
+            <button type="button" onClick={handleDeleteAccount} disabled={delBusy||delText.trim().toUpperCase()!=='EXCLUIR'||(isEmailProvider&&!delPass)} style={{flex:1,minHeight:44,background:"var(--danger-soft)",border:"1px solid var(--danger-border)",borderRadius:"var(--radius-md)",color:"var(--danger)",fontSize:"var(--fs-base)",fontWeight:700,cursor:"pointer",opacity:(delBusy||delText.trim().toUpperCase()!=='EXCLUIR'||(isEmailProvider&&!delPass))?0.5:1}}>{delBusy?"Excluindo...":"Excluir tudo"}</button>
           </div>
         </ModalShell>
       )}

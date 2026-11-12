@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   signInWithPopup, signInWithEmailAndPassword,
   createUserWithEmailAndPassword, updateProfile,
-  sendPasswordResetEmail,
+  sendPasswordResetEmail, sendEmailVerification,
 } from 'firebase/auth';
 import { auth, googleProvider } from './firebase';
 import { seedDemo } from './demoData';
@@ -111,6 +111,7 @@ export default function LoginScreen({ onLogin }) {
         if (pw !== pw2) { setError('As senhas não coincidem.'); setBusy(false); return; }
         const r = await createUserWithEmailAndPassword(auth, email, pw);
         if (name.trim()) await updateProfile(r.user, { displayName: name.trim() });
+        try { await sendEmailVerification(r.user); } catch (e) { console.warn('[verify]', e); }
         onLogin(r.user);
       } else {
         const r = await signInWithEmailAndPassword(auth, email, pw);

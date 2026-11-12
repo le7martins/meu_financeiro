@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { terminate, clearIndexedDbPersistence } from 'firebase/firestore';
-import { auth, db } from './firebase';
-import { saveUserProfile, ADMIN_EMAIL } from './db';
+import { auth } from './firebase';
+import { saveUserProfile, ADMIN_EMAIL, wipeLocalData } from './db';
+import VerifyEmailScreen from './VerifyEmailScreen.jsx';
 import { onForegroundMessage } from './fcm';
 import LoginScreen from './LoginScreen';
 import { fmt, fmtDate, mLabel, addM, eVal, loadLS, saveLS, daysInMonth } from './utils.js';
@@ -54,6 +54,7 @@ function download(blob, filename) {
 // ─── App (auth gate) ─────────────────────────────────────────
 function App(){
   const [fbUser, setFbUser] = useState(undefined);
+  const [, setVerTick] = useState(0); // força re-render após user.reload()
   useEffect(()=>{
     const unsub = onAuthStateChanged(auth, u=>{
       setFbUser(prev=>{
@@ -80,13 +81,15 @@ function App(){
     }
     // Limpa o cache local do usuário e o cache offline do Firestore (IndexedDB), para que
     // o próximo usuário deste aparelho não tenha acesso aos dados do anterior.
-    Object.keys(localStorage).filter(k=>k.startsWith("mf2_")).forEach(k=>localStorage.removeItem(k));
     (async()=>{
       try{ await signOut(auth); }catch(e){ console.warn('[logout]',e); }
-      try{ await terminate(db); await clearIndexedDbPersistence(db); }catch(e){ console.warn('[logout] cache',e); }
+      await wipeLocalData();
       location.reload();
     })();
   };
+  // Conta e-mail/senha precisa confirmar o e-mail (Google já vem verificado).
+  const needsVerify = !fbUser._isDemo && fbUser.providerData?.some(p=>p.providerId==='password') && !fbUser.emailVerified;
+  if(needsVerify) return <VerifyEmailScreen user={fbUser} onChecked={()=>setVerTick(t=>t+1)} onLogout={handleLogout}/>;
   return <MainApp key={fbUser.uid} fbUser={fbUser} onLogout={handleLogout}/>;
 }
 
