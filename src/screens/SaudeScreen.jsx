@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import HealthBar from '../components/HealthBar.jsx';
+import FaturasPlan from '../components/FaturasPlan.jsx';
 import { getMonthEntries } from '../logic.js';
 import { tint } from '../styles.js';
 import { eVal, mLabel, mShort, addM, mDiff, fmt, fmtShort, newId } from '../utils.js';
@@ -643,6 +644,9 @@ export default function SaudeScreen({ entries, dividas, cards, cardPurchases, ca
             </div>
           );
         })()}
+
+        {/* Faturas dos cartões: mês atual + próximos meses */}
+        {cards.length>0&&<FaturasPlan cards={cards} cardPurchases={cardPurchases} cardFaturas={cardFaturas} nowMonth={nowMonth} budget={budgets.cartao}/>}
 
         {/* Empty state */}
         {rec===0&&dep===0&&(
