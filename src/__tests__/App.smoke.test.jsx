@@ -54,7 +54,7 @@ describe('App (fumaça)', () => {
   test('marcar como pago grava na nuvem', async () => {
     render(<App />);
     const card = await findCard('Conta de Luz');
-    fireEvent.click(within(card).getByText('A pagar'));
+    fireEvent.click(within(card).getByLabelText(/^A pagar:/));
     await waitFor(() => expect(lastSave('entries')?.find(e => e.id === 'e1').status).toBe('pago'));
     expect(within(card).getByLabelText(/^Pago:/)).toBeTruthy();
   });

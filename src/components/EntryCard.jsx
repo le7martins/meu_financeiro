@@ -122,10 +122,10 @@ export default function EntryCard({ entry, selMonth, catColor, catName, budgets,
             </button>
           ):(
             <button type="button" onClick={()=>onToggle(entry)} className="statusToggleBtn"
-              aria-label={`Marcar ${entry.description} como ${entry.type==="receita"?"recebido":"pago"}`}
-              title={entry.type==="receita"?"Toque para marcar como recebido":"Toque para marcar como pago"}
-              style={{display:"flex",alignItems:"center",gap:5,padding:"0 12px",minHeight:44,borderRadius:"var(--radius-md)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"var(--fs-sm)",fontWeight:700,background:"var(--orange-soft)",color:"var(--orange)",transition:"all .15s"}}>
-              <svg {...svgProps} width="12" height="12" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{entry.type==="receita"?"A receber":"A pagar"}
+              aria-label={`${entry.type==="receita"?"A receber":"A pagar"}: marcar ${entry.description} como ${entry.type==="receita"?"recebido":"pago"}`}
+              title={entry.type==="receita"?"A receber — toque para marcar como recebido":"A pagar — toque para marcar como pago"}
+              style={{width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-full)",border:"none",cursor:"pointer",background:"var(--orange-soft)",color:"var(--orange)",transition:"all .15s"}}>
+              <svg {...svgProps} width="20" height="20" strokeWidth="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             </button>
           )}
         </div>

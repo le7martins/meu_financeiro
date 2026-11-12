@@ -173,9 +173,9 @@ export default function DividasScreen({dividas,setDividas,categories,setCategori
                       </button>
                     ):(
                       <button type="button" onClick={()=>toggleMonth(d,NOW)} className="statusToggleBtn"
-                        aria-label={`Marcar parcela de ${d.name} como paga`} title="Toque para marcar como paga"
-                        style={{flexShrink:0,display:"flex",alignItems:"center",gap:5,padding:"0 12px",minHeight:44,borderRadius:"var(--radius-md)",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:"var(--fs-sm)",fontWeight:700,background:"var(--orange-soft)",color:"var(--orange)"}}>
-                        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>A pagar
+                        aria-label={`A pagar: marcar parcela de ${d.name} como paga`} title="A pagar — toque para marcar como paga"
+                        style={{width:44,height:44,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"var(--radius-full)",border:"none",cursor:"pointer",background:"var(--orange-soft)",color:"var(--orange)"}}>
+                        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                       </button>
                     )}
                   </div>
